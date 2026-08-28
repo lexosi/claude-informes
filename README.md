@@ -237,6 +237,31 @@ Para saber cual fue el ultimo y comprobar que existe de verdad:
     .venv\Scripts\python -m claude_informes ultimo --proyecto loopward
 ```
 
+### Servidores MCP
+
+Cualquier servidor MCP con escritura montado en Claude Code se saltaria un
+matcher limitado a las herramientas nativas: la herramienta se llamaria
+`mcp__servidor__write_file`. Por eso el matcher incluye `mcp__.*`.
+
+Los servidores MCP no comparten esquema: ni el nombre de la herramienta ni el
+del campo de la ruta estan estandarizados. La deteccion es heuristica, y por
+eso **solo sirve para denegar mejor; permitir sigue garantizado**:
+
+- Se mira el ultimo tramo del nombre (`mcp__servidor__write_file` -> `write_file`)
+  y se busca un verbo de escritura entre sus palabras. Por palabras, no por
+  subcadena: si no, `get_output` contendria "put".
+- Las de lectura (`read_file`, `list_directory`, `directory_tree`...) pasan sin
+  mirarse. Leer los informes es legitimo; solo se impide escribirlos.
+- Un verbo que no se reconoce se trata como lectura. Fallar abierto manda.
+- Si la herramienta dice escribir, se prueban los nombres de campo habituales
+  (`path`, `file_path`, `filename`, `destination`, `target`, `paths`...). Si no
+  aparece ninguna ruta reconocible, **se permite** y se anota como
+  `permitido-sin-ruta`, para que el punto ciego sea visible y no silencioso.
+
+La consecuencia honesta: un servidor que llame `persistir` a su escritura, o
+que meta la ruta en un campo con un nombre inventado, pasa. Denegar es siempre
+mejor esfuerzo; lo unico garantizado es que no se rompe nada.
+
 ## Modo backfill
 
 Reconstruye informes de turnos ya pasados leyendo el transcript JSONL. Criterio:

@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -28,6 +29,41 @@ from . import registro as reg
 HERRAMIENTAS = frozenset({"Write", "Edit", "MultiEdit", "NotebookEdit"})
 CAMPOS_DE_RUTA = ("file_path", "notebook_path", "path")
 
+# Los servidores MCP no tienen esquema comun: ni el nombre de la herramienta
+# ni el del campo de la ruta estan estandarizados. Lo que sigue es heuristica,
+# y por eso solo sirve para DENEGAR mejor; permitir sigue garantizado.
+PREFIJO_MCP = "mcp__"
+
+# Verbos que delatan una escritura. Se comparan contra las palabras del nombre
+# de la herramienta, no como subcadena: si no, `get_output` contendria "put".
+VERBOS_DE_ESCRITURA = frozenset(
+    {
+        "write", "edit", "create", "mkdir", "move", "rename", "copy",
+        "delete", "remove", "unlink", "save", "append", "patch",
+        "truncate", "upload", "put", "overwrite",
+    }
+)
+
+CAMPOS_MCP = CAMPOS_DE_RUTA + (
+    "filepath",
+    "filename",
+    "file",
+    "destination",
+    "destination_path",
+    "dest",
+    "target",
+    "target_path",
+    "source",
+    "source_path",
+    "dir",
+    "dir_path",
+    "directory",
+    "folder",
+    "folder_path",
+    "paths",
+    "files",
+)
+
 MENSAJE = (
     "claude-informes: {ruta} esta dentro del archivo de informes ({motivo}).\n"
     "Los informes los escribe el hook Stop al terminar el turno; no se "
@@ -38,22 +74,60 @@ MENSAJE = (
 )
 
 
-def rutas_del_payload(payload: dict) -> list[str]:
+def es_mcp(nombre) -> bool:
+    return isinstance(nombre, str) and nombre.startswith(PREFIJO_MCP)
+
+
+def parece_escritura(nombre: str) -> bool:
+    """Solo mira el nombre de la herramienta, no el del servidor.
+
+    `mcp__servidor__write_file` escribe; `mcp__servidor__read_file` no. Un
+    verbo desconocido se trata como lectura: fallar abierto manda.
+    """
+    palabras = re.split(r"[^a-z0-9]+", nombre.split("__")[-1].lower())
+    return bool(VERBOS_DE_ESCRITURA & set(palabras))
+
+
+def campos_a_mirar(nombre) -> tuple[str, ...] | None:
+    """Que campos de `tool_input` pueden llevar la ruta. None = no mirar."""
+    if nombre in HERRAMIENTAS:
+        return CAMPOS_DE_RUTA
+    if es_mcp(nombre) and parece_escritura(nombre):
+        return CAMPOS_MCP
+    return None
+
+
+def rutas_del_payload(payload: dict, campos: tuple[str, ...]) -> list[str]:
     """Las rutas de destino declaradas por la herramienta."""
     entrada = payload.get("tool_input")
     if not isinstance(entrada, dict):
         return []
     rutas = []
-    for campo in CAMPOS_DE_RUTA:
+    for campo in campos:
         valor = entrada.get(campo)
         if isinstance(valor, str) and valor.strip():
             rutas.append(valor)
+        elif isinstance(valor, list):
+            rutas.extend(v for v in valor if isinstance(v, str) and v.strip())
     for edicion in entrada.get("edits", []) or []:
         if isinstance(edicion, dict):
             valor = edicion.get("file_path")
             if isinstance(valor, str) and valor.strip():
                 rutas.append(valor)
     return rutas
+
+
+def es_un_punto_ciego(payload: dict) -> bool:
+    """Una herramienta MCP que dice escribir y no declara ninguna ruta.
+
+    Se permite, porque no se puede afirmar nada, pero no en silencio.
+    """
+    if not isinstance(payload, dict):
+        return False
+    nombre = payload.get("tool_name")
+    if not (es_mcp(nombre) and parece_escritura(nombre)):
+        return False
+    return not rutas_del_payload(payload, CAMPOS_MCP)
 
 
 def resolver(ruta: str, cwd: str | None) -> str:
@@ -125,12 +199,13 @@ def revisar(payload: dict, configuracion: cfg.Configuracion) -> Hallazgo | None:
     """
     if not isinstance(payload, dict):
         return None
-    if payload.get("tool_name") not in HERRAMIENTAS:
+    campos = campos_a_mirar(payload.get("tool_name"))
+    if campos is None:
         return None
 
     zonas = zonas_protegidas(configuracion)
     cwd = payload.get("cwd")
-    for ruta in rutas_del_payload(payload):
+    for ruta in rutas_del_payload(payload, campos):
         destino = resolver(ruta, cwd)
         for zona, tipo, proyecto in zonas:
             if _dentro(destino, zona, tipo):
@@ -179,6 +254,13 @@ def main(entrada=None, salida=None, ruta_config: str | os.PathLike[str] | None =
                 reg.DENEGADO,
                 hallazgo.proyecto or reg.SIN_PROYECTO,
                 f"{payload.get('tool_name')} -> {hallazgo.ruta}",
+            )
+        elif es_un_punto_ciego(payload):
+            anotacion = (
+                configuracion.ruta_log,
+                reg.PERMITIDO_SIN_RUTA,
+                reg.SIN_PROYECTO,
+                f"{payload.get('tool_name')}: sin ruta reconocible en tool_input",
             )
     except Exception as error:  # noqa: BLE001 - falla abierto, siempre
         try:

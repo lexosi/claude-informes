@@ -43,7 +43,7 @@ puede declarar su propia `raiz_informes` si quieres archivarlo en otro sitio.
     ],
     "PreToolUse": [
       {
-        "matcher": "Write|Edit|MultiEdit|NotebookEdit",
+        "matcher": "Write|Edit|MultiEdit|NotebookEdit|mcp__.*",
         "hooks": [
           {
             "type": "command",

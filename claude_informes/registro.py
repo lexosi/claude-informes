@@ -21,6 +21,7 @@ OMITIDO_REENTRADA = "omitido-reentrada"
 OMITIDO_SIN_TEXTO = "omitido-sin-texto"
 DENEGADO = "denegado-escritura"
 PERMITIDO_POR_ERROR = "permitido-por-error"
+PERMITIDO_SIN_RUTA = "permitido-sin-ruta"
 ERROR = "ERROR"
 
 SIN_PROYECTO = "-"
