@@ -10,6 +10,7 @@ import pytest
 from claude_informes import config as cfg
 from claude_informes import hook as hk
 from claude_informes import informe as inf
+from claude_informes import registro as reg
 
 RESPUESTA = "# Informe de la prueba diaria\n\nlinea 1\nlinea 2\nlinea 3\nlinea 4\n"
 SLUG = "informe-prueba-diaria"
@@ -300,15 +301,26 @@ BASURA = [
 
 @pytest.mark.parametrize("crudo", BASURA)
 def test_un_payload_corrupto_sale_0_y_no_escribe_nada(
-    crudo, proyecto_vigilado, informes, tmp_path
+    crudo, proyecto_vigilado, informes, tmp_path, log
 ):
     _, ruta_config = proyecto_vigilado
-    antes = sorted(p.name for p in tmp_path.rglob("*"))
+    antes = sorted(p.name for p in tmp_path.rglob("*") if p != log)
 
     assert ejecutar(None, ruta_config, texto_crudo=crudo) == 0
 
-    assert sorted(p.name for p in tmp_path.rglob("*")) == antes
+    assert sorted(p.name for p in tmp_path.rglob("*") if p != log) == antes
     assert not Path(informes).exists()
+
+
+@pytest.mark.parametrize("crudo", BASURA)
+def test_un_payload_corrupto_deja_rastro_en_el_log(crudo, proyecto_vigilado, log):
+    """Silencio en la consola no puede significar silencio en el log."""
+    _, ruta_config = proyecto_vigilado
+    ejecutar(None, ruta_config, texto_crudo=crudo)
+
+    anotaciones = reg.leer(log)
+    assert len(anotaciones) == 1
+    assert anotaciones[0].resultado in {reg.ERROR, reg.OMITIDO_CWD}
 
 
 def test_un_payload_con_cwd_corrupto_pero_de_la_lista_no_revienta(
@@ -406,9 +418,11 @@ def test_un_transcript_inexistente_no_revienta(proyecto_vigilado, informes, tmp_
     assert not Path(informes).exists()
 
 
-def test_procesar_devuelve_none_si_el_cwd_no_esta_en_la_lista(tmp_path):
+def test_procesar_informa_de_que_el_cwd_no_esta_en_la_lista(tmp_path):
     configuracion = cfg.cargar(tmp_path / "no-existe.json")
-    assert hk.procesar(payload(cwd=str(tmp_path)), configuracion) is None
+    resultado = hk.procesar(payload(cwd=str(tmp_path)), configuracion)
+    assert resultado.resultado == reg.OMITIDO_CWD
+    assert resultado.ruta is None
 
 
 # --- raiz por proyecto ---

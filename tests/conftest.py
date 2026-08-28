@@ -19,6 +19,14 @@ def pytest_configure(config):
         config.option.basetemp = Path(tempfile.gettempdir()) / "claude-informes-tests"
 
 
+@pytest.fixture(autouse=True)
+def log(tmp_path, monkeypatch):
+    """El log de cada test, aislado. Ningun test toca el log real."""
+    ruta = tmp_path / "hook.log"
+    monkeypatch.setenv("CLAUDE_INFORMES_LOG", str(ruta))
+    return ruta
+
+
 @pytest.fixture
 def escribir_config(tmp_path):
     """Devuelve una funcion que deja un fichero de config y da su ruta."""

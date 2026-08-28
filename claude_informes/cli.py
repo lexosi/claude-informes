@@ -1,4 +1,4 @@
-"""Entrada de linea de ordenes: `hook` y `backfill`."""
+"""Entrada de linea de ordenes: `hook`, `backfill` y `ultimo`."""
 
 from __future__ import annotations
 
@@ -10,6 +10,7 @@ from . import backfill as bf
 from . import config as cfg
 from . import hook as hk
 from . import markdown as md
+from . import registro as reg
 from . import transcript as tr
 
 
@@ -37,6 +38,10 @@ def _construir_parser() -> argparse.ArgumentParser:
     p_bf.add_argument("--limite", type=int, default=None, help="ultimos N turnos")
     p_bf.add_argument("--config", default=None)
     p_bf.add_argument("--dry-run", action="store_true")
+
+    p_ult = subs.add_parser("ultimo", help="el ultimo informe escrito, verificado en disco")
+    p_ult.add_argument("--proyecto", default=None, help="por defecto, cualquiera")
+    p_ult.add_argument("--config", default=None)
     return parser
 
 
@@ -104,6 +109,36 @@ def _ejecutar_backfill(args) -> int:
     return 0
 
 
+def _ejecutar_ultimo(args) -> int:
+    """El log dice donde esta; el disco dice si es verdad. Manda el disco."""
+    configuracion = cfg.cargar(args.config)
+    anotaciones = reg.leer(configuracion.ruta_log)
+    if not anotaciones:
+        print(f"El log esta vacio o no existe: {configuracion.ruta_log}", file=sys.stderr)
+        return 2
+
+    anotacion = reg.ultimo_escrito(anotaciones, args.proyecto)
+    if anotacion is None:
+        de_quien = f" de {args.proyecto}" if args.proyecto else ""
+        print(f"El log no registra ningun informe escrito{de_quien}.", file=sys.stderr)
+        return 2
+
+    ruta = anotacion.ruta
+    print(f"proyecto : {anotacion.proyecto}")
+    print(f"informe  : {ruta.name}")
+    print(f"ruta     : {ruta}")
+    print(f"anotado  : {anotacion.marca}")
+    if not ruta.is_file():
+        print(
+            f"estado   : NO EXISTE EN DISCO. El log dice que se escribio el "
+            f"{anotacion.marca}, pero el fichero no esta.",
+            file=sys.stderr,
+        )
+        return 1
+    print(f"estado   : existe en disco, {ruta.stat().st_size} bytes")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     argumentos = list(sys.argv[1:] if argv is None else argv)
     # El hook no debe fallar nunca, ni siquiera por un argparse enfadado.
@@ -116,6 +151,8 @@ def main(argv: list[str] | None = None) -> int:
                 ruta_config = None
         return hk.main(ruta_config=ruta_config)
     args = _construir_parser().parse_args(argumentos)
+    if args.modo == "ultimo":
+        return _ejecutar_ultimo(args)
     return _ejecutar_backfill(args)
 
 

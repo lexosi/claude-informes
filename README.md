@@ -115,6 +115,7 @@ conoce ninguna ruta concreta.
 
 | Clave | Por defecto | Que hace |
 | --- | --- | --- |
+| `ruta_log` | hermano del archivo | El log del hook. |
 | `raiz_informes` (global) | `informes/` de esta herramienta | Raiz que heredan los proyectos. |
 | `raiz_informes` (por proyecto) | la global | Archiva ESE proyecto aparte. |
 | `nombre` | el del directorio | Carpeta del proyecto dentro del archivo. |
@@ -146,8 +147,59 @@ ninguna, jamas.
 - El archivo vive fuera de todo repositorio: ningun `git add -A` puede barrerlo
   a un commit, y ningun `git clean -xdf` puede borrarlo.
 
-Para depurar sin romper el protocolo, `CLAUDE_INFORMES_LOG=ruta` deja una traza
-en ese fichero (nunca en la consola).
+## El log
+
+Salir en silencio evita romper sesiones, pero convertiria cualquier fallo en
+algo invisible. Por eso **cada turno deja una linea**, pase lo que pase:
+
+```
+2026-08-28T16:50:38 | loopward  | escrito         | E:\example-reports\loopward\2026-08-28\08-....json
+2026-08-28T16:50:38 | loopward  | omitido-umbral  | 2 lineas, umbral 5
+2026-08-28T16:50:38 | -         | omitido-cwd     | cwd fuera de la lista: 'E:\example-projects\project-b'
+2026-08-28T16:50:38 | -         | omitido-guardia | cwd dentro de la herramienta: E:\example-projects\claude-informes
+2026-08-28T16:50:38 | -         | ERROR           | JSONDecodeError: Expecting value: line 1 column 1
+```
+
+`marca | proyecto | resultado | ruta o motivo`, solo se anade, y en LF. Hay dos
+resultados mas para que ningun turno quede sin linea: `omitido-reentrada`
+(`stop_hook_active`) y `omitido-sin-texto`.
+
+Vive fuera de las carpetas de informes y fuera de todo repositorio. Por defecto
+es el hermano del archivo: con `raiz_informes` en `E:\example-reports`, el log
+es `E:\example-reports.log`. Se puede fijar con `ruta_log` en la config, o con
+la variable de entorno `CLAUDE_INFORMES_LOG`, que manda sobre las dos.
+
+Escribir el log tambien va dentro del `try/except`. Si el log falla, el hook
+sale 0 igual y sin ruido: el log no vale nada si tumba una sesion.
+
+Es un log unico para todos los proyectos. Lleva nombres de proyecto y rutas
+(con sus slugs), no contenido de los informes.
+
+### `ultimo`: que el log no pueda mentir
+
+El log dice donde quedo el informe; el disco dice si es verdad. Manda el disco.
+
+```sh
+python -m claude_informes ultimo --proyecto loopward
+```
+
+```
+proyecto : loopward
+informe  : 08-prueba-humo-hook.json
+ruta     : E:\example-reports\loopward\2026-08-28\08-prueba-humo-hook.json
+anotado  : 2026-08-28T16:50:38
+estado   : existe en disco, 453 bytes
+```
+
+Si el log dice que se escribio y el fichero no esta, lo dice y sale con 1:
+
+```
+estado   : NO EXISTE EN DISCO. El log dice que se escribio el 2026-08-28T16:50:38,
+           pero el fichero no esta.
+```
+
+Sin `--proyecto`, el ultimo de cualquiera. Codigos: `0` existe, `1` el log
+miente, `2` no hay nada anotado.
 
 ## Modo backfill
 

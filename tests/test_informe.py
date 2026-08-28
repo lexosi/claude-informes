@@ -216,7 +216,7 @@ def test_la_lanzadera_sale_0_con_un_cwd_ajeno(tmp_path):
     )
     assert proceso.returncode == 0
     assert proceso.stdout == "" and proceso.stderr == ""
-    assert list(tmp_path.iterdir()) == []
+    assert list(tmp_path.rglob("*.json")) == []
 
 
 def test_la_lanzadera_no_escribe_con_el_cwd_de_la_propia_herramienta():

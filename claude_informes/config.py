@@ -12,8 +12,10 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from . import markdown as md
+from . import registro as reg
 
 VAR_ENTORNO = "CLAUDE_INFORMES_CONFIG"
+VAR_LOG = "CLAUDE_INFORMES_LOG"
 UMBRAL_POR_DEFECTO = 5
 
 
@@ -37,6 +39,9 @@ class Configuracion:
     raiz_informes: Path
     """Raiz global: la que heredan los proyectos que no declaran la suya."""
 
+    ruta_log: Path
+    """El log del hook. Uno solo, para todos los proyectos."""
+
     proyectos: list[Proyecto] = field(default_factory=list)
 
 
@@ -46,6 +51,22 @@ def normalizar(ruta: str | os.PathLike[str]) -> str:
 
 def raiz_informes_por_defecto() -> Path:
     return raiz_de_la_herramienta() / "informes"
+
+
+def ruta_de_log(declarada, raiz_informes) -> Path:
+    """Manda el entorno, luego la config, y si no, el hermano del archivo."""
+    del_entorno = os.environ.get(VAR_LOG)
+    if del_entorno:
+        return Path(del_entorno)
+    if isinstance(declarada, str) and declarada.strip():
+        return Path(declarada)
+    return reg.ruta_por_defecto(raiz_informes)
+
+
+def por_defecto() -> Configuracion:
+    """Sin config legible: ningun proyecto, pero el log sigue existiendo."""
+    raiz = raiz_informes_por_defecto()
+    return Configuracion(raiz_informes=raiz, ruta_log=ruta_de_log(None, raiz))
 
 
 def ruta_de_config() -> Path:
@@ -73,15 +94,18 @@ def cargar(ruta: str | os.PathLike[str] | None = None) -> Configuracion:
     try:
         crudo = json.loads(destino.read_text(encoding="utf-8"))
     except Exception:
-        return Configuracion(raiz_informes=raiz_informes_por_defecto())
+        return por_defecto()
 
     entradas = crudo.get("proyectos") if isinstance(crudo, dict) else crudo
     raiz_informes = crudo.get("raiz_informes") if isinstance(crudo, dict) else None
     if not isinstance(raiz_informes, str) or not raiz_informes.strip():
         raiz_informes = raiz_informes_por_defecto()
 
+    declarada = crudo.get("ruta_log") if isinstance(crudo, dict) else None
+    ruta_log = ruta_de_log(declarada, raiz_informes)
+
     if not isinstance(entradas, list):
-        return Configuracion(raiz_informes=Path(raiz_informes))
+        return Configuracion(raiz_informes=Path(raiz_informes), ruta_log=ruta_log)
 
     proyectos = []
     for entrada in entradas:
@@ -105,7 +129,11 @@ def cargar(ruta: str | os.PathLike[str] | None = None) -> Configuracion:
                 raiz_informes=Path(propia),
             )
         )
-    return Configuracion(raiz_informes=Path(raiz_informes), proyectos=proyectos)
+    return Configuracion(
+        raiz_informes=Path(raiz_informes),
+        ruta_log=ruta_log,
+        proyectos=proyectos,
+    )
 
 
 def _esta_dentro(candidato: str, raiz: str) -> bool:
