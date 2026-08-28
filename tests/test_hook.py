@@ -11,6 +11,7 @@ from claude_informes import config as cfg
 from claude_informes import hook as hk
 from claude_informes import informe as inf
 from claude_informes import registro as reg
+from claude_informes import transcript as tr
 
 RESPUESTA = "# Informe de la prueba diaria\n\nlinea 1\nlinea 2\nlinea 3\nlinea 4\n"
 SLUG = "informe-prueba-diaria"
@@ -20,15 +21,22 @@ def hoy():
     return datetime.now().strftime("%Y-%m-%d")
 
 
+def transcript_de(cwd):
+    """La ruta que Claude Code le daria a una sesion arrancada en `cwd`."""
+    return str(Path("C:/proyectos") / tr.slug_de_cwd(str(cwd)) / "sesion-1.jsonl")
+
+
 def payload(**cambios):
+    """Un turno normal: la sesion arranco donde dice `cwd`."""
     base = {
         "session_id": "sesion-1",
-        "transcript_path": "",
         "cwd": "",
         "stop_hook_active": False,
         "last_assistant_message": RESPUESTA,
     }
     base.update(cambios)
+    if "transcript_path" not in base:
+        base["transcript_path"] = transcript_de(base["cwd"])
     return base
 
 
@@ -169,15 +177,43 @@ def test_se_crean_los_dos_niveles_de_directorio(proyecto_vigilado, informes):
     assert (Path(informes) / "vigilado" / hoy()).is_dir()
 
 
-def test_un_subdirectorio_del_proyecto_escribe_en_la_misma_carpeta(
-    proyecto_vigilado, informes
+def test_una_sesion_abierta_en_un_subdirectorio_escribe_en_la_misma_carpeta(
+    proyecto_vigilado, informes, tmp_path
 ):
+    """El slug de un subdirectorio es ambiguo, pero el transcript no lo es.
+
+    `e--example-projects-loopward-audit` tanto podria ser `loopward/audit` como
+    el proyecto hermano `loopward-audit`, asi que el slug no basta. El primer
+    registro del transcript lleva el cwd de arranque y zanja la duda.
+    """
     raiz, ruta_config = proyecto_vigilado
     hondo = raiz / "src" / "hondo"
     hondo.mkdir(parents=True)
-    ejecutar(payload(cwd=str(hondo)), ruta_config)
+
+    transcripcion = tmp_path / "projects" / tr.slug_de_cwd(str(hondo)) / "s.jsonl"
+    transcripcion.parent.mkdir(parents=True)
+    transcripcion.write_text(
+        json.dumps({"type": "user", "cwd": str(hondo)}) + "\n", encoding="utf-8"
+    )
+
+    ejecutar(payload(cwd=str(hondo), transcript_path=str(transcripcion)), ruta_config)
 
     assert escritos(informes) == [f"01-{SLUG}.json"]
+
+
+def test_una_sesion_de_un_subdirectorio_sin_transcript_legible_no_se_archiva(
+    proyecto_vigilado, informes, tmp_path, log
+):
+    """Sin poder leer el arranque, el slug ambiguo no se fuerza."""
+    raiz, ruta_config = proyecto_vigilado
+    hondo = raiz / "src" / "hondo"
+    hondo.mkdir(parents=True)
+    fantasma = str(tmp_path / "projects" / tr.slug_de_cwd(str(hondo)) / "s.jsonl")
+
+    ejecutar(payload(cwd=str(hondo), transcript_path=fantasma), ruta_config)
+
+    assert not Path(informes).exists()
+    assert reg.leer(log)[0].resultado == reg.OMITIDO_SESION
 
 
 def test_background_tasks_no_impide_escribir(proyecto_vigilado, informes):
@@ -418,10 +454,10 @@ def test_un_transcript_inexistente_no_revienta(proyecto_vigilado, informes, tmp_
     assert not Path(informes).exists()
 
 
-def test_procesar_informa_de_que_el_cwd_no_esta_en_la_lista(tmp_path):
+def test_procesar_informa_de_que_la_sesion_no_esta_registrada(tmp_path):
     configuracion = cfg.cargar(tmp_path / "no-existe.json")
     resultado = hk.procesar(payload(cwd=str(tmp_path)), configuracion)
-    assert resultado.resultado == reg.OMITIDO_CWD
+    assert resultado.resultado == reg.OMITIDO_SESION
     assert resultado.ruta is None
 
 

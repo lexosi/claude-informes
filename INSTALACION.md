@@ -11,6 +11,18 @@ Son dos hooks con reglas opuestas a proposito:
 | `Stop` | fin de turno | escribe el informe | sale 0 y calla (**falla cerrado**) |
 | `PreToolUse` | antes de `Write`/`Edit`/... | deniega escribir dentro del archivo | **permite** (**falla abierto**) |
 
+## 0. La regla de operacion
+
+**El proyecto se deriva de donde ARRANCA la sesion, no de donde este la shell.**
+Los `cd` de dentro de un turno no cambian el archivo.
+
+Por eso, para un proyecto nuevo, el orden es: crear la carpeta, registrarlo, y
+**entonces** abrir el CLI dentro de ella. `python -m claude_informes nuevo
+<nombre>` hace los dos primeros pasos de una vez.
+
+Si abres el CLI en el directorio padre, esa sesion no se archiva. Se puede
+recuperar despues con `pendientes` y `backfill`, pero no sobre la marcha.
+
 ## 1. La config: a donde apunta
 
 `E:\example-projects\claude-informes\config\proyectos.json` es la lista blanca.

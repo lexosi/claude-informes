@@ -92,3 +92,27 @@ def turnos(ruta: str | os.PathLike[str]) -> list[dict]:
 def ultimo_turno(ruta: str | os.PathLike[str]) -> dict | None:
     encontrados = turnos(ruta)
     return encontrados[-1] if encontrados else None
+
+
+def cwd_de_arranque(ruta: str | os.PathLike[str]) -> str | None:
+    """El `cwd` del primer registro: donde se abrio la sesion.
+
+    Los registros siguientes llevan el cwd del momento, que se mueve con cada
+    `cd`. El primero no: identifica el directorio de arranque.
+    """
+    try:
+        with open(ruta, encoding="utf-8", errors="replace") as fichero:
+            for linea in fichero:
+                linea = linea.strip()
+                if not linea:
+                    continue
+                try:
+                    registro = json.loads(linea)
+                except Exception:
+                    continue
+                cwd = registro.get("cwd") if isinstance(registro, dict) else None
+                if isinstance(cwd, str) and cwd.strip():
+                    return cwd
+    except Exception:
+        return None
+    return None

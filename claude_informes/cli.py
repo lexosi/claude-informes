@@ -1,4 +1,4 @@
-"""Entrada de linea de ordenes: `hook`, `backfill` y `ultimo`."""
+"""Entrada de linea de ordenes: `hook`, `nuevo`, `ultimo`, `pendientes` y `backfill`."""
 
 from __future__ import annotations
 
@@ -6,6 +6,7 @@ import argparse
 import sys
 from pathlib import Path
 
+from . import alta
 from . import backfill as bf
 from . import config as cfg
 from . import hook as hk
@@ -42,6 +43,20 @@ def _construir_parser() -> argparse.ArgumentParser:
     p_ult = subs.add_parser("ultimo", help="el ultimo informe escrito, verificado en disco")
     p_ult.add_argument("--proyecto", default=None, help="por defecto, cualquiera")
     p_ult.add_argument("--config", default=None)
+
+    p_new = subs.add_parser("nuevo", help="crea la carpeta del proyecto y lo registra")
+    p_new.add_argument("nombre")
+    p_new.add_argument(
+        "--en", default=None, help="donde crear la carpeta; por defecto, junto a esta herramienta"
+    )
+    p_new.add_argument("--umbral", type=int, default=cfg.UMBRAL_POR_DEFECTO)
+    p_new.add_argument("--raiz-informes", default=None, help="archivar este proyecto aparte")
+    p_new.add_argument("--config", default=None)
+
+    p_pen = subs.add_parser(
+        "pendientes", help="turnos que no se archivaron por proyecto no registrado"
+    )
+    p_pen.add_argument("--config", default=None)
     return parser
 
 
@@ -139,6 +154,63 @@ def _ejecutar_ultimo(args) -> int:
     return 0
 
 
+def _ejecutar_nuevo(args) -> int:
+    """Los tres pasos del arranque en uno, y en el orden correcto."""
+    ruta_config = Path(args.config) if args.config else cfg.ruta_de_config()
+    donde = Path(args.en) if args.en else cfg.raiz_de_la_herramienta().parent
+    try:
+        carpeta, destino = alta.registrar(
+            args.nombre,
+            donde,
+            ruta_config,
+            umbral_lineas=args.umbral,
+            raiz_informes=args.raiz_informes,
+        )
+    except alta.YaExiste as choque:
+        print(f"No se ha registrado: {choque}", file=sys.stderr)
+        return 3
+    except Exception as error:  # noqa: BLE001
+        print(f"No se ha podido registrar: {error}", file=sys.stderr)
+        return 4
+
+    print(f"carpeta   : {carpeta}")
+    print(f"registrado: {destino}")
+    print(f"Ya puedes abrir el CLI ahi:  cd {carpeta}")
+    return 0
+
+
+def _ejecutar_pendientes(args) -> int:
+    """Lo que el log sabe de los turnos que no se archivaron."""
+    configuracion = cfg.cargar(args.config)
+    anotaciones = [
+        a for a in reg.leer(configuracion.ruta_log) if a.resultado == reg.OMITIDO_SESION
+    ]
+    if not anotaciones:
+        print("No hay turnos sin archivar por proyecto no registrado.")
+        return 0
+
+    por_proyecto: dict[tuple[str, str], int] = {}
+    for anotacion in anotaciones:
+        datos = dict(
+            trozo.split("=", 1)
+            for trozo in anotacion.detalle.split("; ")
+            if "=" in trozo
+        )
+        clave = (datos.get("nombre", "?"), datos.get("transcript", "?"))
+        por_proyecto[clave] = por_proyecto.get(clave, 0) + 1
+
+    for (nombre, transcripcion), cuantos in sorted(por_proyecto.items()):
+        print(f"{cuantos} turno(s) sin archivar de un proyecto no registrado: {nombre}")
+        print(f"   transcript: {transcripcion}")
+        print(f"   registrar : python -m claude_informes nuevo {nombre}")
+        print(
+            f"   recuperar : python -m claude_informes backfill "
+            f'--transcript "{transcripcion}" --proyecto {nombre} '
+            f'--salida "{configuracion.raiz_informes}"'
+        )
+    return 1
+
+
 def main(argv: list[str] | None = None) -> int:
     argumentos = list(sys.argv[1:] if argv is None else argv)
     # El hook no debe fallar nunca, ni siquiera por un argparse enfadado.
@@ -153,6 +225,10 @@ def main(argv: list[str] | None = None) -> int:
     args = _construir_parser().parse_args(argumentos)
     if args.modo == "ultimo":
         return _ejecutar_ultimo(args)
+    if args.modo == "nuevo":
+        return _ejecutar_nuevo(args)
+    if args.modo == "pendientes":
+        return _ejecutar_pendientes(args)
     return _ejecutar_backfill(args)
 
 

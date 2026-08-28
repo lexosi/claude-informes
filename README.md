@@ -7,6 +7,29 @@ llamada al modelo.
 Motivo: los `.md` llegan vacios al destinatario, y duplicar la respuesta a mano
 cuesta tokens.
 
+## Para empezar un proyecto nuevo
+
+**El orden importa.** El proyecto se deriva de donde **arranca** la sesion, no
+de donde este la shell: los `cd` de dentro del turno no cambian nada.
+
+1. Crear la carpeta del proyecto dentro de `example-projects`.
+2. Registrarlo en la config de claude-informes (nombre + cwd).
+3. **Abrir el CLI dentro de esa carpeta**, no en el padre.
+
+Los pasos 1 y 2 son una sola orden:
+
+```sh
+python -m claude_informes nuevo mi-proyecto
+# carpeta   : E:\example-projects\mi-proyecto
+# registrado: E:\example-projects\claude-informes\config\proyectos.json
+# Ya puedes abrir el CLI ahi:  cd E:\example-projects\mi-proyecto
+```
+
+> **Si abres el CLI en el directorio padre, esa sesion NO se archiva.** Y son
+> justo las sesiones de arranque las que mas valen: toda la construccion del
+> proyecto esta ahi. No es recuperable sobre la marcha, pero si despues: ver
+> [Recuperar lo que no se archivo](#recuperar-lo-que-no-se-archivo).
+
 ## Que hace
 
 - **Un JSON por turno.** Nunca se acumulan varios turnos en un fichero.
@@ -261,6 +284,45 @@ eso **solo sirve para denegar mejor; permitir sigue garantizado**:
 La consecuencia honesta: un servidor que llame `persistir` a su escritura, o
 que meta la ruta en un campo con un nombre inventado, pasa. Denegar es siempre
 mejor esfuerzo; lo unico garantizado es que no se rompe nada.
+
+## De que proyecto es un turno
+
+De la **sesion**, no de la shell. El `cwd` del payload sigue a cada `cd` que se
+haga durante el turno, y archivar por el falla en las dos direcciones: mete
+turnos de un proyecto no registrado en la carpeta de uno registrado, y pierde
+turnos de uno registrado cuando la shell se ha ido a otro sitio. Un archivo del
+que no te puedes fiar no sirve de nada.
+
+El `transcript_path` identifica la sesion y no se mueve:
+
+1. Se compara el directorio del transcript con el slug que produce el `cwd`
+   declarado de cada proyecto. El mapeo es explicito y comprobable; no se
+   intenta deshacer el slug, que es ambiguo (`e--example-projects-loopward-audit`
+   tanto podria ser `loopward/audit` como el proyecto hermano `loopward-audit`).
+2. Si no hay coincidencia exacta, se lee el **primer registro** del transcript,
+   que lleva el `cwd` de arranque sin ambiguedad. Eso resuelve las sesiones
+   abiertas en un subdirectorio.
+3. Si con eso tampoco sale, la sesion no esta registrada: **no se archiva**, y
+   la linea del log lleva el transcript y el nombre que tendria el proyecto.
+
+Caer al `cwd` en el paso 3 reabriria el agujero, asi que solo se usa cuando no
+hay `transcript_path` del que fiarse. En ese caso se archiva por `cwd` y se
+anota una linea extra, `proyecto-por-cwd`, para que el camino degradado se vea.
+
+### Recuperar lo que no se archivo
+
+```sh
+python -m claude_informes pendientes
+# 9 turno(s) sin archivar de un proyecto no registrado: claude-informes
+#    transcript: C:\Users\...\projects\e--example-projects\978e2c78-....jsonl
+#    registrar : python -m claude_informes nuevo claude-informes
+#    recuperar : python -m claude_informes backfill --transcript "..." \
+#                --proyecto claude-informes --salida "E:\example-reports"
+```
+
+`pendientes` sale con 1 cuando hay algo que recuperar, para que se note. El
+backfill reconstruye la sesion entera desde el transcript, aunque el proyecto
+nunca haya estado registrado: el JSONL guarda los turnos igual.
 
 ## Modo backfill
 

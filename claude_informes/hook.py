@@ -30,6 +30,80 @@ class Resultado:
     proyecto: str = reg.SIN_PROYECTO
     detalle: str = ""
     ruta: Path | None = None
+    aviso: tuple[str, str] | None = None
+    """(resultado, detalle) de una linea extra que se anota ANTES que la suya."""
+
+
+def proyecto_del_transcript(
+    ruta_transcript: str, configuracion: cfg.Configuracion
+) -> cfg.Proyecto | None:
+    """Mapea el directorio del transcript al proyecto de la config.
+
+    El mapeo es explicito y comprobable: se compara el nombre del directorio
+    con el slug que produce el `cwd` declarado de cada proyecto. No se intenta
+    deshacer el slug, que es una operacion ambigua (`e--example-projects-loopward-audit`
+    tanto podria ser un subdirectorio de `loopward` como el proyecto hermano
+    `loopward-audit`). Sin coincidencia exacta, no hay mapeo.
+    """
+    carpeta = os.path.normcase(Path(ruta_transcript).parent.name)
+    for proyecto in configuracion.proyectos:
+        if not proyecto.activo:
+            continue
+        if os.path.normcase(tr.slug_de_cwd(proyecto.raiz)) == carpeta:
+            return proyecto
+    return None
+
+
+def proyecto_del_turno(
+    payload: dict, configuracion: cfg.Configuracion
+) -> tuple[cfg.Proyecto | None, str, str]:
+    """El proyecto sale de la SESION, no del directorio donde este la shell.
+
+    El `cwd` del payload sigue a los `cd` que se hagan durante el turno, asi
+    que archivar por el mete turnos en la carpeta equivocada y pierde otros.
+    El `transcript_path` identifica la sesion y no se mueve.
+
+    Cuando hay `transcript_path`, **manda**: si no mapea a ningun proyecto de
+    la config, la sesion no esta vigilada y no se archiva. Caer al cwd aqui
+    reabriria el mismo agujero, porque una shell paseando por un proyecto
+    vigilado volveria a archivar turnos que no son suyos.
+
+    El cwd solo entra cuando no hay transcript del que fiarse.
+
+    Devuelve (proyecto, motivo de degradacion, motivo de omision).
+    """
+    ruta = payload.get("transcript_path")
+    if isinstance(ruta, str) and ruta.strip():
+        proyecto = proyecto_del_transcript(ruta, configuracion)
+        if proyecto is not None:
+            return proyecto, "", ""
+        # El slug es ambiguo para los subdirectorios, pero el primer registro
+        # del transcript lleva el cwd de arranque sin ambiguedad ninguna.
+        arranque = tr.cwd_de_arranque(ruta)
+        proyecto = cfg.buscar_proyecto(arranque, configuracion)
+        if proyecto is not None:
+            return proyecto, "", ""
+        return None, "", motivo_de_omision(ruta, arranque)
+    proyecto = cfg.buscar_proyecto(payload.get("cwd"), configuracion)
+    return proyecto, "sin transcript_path", ""
+
+
+def nombre_que_tendria(ruta_transcript: str, arranque: str | None) -> str:
+    """Como se llamaria el proyecto si lo registraras ahora mismo."""
+    if isinstance(arranque, str) and arranque.strip():
+        return md.slug_llano(Path(arranque).name) or "sin-nombre"
+    tramo = Path(ruta_transcript).parent.name.rsplit("-", 1)[-1]
+    return md.slug_llano(tramo) or "sin-nombre"
+
+
+def motivo_de_omision(ruta_transcript: str, arranque: str | None) -> str:
+    """Lo que hace falta para poder recuperar el turno mas tarde."""
+    return (
+        "proyecto no registrado"
+        f"; nombre={nombre_que_tendria(ruta_transcript, arranque)}"
+        f"; arranque={arranque or '?'}"
+        f"; transcript={ruta_transcript}"
+    )
 
 
 def _markdown_del_payload(payload: dict) -> str:
@@ -60,9 +134,22 @@ def procesar(payload: dict, configuracion: cfg.Configuracion) -> Resultado:
     if cfg.es_la_propia_herramienta(cwd):
         return Resultado(reg.OMITIDO_GUARDIA, detalle=f"cwd dentro de la herramienta: {cwd}")
 
-    proyecto = cfg.buscar_proyecto(cwd, configuracion)
+    proyecto, degradacion, omision = proyecto_del_turno(payload, configuracion)
+    if omision:
+        return Resultado(reg.OMITIDO_SESION, detalle=omision)
     if proyecto is None:
-        return Resultado(reg.OMITIDO_CWD, detalle=f"cwd fuera de la lista: {cwd!r}")
+        return Resultado(
+            reg.OMITIDO_CWD,
+            detalle=f"{degradacion}; cwd fuera de la lista: {cwd!r}",
+        )
+
+    # Solo se avisa cuando el camino degradado llega a archivar algo: es el
+    # caso en que un turno puede acabar en la carpeta de otro proyecto.
+    aviso = (
+        (reg.PROYECTO_POR_CWD, f"{degradacion}; proyecto tomado del cwd: {cwd}")
+        if degradacion
+        else None
+    )
 
     respuesta = _markdown_del_payload(payload)
     if not respuesta.strip():
@@ -84,7 +171,7 @@ def procesar(payload: dict, configuracion: cfg.Configuracion) -> Resultado:
         git_head=head,
     )
     destino = inf.escribir(proyecto.raiz_informes, proyecto.nombre, sobre)
-    return Resultado(reg.ESCRITO, proyecto.nombre, str(destino), destino)
+    return Resultado(reg.ESCRITO, proyecto.nombre, str(destino), destino, aviso)
 
 
 def main(entrada=None, ruta_config: str | os.PathLike[str] | None = None) -> int:
@@ -100,6 +187,8 @@ def main(entrada=None, ruta_config: str | os.PathLike[str] | None = None) -> int
 
     try:
         ruta_log = (configuracion or cfg.cargar(ruta_config)).ruta_log
+        if resultado.aviso is not None:
+            reg.anotar(ruta_log, resultado.aviso[0], resultado.proyecto, resultado.aviso[1])
         reg.anotar(ruta_log, resultado.resultado, resultado.proyecto, resultado.detalle)
     except Exception:  # noqa: BLE001 - si el log falla, la sesion sigue igual
         pass

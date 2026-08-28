@@ -12,6 +12,7 @@ from claude_informes import config as cfg
 from claude_informes import hook as hk
 from claude_informes import informe as inf
 from claude_informes import registro as reg
+from claude_informes import transcript as tr
 
 RESPUESTA = "# Informe de la prueba diaria\n\nlinea 1\nlinea 2\nlinea 3\nlinea 4\n"
 CORTA = "1\n2\n3"
@@ -25,6 +26,10 @@ def payload(**cambios):
         "last_assistant_message": RESPUESTA,
     }
     base.update(cambios)
+    if "transcript_path" not in base:
+        base["transcript_path"] = str(
+            Path("C:/proyectos") / tr.slug_de_cwd(str(base["cwd"])) / "s.jsonl"
+        )
     return base
 
 
@@ -121,7 +126,7 @@ def test_un_cwd_ajeno_se_anota_como_omitido_por_cwd(proyecto_vigilado, tmp_path,
     ejecutar(payload(cwd=str(tmp_path / "project-b")), ruta_config)
 
     (anotacion,) = reg.leer(log)
-    assert anotacion.resultado == reg.OMITIDO_CWD
+    assert anotacion.resultado == reg.OMITIDO_SESION
     assert anotacion.proyecto == reg.SIN_PROYECTO
     assert "project-b" in anotacion.detalle
 
@@ -168,7 +173,7 @@ def test_los_cinco_resultados_caben_en_el_mismo_log(
     assert [a.resultado for a in reg.leer(log)] == [
         reg.ESCRITO,
         reg.OMITIDO_UMBRAL,
-        reg.OMITIDO_CWD,
+        reg.OMITIDO_SESION,
         reg.OMITIDO_GUARDIA,
         reg.ERROR,
     ]
@@ -183,6 +188,7 @@ def test_una_reentrada_tambien_deja_linea(proyecto_vigilado, log):
 
 
 def test_cada_turno_deja_exactamente_una_linea(proyecto_vigilado, log):
+    """Una linea por turno. La segunda solo aparece en el camino degradado."""
     raiz, ruta_config = proyecto_vigilado
     for i in range(4):
         ejecutar(payload(cwd=str(raiz), last_assistant_message=RESPUESTA + str(i)), ruta_config)
