@@ -19,6 +19,8 @@ OMITIDO_CWD = "omitido-cwd"
 OMITIDO_GUARDIA = "omitido-guardia"
 OMITIDO_REENTRADA = "omitido-reentrada"
 OMITIDO_SIN_TEXTO = "omitido-sin-texto"
+DENEGADO = "denegado-escritura"
+PERMITIDO_POR_ERROR = "permitido-por-error"
 ERROR = "ERROR"
 
 SIN_PROYECTO = "-"

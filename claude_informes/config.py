@@ -90,11 +90,20 @@ def _nombre_de(entrada: dict, raiz: str) -> str:
 
 def cargar(ruta: str | os.PathLike[str] | None = None) -> Configuracion:
     """Lee la configuracion. Si falta o esta rota, no hay ningun proyecto."""
-    destino = Path(ruta) if ruta is not None else ruta_de_config()
     try:
-        crudo = json.loads(destino.read_text(encoding="utf-8"))
+        return cargar_estricto(ruta)
     except Exception:
         return por_defecto()
+
+
+def cargar_estricto(ruta: str | os.PathLike[str] | None = None) -> Configuracion:
+    """Como `cargar`, pero revienta si la config no se puede leer.
+
+    Quien vigila escrituras necesita saber si la config es fiable: sin ella
+    no puede afirmar que una ruta este protegida, y entonces permite.
+    """
+    destino = Path(ruta) if ruta is not None else ruta_de_config()
+    crudo = json.loads(destino.read_text(encoding="utf-8"))
 
     entradas = crudo.get("proyectos") if isinstance(crudo, dict) else crudo
     raiz_informes = crudo.get("raiz_informes") if isinstance(crudo, dict) else None

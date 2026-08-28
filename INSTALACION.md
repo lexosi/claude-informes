@@ -1,32 +1,28 @@
-# Instalacion del hook
+# Instalacion de los hooks
 
-**Todavia no esta instalado.** Estas son las instrucciones para hacerlo cuando
-los tests estén en verde y te parezca bien.
+**Instalados el 2026-08-28.** Los dos estan en `C:\Users\iamle\.claude\settings.json`;
+la copia previa quedo en `settings.json.antes-de-claude-informes`. Esto documenta
+lo que hay puesto, como comprobarlo y como quitarlo.
 
-## 1. Comprobar que la config apunta a donde quieres
+Son dos hooks con reglas opuestas a proposito:
+
+| Hook | Cuando | Que hace | Si algo falla |
+| --- | --- | --- | --- |
+| `Stop` | fin de turno | escribe el informe | sale 0 y calla (**falla cerrado**) |
+| `PreToolUse` | antes de `Write`/`Edit`/... | deniega escribir dentro del archivo | **permite** (**falla abierto**) |
+
+## 1. La config: a donde apunta
 
 `E:\example-projects\claude-informes\config\proyectos.json` es la lista blanca.
 Hoy solo lleva `E:\example-projects\loopward`, con el nombre de carpeta
-`loopward`. En cualquier otro proyecto el hook sale 0 sin tocar nada, y en
-el propio `claude-informes` no escribe aunque se le anada.
+`loopward`. En cualquier otro proyecto el hook sale 0 sin tocar nada, y en el
+propio `claude-informes` no escribe aunque se le anada.
 
-Los informes van a `E:\example-reports\<proyecto>\<dia>\`, fuera de todo
-repositorio git. Un proyecto puede declarar su propia `raiz_informes` si
-quieres archivarlo en otro sitio.
+Los informes van a `E:\example-reports\<proyecto>\<dia>\`, y el log a
+`E:\example-reports.log`, los dos fuera de todo repositorio git. Un proyecto
+puede declarar su propia `raiz_informes` si quieres archivarlo en otro sitio.
 
-## 2. Anadir el hook a `~/.claude/settings.json`
-
-El fichero es `C:\Users\iamle\.claude\settings.json`. Hoy contiene:
-
-```json
-{
-  "autoUpdatesChannel": "latest",
-  "theme": "dark",
-  "tui": "fullscreen"
-}
-```
-
-Queda asi:
+## 2. Lo que hay en `~/.claude/settings.json`
 
 ```json
 {
@@ -44,6 +40,18 @@ Queda asi:
           }
         ]
       }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"E:\\example-projects\\claude-informes\\guardian_informes.py\"",
+            "timeout": 10
+          }
+        ]
+      }
     ]
   }
 }
@@ -55,31 +63,50 @@ Notas:
   igual `python E:/example-projects/claude-informes/hook_informes.py`.
 - `python` tiene que ser el del PATH. Comprueba con `python --version` (aqui,
   3.12.10). Si un dia no lo estuviera, pon la ruta completa al interprete.
-- No hace falta instalar el paquete ni un entorno virtual: la lanzadera anade
-  su propio directorio al `sys.path`. No tiene dependencias.
-- El `timeout` es una red de seguridad mas; el hook ya se autolimita.
+- No hace falta instalar el paquete ni un entorno virtual: las lanzaderas
+  anaden su propio directorio al `sys.path`. No hay dependencias.
+- Los `timeout` son una red de seguridad mas; los hooks ya se autolimitan.
 
 ## 3. Reiniciar Claude Code
 
-Los hooks se leen al arrancar la sesion.
+**Los hooks se leen al arrancar la sesion.** Una sesion que ya estuviera
+abierta cuando se instalaron sigue sin ellos hasta que se reinicie.
 
-## 4. Comprobar que funciona
+## 4. Comprobar que funcionan
 
-Sin instalar nada, se puede simular un turno tal cual llega por stdin:
-
-```sh
-echo {"session_id":"prueba","cwd":"E:\\example-projects\\loopward","stop_hook_active":false,"last_assistant_message":"# Prueba\nuno\ndos\ntres\ncuatro\ncinco\nseis"} | python E:\example-projects\claude-informes\hook_informes.py
-```
-
-Deberia aparecer un JSON en `E:\example-reports\loopward\<hoy>\` y la orden no
-imprimir nada. En PowerShell es mas comodo con un fichero:
+Los dos se pueden ejercitar sin abrir una sesion: leen el payload por stdin,
+tal cual se lo pasa Claude Code.
 
 ```powershell
-Get-Content prueba.json | python E:\example-projects\claude-informes\hook_informes.py
-echo $LASTEXITCODE   # tiene que ser 0
+# fin de turno en un proyecto vigilado -> escribe el informe
+Get-Content turno.json | python E:\example-projects\claude-informes\hook_informes.py
+echo $LASTEXITCODE   # 0, y sin imprimir nada
+
+# intento de escribir dentro del archivo -> deniega
+Get-Content escritura.json | python E:\example-projects\claude-informes\guardian_informes.py
+# imprime un JSON con permissionDecision: "deny"; exit sigue siendo 0
 ```
 
-Para ver por que el hook decidio lo que decidio:
+Lo que de verdad conviene mirar es el log, porque ahi queda todo:
+
+```powershell
+Get-Content E:\example-reports.log -Tail 10
+```
+
+```
+2026-08-28T17:02:00 | loopward | escrito            | E:\example-reports\loopward\2026-08-28\08-....json
+2026-08-28T17:02:00 | loopward | denegado-escritura | Write -> e:\example-reports\...\99-escrito-a-mano.json
+2026-08-28T17:02:00 | -        | omitido-cwd        | cwd fuera de la lista: 'E:\example-projects\project-c'
+```
+
+Y para contrastar el log con el disco:
+
+```powershell
+cd E:\example-projects\claude-informes
+.venv\Scripts\python -m claude_informes ultimo --proyecto loopward
+```
+
+Para mandar el log a otro sitio mientras pruebas, sin tocar el real:
 
 ```powershell
 $env:CLAUDE_INFORMES_LOG = "C:\Users\iamle\AppData\Local\Temp\informes.log"
@@ -87,12 +114,24 @@ $env:CLAUDE_INFORMES_LOG = "C:\Users\iamle\AppData\Local\Temp\informes.log"
 
 ## 5. Desinstalar
 
-Quitar el bloque `"hooks"` de `~/.claude/settings.json`. No queda nada mas.
-Tambien vale con poner `"activo": false` en la config para apagarlo sin tocar
-los ajustes de Claude Code.
+Quitar el bloque `"hooks"` de `~/.claude/settings.json`, o restaurar la copia:
 
-## Que hay fuera de este repositorio
+```powershell
+Copy-Item C:\Users\iamle\.claude\settings.json.antes-de-claude-informes `
+          C:\Users\iamle\.claude\settings.json
+```
 
-- `~/.claude/settings.json` sigue como estaba: el hook no esta instalado.
-- El repositorio `E:\example-projects\loopward`: solo el commit que quita
-  `informes/` de su `.gitignore`. Ni una linea de codigo, tests ni README.
+Para apagar solo la escritura sin tocar los ajustes de Claude Code, basta con
+`"activo": false` en la config. El guardian se puede quitar solo, borrando su
+entrada `PreToolUse`.
+
+## Lo que hay fuera de este repositorio
+
+- `C:\Users\iamle\.claude\settings.json`: los dos hooks.
+- `C:\Users\iamle\.claude\CLAUDE.md`: las instrucciones permanentes de no
+  escribir informes a mano. Es contexto, no imposicion; lo que impone es el
+  guardian.
+- `E:\example-reports\` y `E:\example-reports.log`: el archivo y el log, fuera
+  de todo arbol git.
+- El repositorio `E:\example-projects\loopward`: solo el commit que quito
+  `informes/` de su `.gitignore` y el que lo restauro. Ni una linea de codigo.

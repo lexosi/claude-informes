@@ -201,6 +201,42 @@ estado   : NO EXISTE EN DISCO. El log dice que se escribio el 2026-08-28T16:50:3
 Sin `--proyecto`, el ultimo de cualquiera. Codigos: `0` existe, `1` el log
 miente, `2` no hay nada anotado.
 
+## El guardian: que no se escriban informes a mano
+
+Un segundo hook, `PreToolUse`, deniega `Write`, `Edit`, `MultiEdit` y
+`NotebookEdit` cuando la ruta cae dentro del archivo o sobre el log. Los
+informes los escribe el hook `Stop`; escribirlos a mano es siempre un error, y
+casi siempre el de anunciar un fichero que no existe.
+
+Su regla numero uno es la **contraria** a la del `Stop`: **falla abierto**.
+Cualquier excepcion, config ilegible o ruta que no se pueda resolver termina en
+"permitido", en silencio. Un guardian que bloquea por error es peor que no
+tener guardian: rompe sesiones ajenas por un fallo suyo.
+
+- Solo deniega cuando la ruta esta **inequivocamente** dentro. Ante la duda,
+  permite.
+- Las zonas salen de la config, no del codigo: la raiz global, la de cada
+  proyecto, y el log. Gana la mas especifica.
+- La ruta se resuelve antes de comparar (absoluta, `..`, enlaces), asi que
+  `..\..\informes-claude\x.json` cae igual.
+- `Bash` queda fuera a proposito: adivinar rutas dentro de una linea de shell
+  da falsos positivos.
+- Cada denegacion se anota como `denegado-escritura`. Las escrituras permitidas
+  no anotan nada: seria una linea por cada uso de una herramienta.
+- Si la config no se puede leer, permite y lo anota como `permitido-por-error`.
+
+El mensaje dice por que y que hacer en su lugar:
+
+```
+claude-informes: e:\example-reports\loopward\2026-08-28\99-x.json esta dentro
+del archivo de informes (archivo: e:\example-reports).
+Los informes los escribe el hook Stop al terminar el turno; no se escriben ni
+se editan a mano.
+Para saber cual fue el ultimo y comprobar que existe de verdad:
+    cd E:\example-projects\claude-informes
+    .venv\Scripts\python -m claude_informes ultimo --proyecto loopward
+```
+
 ## Modo backfill
 
 Reconstruye informes de turnos ya pasados leyendo el transcript JSONL. Criterio:
