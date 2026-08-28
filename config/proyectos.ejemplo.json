@@ -1,0 +1,21 @@
+{
+  "_comentario": "Anadir un proyecto = anadir una entrada aqui. Nunca tocar codigo.",
+  "_raiz_informes": "Raiz global del archivo. Cada proyecto puede declarar la suya.",
+  "raiz_informes": "E:\\example-reports",
+  "proyectos": [
+    {
+      "nombre": "loopward",
+      "cwd": "E:\\example-projects\\loopward",
+      "activo": true,
+      "umbral_lineas": 5
+    },
+    {
+      "_nota": "un proyecto sensible puede archivarse aparte",
+      "nombre": "project-b",
+      "cwd": "E:\\example-projects\\project-b",
+      "activo": false,
+      "raiz_informes": "E:\\example-reports-privado",
+      "umbral_lineas": 5
+    }
+  ]
+}

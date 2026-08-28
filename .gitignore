@@ -1,0 +1,14 @@
+# Entorno y caches
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Temporales de escritura atomica (nunca deberian sobrevivir a un turno)
+*.json.tmp
+
+# El archivo de informes NO se versiona y no vive aqui: va a una raiz fuera de
+# todo repositorio (hoy E:\example-reports, ver config/proyectos.json). Esta
+# linea es el segundo cinturon, por si algun dia raiz_informes vuelve a
+# apuntar dentro: los informes llevan texto integro de sesiones de trabajo.
+informes/
