@@ -131,9 +131,10 @@ def test_un_cwd_ajeno_se_anota_como_omitido_por_cwd(proyecto_vigilado, tmp_path,
     assert "project-b" in anotacion.detalle
 
 
-def test_el_cwd_de_la_herramienta_se_anota_como_omitido_por_guardia(
+def test_el_cwd_de_la_herramienta_se_anota_como_escrito(
     escribir_config, informes, log
 ):
+    """Retirada la guardia, un turno sobre la herramienta es un turno normal."""
     propia = cfg.raiz_de_la_herramienta()
     ruta_config = escribir_config(
         [{"nombre": "claude-informes", "cwd": str(propia)}], raiz_informes=informes
@@ -141,8 +142,9 @@ def test_el_cwd_de_la_herramienta_se_anota_como_omitido_por_guardia(
     ejecutar(payload(cwd=str(propia)), ruta_config)
 
     (anotacion,) = reg.leer(log)
-    assert anotacion.resultado == reg.OMITIDO_GUARDIA
-    assert not Path(informes).exists()
+    assert anotacion.resultado == reg.ESCRITO
+    assert anotacion.proyecto == "claude-informes"
+    assert anotacion.ruta.is_file()
 
 
 def test_un_payload_roto_se_anota_como_error(proyecto_vigilado, log):
@@ -167,14 +169,14 @@ def test_los_cinco_resultados_caben_en_el_mismo_log(
     ejecutar(payload(cwd=str(raiz)), ruta_config)
     ejecutar(payload(cwd=str(raiz), last_assistant_message=CORTA), ruta_config)
     ejecutar(payload(cwd=str(tmp_path / "ajeno")), ruta_config)
-    ejecutar(payload(cwd=str(cfg.raiz_de_la_herramienta())), ruta_config)
+    ejecutar(payload(cwd=str(raiz), stop_hook_active=True), ruta_config)
     ejecutar(None, ruta_config, texto_crudo="no soy json")
 
     assert [a.resultado for a in reg.leer(log)] == [
         reg.ESCRITO,
         reg.OMITIDO_UMBRAL,
         reg.OMITIDO_SESION,
-        reg.OMITIDO_GUARDIA,
+        reg.OMITIDO_REENTRADA,
         reg.ERROR,
     ]
 

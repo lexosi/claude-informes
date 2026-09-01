@@ -179,13 +179,18 @@ algo invisible. Por eso **cada turno deja una linea**, pase lo que pase:
 2026-08-28T16:50:38 | loopward  | escrito         | E:\example-reports\loopward\2026-08-28\08-....json
 2026-08-28T16:50:38 | loopward  | omitido-umbral  | 2 lineas, umbral 5
 2026-08-28T16:50:38 | -         | omitido-cwd     | cwd fuera de la lista: 'E:\example-projects\project-b'
-2026-08-28T16:50:38 | -         | omitido-guardia | cwd dentro de la herramienta: E:\example-projects\claude-informes
-2026-08-28T16:50:38 | -         | ERROR           | JSONDecodeError: Expecting value: line 1 column 1
+2026-08-28T16:50:38 | -         | omitido-sesion  | proyecto no registrado; nombre=...; arranque=...
+2026-08-28T16:50:38 | loopward  | ERROR           | UnicodeEncodeError: ...; ruta=...\14-....json; sesion=abc123
 ```
 
 `marca | proyecto | resultado | ruta o motivo`, solo se anade, y en LF. Hay dos
 resultados mas para que ningun turno quede sin linea: `omitido-reentrada`
 (`stop_hook_active`) y `omitido-sin-texto`.
+
+La linea de `ERROR` de un turno que llego a tener proyecto dice **cual**, que
+ruta iba a tener el informe y de que sesion era. Sin esos tres datos el log
+registra que algo fallo pero no se puede contrastar contra el disco, y el
+fallo sigue siendo silencioso en la practica.
 
 Vive fuera de las carpetas de informes y fuera de todo repositorio. Por defecto
 es el hermano del archivo: con `raiz_informes` en `E:\example-reports`, el log

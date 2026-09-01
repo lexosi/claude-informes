@@ -264,10 +264,14 @@ def test_un_cwd_fuera_de_la_lista_no_escribe_nada(proyecto_vigilado, informes, t
     assert not Path(informes).exists()
 
 
-def test_el_cwd_de_la_propia_herramienta_no_escribe_nunca(
+def test_el_cwd_de_la_propia_herramienta_ya_si_escribe(
     escribir_config, informes, tmp_path
 ):
-    """La carpeta de destino vive dentro de claude-informes: guardia obligatoria."""
+    """El archivo vive fuera de la herramienta: no hay nada que proteger.
+
+    La guardia que habia aqui se comio dos turnos de trabajo real el 28-ago,
+    y se habria comido todos los que se hicieran sobre la propia herramienta.
+    """
     propia = cfg.raiz_de_la_herramienta()
     ruta_config = escribir_config(
         [{"nombre": "claude-informes", "cwd": str(propia), "activo": True}],
@@ -275,12 +279,11 @@ def test_el_cwd_de_la_propia_herramienta_no_escribe_nunca(
     )
 
     assert ejecutar(payload(cwd=str(propia)), ruta_config) == 0
-    assert ejecutar(payload(cwd=str(propia / "claude_informes")), ruta_config) == 0
-    assert ejecutar(payload(cwd=str(propia / "informes" / "loopward")), ruta_config) == 0
-    assert not Path(informes).exists()
+
+    assert escritos(informes, "claude-informes") == [f"01-{SLUG}.json"]
 
 
-def test_la_guardia_gana_aunque_la_herramienta_cuelgue_de_un_proyecto_vigilado(
+def test_la_herramienta_bajo_un_proyecto_vigilado_se_archiva_con_el(
     escribir_config, informes
 ):
     propia = cfg.raiz_de_la_herramienta()
@@ -288,8 +291,12 @@ def test_la_guardia_gana_aunque_la_herramienta_cuelgue_de_un_proyecto_vigilado(
         [{"nombre": "todo", "cwd": str(propia.parent), "activo": True}],
         raiz_informes=informes,
     )
-    assert ejecutar(payload(cwd=str(propia / "tests")), ruta_config) == 0
-    assert not Path(informes).exists()
+    datos = payload(cwd=str(propia / "tests"))
+    datos["transcript_path"] = transcript_de(propia.parent)
+
+    assert ejecutar(datos, ruta_config) == 0
+
+    assert escritos(informes, "todo") == [f"01-{SLUG}.json"]
 
 
 def test_un_proyecto_desactivado_no_escribe_nada(escribir_config, informes, tmp_path):
@@ -501,8 +508,8 @@ def test_sin_raiz_propia_se_escribe_en_la_global(escribir_config, tmp_path):
     assert escritos(comun, "hereda") == [f"01-{SLUG}.json"]
 
 
-def test_la_guardia_sigue_valiendo_con_una_raiz_propia(escribir_config, tmp_path):
-    """Que el archivo viva fuera no reabre la puerta a auto-escribirse."""
+def test_la_herramienta_con_raiz_propia_archiva_en_su_cofre(escribir_config, tmp_path):
+    """La raiz por proyecto manda tambien cuando el proyecto es la herramienta."""
     propia = cfg.raiz_de_la_herramienta()
     cofre = tmp_path / "cofre"
     ruta_config = escribir_config(
@@ -511,8 +518,8 @@ def test_la_guardia_sigue_valiendo_con_una_raiz_propia(escribir_config, tmp_path
     )
 
     assert ejecutar(payload(cwd=str(propia)), ruta_config) == 0
-    assert ejecutar(payload(cwd=str(propia / "claude_informes")), ruta_config) == 0
-    assert not cofre.exists()
+
+    assert escritos(cofre, "claude-informes") == [f"01-{SLUG}.json"]
     assert not (tmp_path / "comun").exists()
 
 

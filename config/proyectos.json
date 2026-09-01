@@ -6,6 +6,12 @@
       "cwd": "E:\\example-projects\\loopward",
       "activo": true,
       "umbral_lineas": 5
+    },
+    {
+      "nombre": "claude-informes",
+      "cwd": "E:\\example-projects\\claude-informes",
+      "activo": true,
+      "umbral_lineas": 5
     }
   ]
 }

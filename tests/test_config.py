@@ -125,24 +125,31 @@ def test_la_raiz_por_defecto_esta_dentro_de_la_herramienta():
     assert cfg.raiz_informes_por_defecto().parent == cfg.raiz_de_la_herramienta()
 
 
-# --- guardia: la propia herramienta ---
+# --- la propia herramienta: un proyecto mas ---
 
 
-def test_el_propio_claude_informes_nunca_es_un_proyecto_vigilado(escribir_config):
-    """Aunque alguien lo meta en la lista, no se escribe."""
+def test_el_propio_claude_informes_puede_ser_un_proyecto_vigilado(escribir_config):
+    """La guardia que lo impedia se retiro con su motivo.
+
+    Mientras el archivo vivia dentro de `claude-informes/informes/`, un turno
+    suyo habria escrito en su propia carpeta de salida. Con el archivo en una
+    raiz propia fuera de todo repo, lo unico que hacia la guardia era tirar
+    los turnos de quien trabajaba en la herramienta.
+    """
     propia = cfg.raiz_de_la_herramienta()
     configuracion = cfg.cargar(
         escribir_config([{"nombre": "claude-informes", "cwd": str(propia)}])
     )
-    assert configuracion.proyectos, "la entrada si se lee..."
-    assert cfg.buscar_proyecto(str(propia), configuracion) is None, "...pero no gana"
+    encontrado = cfg.buscar_proyecto(str(propia), configuracion)
+    assert encontrado is not None
+    assert encontrado.nombre == "claude-informes"
 
 
-def test_un_subdirectorio_de_la_herramienta_tampoco(escribir_config):
+def test_un_subdirectorio_de_la_herramienta_tambien_mapea(escribir_config):
     propia = cfg.raiz_de_la_herramienta()
     configuracion = cfg.cargar(escribir_config([{"cwd": str(propia)}]))
-    assert cfg.buscar_proyecto(str(propia / "informes" / "loopward"), configuracion) is None
-    assert cfg.buscar_proyecto(str(propia / "claude_informes"), configuracion) is None
+    assert cfg.buscar_proyecto(str(propia / "claude_informes"), configuracion) is not None
+    assert cfg.buscar_proyecto(str(propia / "tests"), configuracion) is not None
 
 
 def test_la_guardia_reconoce_la_herramienta():
@@ -153,12 +160,23 @@ def test_la_guardia_reconoce_la_herramienta():
     assert cfg.es_la_propia_herramienta(None) is False
 
 
-def test_la_config_de_la_herramienta_no_vigila_ningun_repo_que_la_contenga():
+def test_ningun_destino_de_archivo_cae_en_la_herramienta_ni_en_un_repositorio():
+    """La unica afirmacion que de verdad protegia algo, entera y en un sitio.
+
+    El test que habia aqui mezclaba dos cosas: esta, que sigue viva, y "la
+    herramienta no puede ser un proyecto vigilado", que caduco el 28-ago
+    cuando el archivo se mudo a su propia raiz. Lo que hay que impedir no es
+    vigilar la herramienta: es que el texto de las sesiones acabe dentro de
+    un arbol git, del que sea, y desde ahi en un remoto.
+    """
     reales = cfg.cargar(cfg.raiz_de_la_herramienta() / "config" / "proyectos.json")
     assert reales.proyectos, "la config real deberia tener al menos un proyecto"
-    propia = cfg.normalizar(cfg.raiz_de_la_herramienta())
-    for proyecto in reales.proyectos:
-        assert not propia.startswith(cfg.normalizar(proyecto.raiz))
+
+    destinos = [reales.raiz_informes, *(p.raiz_informes for p in reales.proyectos)]
+    for destino in destinos:
+        assert not cfg.es_la_propia_herramienta(str(destino)), f"{destino}: en la herramienta"
+        for carpeta in [Path(destino), *Path(destino).parents]:
+            assert not (carpeta / ".git").exists(), f"{destino} cuelga del repo {carpeta}"
 
 
 def test_la_config_real_archiva_fuera_de_la_herramienta():

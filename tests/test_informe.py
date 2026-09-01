@@ -1,9 +1,13 @@
 """El sobre, su ruta y su escritura en disco."""
 
 import json
+import os
 import subprocess
 import sys
+import threading
 from pathlib import Path
+
+import pytest
 
 from claude_informes import informe as inf
 
@@ -187,13 +191,23 @@ def test_git_fuera_de_un_repositorio_da_none(tmp_path):
 # --- la lanzadera, tal cual la ejecuta Claude Code ---
 
 
-def lanzar(entrada):
+def lanzar(entrada, ruta_config=None):
+    """La lanzadera en otro proceso.
+
+    `ruta_config` NO es opcional por comodidad: sin ella, la lanzadera lee la
+    config REAL y escribe en el archivo REAL. Un test que ejecute la
+    lanzadera y no la pase esta escribiendo en produccion.
+    """
+    entorno = dict(os.environ)
+    if ruta_config is not None:
+        entorno["CLAUDE_INFORMES_CONFIG"] = str(ruta_config)
     return subprocess.run(
         [sys.executable, str(RAIZ / "hook_informes.py")],
         input=entrada,
         capture_output=True,
         text=True,
         timeout=30,
+        env=entorno,
     )
 
 
@@ -219,11 +233,20 @@ def test_la_lanzadera_sale_0_con_un_cwd_ajeno(tmp_path):
     assert list(tmp_path.rglob("*.json")) == []
 
 
-def test_la_lanzadera_no_escribe_con_el_cwd_de_la_propia_herramienta():
-    """Con la config REAL: un turno dentro de claude-informes no deja nada."""
-    antes = sorted(p.name for p in (RAIZ / "informes").glob("*")) if (
-        RAIZ / "informes"
-    ).is_dir() else []
+def test_la_lanzadera_archiva_con_el_cwd_de_la_propia_herramienta(
+    tmp_path, escribir_config, informes
+):
+    """Retirada la guardia, la herramienta se archiva como cualquier proyecto.
+
+    Este test escribia en el archivo DE VERDAD: ejecutaba la lanzadera sin
+    pasarle config, con lo que leia la real. Pasaba porque miraba en
+    `claude-informes/informes/`, el destino viejo, que ya no existe. La
+    guardia lo tapaba; al retirarla, empezo a dejar informes de prueba en
+    `E:/example-reports/claude-informes/`.
+    """
+    ruta_config = escribir_config(
+        [{"nombre": "claude-informes", "cwd": str(RAIZ)}], raiz_informes=informes
+    )
 
     proceso = lanzar(
         json.dumps(
@@ -233,14 +256,82 @@ def test_la_lanzadera_no_escribe_con_el_cwd_de_la_propia_herramienta():
                 "stop_hook_active": False,
                 "last_assistant_message": "# Hola\n\nuno\ndos\ntres\ncuatro\ncinco",
             }
-        )
+        ),
+        ruta_config,
     )
+
     assert proceso.returncode == 0
-    despues = sorted(p.name for p in (RAIZ / "informes").glob("*")) if (
-        RAIZ / "informes"
-    ).is_dir() else []
-    assert despues == antes
+    escritos = sorted(Path(informes).rglob("*.json"))
+    assert [p.name for p in escritos] == ["01-uno-dos-tres-cuatro-cinco.json"]
+    assert not (RAIZ / "informes").exists(), "el destino viejo no debe resucitar"
 
 
 def test_la_lanzadera_sale_0_con_stdin_vacio():
     assert lanzar("").returncode == 0
+
+
+# --- el cerrojo: el .tmp reserva, el .json solo aparece al final ---
+
+
+def test_el_json_no_existe_hasta_tener_contenido(tmp_path, monkeypatch):
+    """Mientras se escribe hay `.tmp` y NO hay `.json`. Nunca uno a cero."""
+    vistos = []
+    real = inf.json.dumps
+
+    def espiar(*args, **kwargs):
+        vistos.append(sorted(p.name for p in dia(tmp_path).iterdir()))
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr(inf.json, "dumps", espiar)
+    destino = inf.escribir(tmp_path, "repo", sobre(cuando="2026-08-28T10:00:00Z"))
+
+    assert vistos == [[f"01-{SLUG}.json.tmp"]], "el .json no puede existir antes de tener contenido"
+    assert destino.name == f"01-{SLUG}.json"
+    assert [p.name for p in dia(tmp_path).iterdir()] == [f"01-{SLUG}.json"]
+
+
+def test_un_tmp_huerfano_tiene_su_ordinal_cogido(tmp_path):
+    """Si no se contaran los .tmp, el cerrojo no serviria de nada."""
+    dia(tmp_path).mkdir(parents=True)
+    (dia(tmp_path) / "01-de-otro-turno.json.tmp").write_text("", encoding="utf-8")
+
+    destino = inf.escribir(tmp_path, "repo", sobre(cuando="2026-08-28T10:00:00Z"))
+
+    assert destino.name == f"02-{SLUG}.json"
+
+
+def test_ocho_turnos_a_la_vez_no_repiten_ordinal(tmp_path):
+    """El O_EXCL sigue mandando ahora que el cerrojo es el .tmp."""
+    errores = []
+
+    def escribe():
+        try:
+            inf.escribir(tmp_path, "repo", sobre(cuando="2026-08-28T10:00:00Z"))
+        except Exception as error:  # noqa: BLE001
+            errores.append(error)
+
+    hilos = [threading.Thread(target=escribe) for _ in range(8)]
+    for hilo in hilos:
+        hilo.start()
+    for hilo in hilos:
+        hilo.join()
+
+    assert errores == []
+    nombres = sorted(p.name for p in dia(tmp_path).iterdir())
+    assert len(nombres) == 8
+    assert sorted(n[:2] for n in nombres) == [f"{i:02d}" for i in range(1, 9)]
+
+
+def test_si_la_escritura_falla_no_queda_nada_en_disco(tmp_path, monkeypatch):
+    """Los tres informes a cero de produccion eran exactamente esto."""
+
+    def revienta(*args, **kwargs):
+        raise UnicodeEncodeError("utf-8", "x", 0, 1, "de mentira")
+
+    monkeypatch.setattr(inf.json, "dumps", revienta)
+    with pytest.raises(inf.FalloDeEscritura) as fallo:
+        inf.escribir(tmp_path, "repo", sobre(cuando="2026-08-28T10:00:00Z"))
+
+    assert fallo.value.ruta.name == f"01-{SLUG}.json"
+    assert isinstance(fallo.value.causa, UnicodeEncodeError)
+    assert list(dia(tmp_path).iterdir()) == []

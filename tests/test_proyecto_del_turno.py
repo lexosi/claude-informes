@@ -245,8 +245,10 @@ def test_un_transcript_path_ilegible_no_revienta(escribir_config, informes, tmp_
 # --- lo que no cambia ---
 
 
-def test_la_guardia_de_la_herramienta_sigue_mandando(escribir_config, informes):
-    """Aunque el transcript mapeara, el cwd dentro de la herramienta no escribe."""
+def test_un_turno_de_la_propia_herramienta_se_archiva_como_cualquier_otro(
+    escribir_config, informes
+):
+    """La herramienta dejo de ser un caso aparte cuando el archivo se mudo."""
     propia = cfg.raiz_de_la_herramienta()
     ruta_config = escribir_config(
         [{"nombre": "claude-informes", "cwd": str(propia)}], raiz_informes=informes
@@ -254,7 +256,8 @@ def test_la_guardia_de_la_herramienta_sigue_mandando(escribir_config, informes):
 
     ejecutar(turno(propia, transcript_de(propia)), ruta_config)
 
-    assert not Path(informes).exists()
+    dia = Path(informes) / "claude-informes" / hoy()
+    assert [p.name for p in dia.iterdir()] == ["01-informe-prueba-diaria.json"]
 
 
 def test_el_umbral_sigue_siendo_el_del_proyecto_mapeado(

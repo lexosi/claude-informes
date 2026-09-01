@@ -2,6 +2,7 @@
 
 import io
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -341,3 +342,78 @@ def test_una_carpeta_desconocida_bajo_la_raiz_se_deniega_sin_proyecto(archivo, l
     comun, _, ruta_config = archivo
     assert deniega(ejecutar(payload(comun / "quien-sabe" / "x.json"), ruta_config)[1])
     assert reg.leer(log)[0].proyecto == reg.SIN_PROYECTO
+
+
+# --- las fronteras del guardian, cruzadas por bytes ---
+
+
+def _lanzar_guardian(payload, ruta_config, log):
+    """El guardian de verdad, en otro proceso, hablando en bytes utf-8."""
+    entorno = dict(os.environ)
+    for variable in ("PYTHONUTF8", "PYTHONIOENCODING", "PYTHONLEGACYWINDOWSSTDIO"):
+        entorno.pop(variable, None)
+    entorno["CLAUDE_INFORMES_CONFIG"] = str(ruta_config)
+    entorno["CLAUDE_INFORMES_LOG"] = str(log)
+    lanzadera = Path(__file__).resolve().parent.parent / "guardian_informes.py"
+    return subprocess.run(
+        [sys.executable, str(lanzadera)],
+        input=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
+        capture_output=True,
+        env=entorno,
+    )
+
+
+def test_deniega_aunque_la_ruta_no_quepa_en_el_encoding_de_la_consola(
+    escribir_config, informes, log, tmp_path
+):
+    """La frontera con consecuencia de seguridad.
+
+    Con `sys.stdout` heredado (cp1252), escribir una denegacion cuya ruta
+    lleve un caracter que no quepa reventaba el write, el guardian caia a su
+    `except`... y PERMITIA la escritura que tenia que denegar. Fallar abierto
+    por un fallo propio de codificacion no es fallar abierto: es no estar.
+    """
+    ruta_config = escribir_config(
+        [{"nombre": "vigilado", "cwd": str(tmp_path / "vigilado")}],
+        raiz_informes=informes,
+    )
+    destino = Path(informes) / "vigilado" / "2026-09-01" / "01-anlisis-\u2190-\u274c.json"
+
+    salida = _lanzar_guardian(
+        {
+            "tool_name": "Write",
+            "cwd": str(tmp_path),
+            "tool_input": {"file_path": str(destino)},
+        },
+        ruta_config,
+        log,
+    )
+
+    assert salida.returncode == 0
+    respuesta = json.loads(salida.stdout.decode("utf-8"))
+    decision = respuesta["hookSpecificOutput"]
+    assert decision["permissionDecision"] == "deny"
+    assert "\u274c" in decision["permissionDecisionReason"]
+
+
+def test_ante_un_json_invalido_sigue_fallando_abierto(escribir_config, informes, log, tmp_path):
+    """Regla numero uno del guardian, comprobada DESPUES de tocar sus flujos."""
+    ruta_config = escribir_config(
+        [{"nombre": "vigilado", "cwd": str(tmp_path / "vigilado")}],
+        raiz_informes=informes,
+    )
+    lanzadera = Path(__file__).resolve().parent.parent / "guardian_informes.py"
+    entorno = dict(os.environ)
+    entorno["CLAUDE_INFORMES_CONFIG"] = str(ruta_config)
+    entorno["CLAUDE_INFORMES_LOG"] = str(log)
+
+    salida = subprocess.run(
+        [sys.executable, str(lanzadera)],
+        input=b"{esto no es json",
+        capture_output=True,
+        env=entorno,
+    )
+
+    assert salida.returncode == 0
+    assert salida.stdout == b"", "sin salida = sin decision = la herramienta sigue"
+    assert reg.leer(log)[-1].resultado == reg.PERMITIDO_POR_ERROR

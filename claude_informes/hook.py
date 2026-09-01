@@ -9,13 +9,13 @@ del log tampoco puede tumbar nada.
 
 from __future__ import annotations
 
-import json
 import os
 import sys
 from dataclasses import dataclass
 from pathlib import Path
 
 from . import config as cfg
+from . import flujos
 from . import informe as inf
 from . import markdown as md
 from . import registro as reg
@@ -131,9 +131,6 @@ def procesar(payload: dict, configuracion: cfg.Configuracion) -> Resultado:
         return Resultado(reg.OMITIDO_REENTRADA, detalle="stop_hook_active")
 
     cwd = payload.get("cwd")
-    if cfg.es_la_propia_herramienta(cwd):
-        return Resultado(reg.OMITIDO_GUARDIA, detalle=f"cwd dentro de la herramienta: {cwd}")
-
     proyecto, degradacion, omision = proyecto_del_turno(payload, configuracion)
     if omision:
         return Resultado(reg.OMITIDO_SESION, detalle=omision)
@@ -170,7 +167,18 @@ def procesar(payload: dict, configuracion: cfg.Configuracion) -> Resultado:
         git_branch=rama,
         git_head=head,
     )
-    destino = inf.escribir(proyecto.raiz_informes, proyecto.nombre, sobre)
+    try:
+        destino = inf.escribir(proyecto.raiz_informes, proyecto.nombre, sobre)
+    except inf.FalloDeEscritura as fallo:
+        # El unico ERROR que sabe de quien era el turno. Sin proyecto, sin
+        # ruta y sin sesion, la linea del log no se puede contrastar contra
+        # nada y el fallo sigue siendo, en la practica, silencioso.
+        return Resultado(
+            reg.ERROR,
+            proyecto.nombre,
+            f"{fallo}; ruta={fallo.ruta}; sesion={payload.get('session_id')}",
+            aviso=aviso,
+        )
     return Resultado(reg.ESCRITO, proyecto.nombre, str(destino), destino, aviso)
 
 
@@ -179,7 +187,7 @@ def main(entrada=None, ruta_config: str | os.PathLike[str] | None = None) -> int
     configuracion = None
     try:
         flujo = entrada if entrada is not None else sys.stdin
-        payload = json.loads(flujo.read())
+        payload = flujos.leer_payload(flujo)
         configuracion = cfg.cargar(ruta_config)
         resultado = procesar(payload, configuracion)
     except Exception as error:  # noqa: BLE001 - por diseno: nada puede escapar

@@ -9,6 +9,7 @@ from pathlib import Path
 from . import alta
 from . import backfill as bf
 from . import config as cfg
+from . import flujos
 from . import hook as hk
 from . import markdown as md
 from . import registro as reg
@@ -212,6 +213,7 @@ def _ejecutar_pendientes(args) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
+    flujos.salida_en_utf8(sys.stdout, sys.stderr)
     argumentos = list(sys.argv[1:] if argv is None else argv)
     # El hook no debe fallar nunca, ni siquiera por un argparse enfadado.
     if argumentos and argumentos[0] == "hook":

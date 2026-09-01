@@ -21,6 +21,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from . import config as cfg
+from . import flujos
 from . import registro as reg
 
 # Herramientas cuya ruta de destino es un dato estructurado y sin ambiguedad.
@@ -244,11 +245,11 @@ def main(entrada=None, salida=None, ruta_config: str | os.PathLike[str] | None =
     anotacion = None
     try:
         flujo = entrada if entrada is not None else sys.stdin
-        payload = json.loads(flujo.read())
+        payload = flujos.leer_payload(flujo)
         configuracion = cfg.cargar_estricto(ruta_config)
         hallazgo = revisar(payload, configuracion)
         if hallazgo is not None:
-            flujo_salida.write(denegar(hallazgo))
+            flujos.escribir(flujo_salida, denegar(hallazgo))
             anotacion = (
                 configuracion.ruta_log,
                 reg.DENEGADO,

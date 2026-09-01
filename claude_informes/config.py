@@ -165,12 +165,19 @@ def es_la_propia_herramienta(cwd: str | None) -> bool:
 def buscar_proyecto(cwd: str | None, configuracion: Configuracion) -> Proyecto | None:
     """Lista blanca: el cwd debe ser la raiz de un proyecto activo o colgar de ella.
 
-    Devuelve None para cualquier cwd fuera de la lista, y tambien para el
-    propio claude-informes. Ante empate, gana la raiz mas larga.
+    Devuelve None para cualquier cwd fuera de la lista. Ante empate, gana la
+    raiz mas larga.
+
+    La herramienta ya no es un caso aparte. Lo fue mientras `raiz_informes`
+    apuntaba dentro de `claude-informes/informes/`: entonces un turno suyo
+    habria escrito en su propia carpeta de salida, dentro de un repo. Desde
+    que el archivo vive en una raiz propia, fuera de todo arbol git, esa
+    premisa no existe, y la guardia solo servia para tirar a la basura los
+    turnos de quien trabajaba en la propia herramienta. Lo que de verdad
+    protegia --que ningun destino de archivo caiga dentro de la herramienta
+    ni de ningun repositorio-- lo afirman los tests de la config real.
     """
     if not isinstance(cwd, str) or not cwd.strip():
-        return None
-    if es_la_propia_herramienta(cwd):
         return None
     objetivo = normalizar(cwd)
     candidatos = [

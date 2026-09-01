@@ -22,6 +22,11 @@ def _git(cwd: str, *argumentos: str) -> str | None:
             cwd=cwd,
             capture_output=True,
             text=True,
+            # git habla utf-8; `text=True` a secas decodifica con el
+            # encoding de la consola (cp1252 aqui): una rama con acento
+            # salia con mojibake, o reventaba y se perdian rama Y head.
+            encoding="utf-8",
+            errors="replace",
             timeout=5,
             check=False,
         )
@@ -104,6 +109,16 @@ def carpeta_del_dia(raiz_informes: Path, proyecto: str, fecha: str) -> Path:
     return subcarpeta(subcarpeta(Path(raiz_informes), proyecto), fecha)
 
 
+def _cuenta_para_el_ordinal(nombre: str) -> bool:
+    """Un `.json` ya escrito, o un `.json.tmp` que tiene su ordinal cogido.
+
+    Los `.tmp` cuentan porque son el cerrojo: mientras uno exista, su numero
+    esta reservado. Si no se contaran, dos turnos simultaneos elegirian el
+    mismo, que es justo lo que el cerrojo evita.
+    """
+    return nombre.endswith(".json") or nombre.endswith(".json.tmp")
+
+
 def siguiente_ordinal(directorio: Path) -> int:
     """El ordinal empieza en 01 en cada carpeta de dia."""
     mayor = 0
@@ -112,7 +127,7 @@ def siguiente_ordinal(directorio: Path) -> int:
     except Exception:
         return 1
     for fichero in existentes:
-        if fichero.suffix != ".json":
+        if not _cuenta_para_el_ordinal(fichero.name):
             continue
         m = _PATRON_ORDINAL.match(fichero.name)
         if m:
@@ -132,33 +147,67 @@ def nombre_de_fichero(directorio: Path, sobre: dict) -> Path:
 
 
 def _reservar(directorio: Path, slug: str) -> Path:
-    """Reserva un nombre libre creandolo en exclusiva.
+    """Reserva un nombre creando su `.tmp` en exclusiva. Devuelve el `.tmp`.
 
-    Dos turnos a la vez no pueden quedarse con el mismo ordinal: gana el que
-    logre el O_EXCL y el otro prueba con el siguiente.
+    El cerrojo NO puede ser el fichero de destino. Cuando lo era, cualquier
+    fallo posterior --y bastaba un caracter que no cupiera en el encoding--
+    dejaba un `.json` de cero bytes indistinguible de un informe de verdad.
+    El `.json` ahora solo aparece por el `os.replace` final.
+
+    La garantia es la de siempre, ni mas ni menos: dos turnos a la vez no
+    pueden quedarse con el MISMO NOMBRE, porque gana quien logre el O_EXCL y
+    el otro prueba con el siguiente ordinal. Para que siga siendo cierta,
+    `siguiente_ordinal` cuenta tambien los `.tmp`.
     """
     ordinal = siguiente_ordinal(directorio)
     for _ in range(1000):
-        destino = directorio / f"{ordinal:02d}-{slug}.json"
+        temporal = directorio / f"{ordinal:02d}-{slug}.json.tmp"
         try:
-            descriptor = os.open(destino, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+            descriptor = os.open(temporal, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
         except FileExistsError:
             ordinal += 1
             continue
         os.close(descriptor)
-        return destino
+        return temporal
     raise OSError(f"no hay ordinal libre en {directorio}")
 
 
+class FalloDeEscritura(Exception):
+    """Un informe que no llego a existir, y el nombre que iba a tener.
+
+    Lleva la ruta encima para que la linea de ERROR del log pueda decir QUE
+    turno se perdio. Sin ella el log solo dice que algo fallo, y `ultimo` no
+    tiene nada que contrastar.
+    """
+
+    def __init__(self, ruta: Path, causa: BaseException) -> None:
+        super().__init__(f"{type(causa).__name__}: {causa}")
+        self.ruta = ruta
+        self.causa = causa
+
+
 def escribir(raiz_informes: Path, proyecto: str, sobre: dict) -> Path:
-    """Crea `<raiz>/<proyecto>/<fecha>/` si falta y escribe el sobre."""
+    """Crea `<raiz>/<proyecto>/<fecha>/` si falta y escribe el sobre.
+
+    Orden: se reserva el `.tmp`, se escribe entero, y solo entonces aparece
+    el `.json`. Si algo falla por el camino no queda nada en disco: ni un
+    informe a cero ni un `.tmp` huerfano.
+    """
     directorio = carpeta_del_dia(Path(raiz_informes), proyecto, sobre["fecha"])
     directorio.mkdir(parents=True, exist_ok=True)
-    destino = _reservar(directorio, md.nombre_desde_markdown(sobre["respuesta_markdown"]))
-    temporal = destino.with_suffix(".json.tmp")
-    texto = json.dumps(sobre, ensure_ascii=False, indent=2) + "\n"
-    # newline="\n": en Windows, write_text convertiria los saltos a CRLF y el
-    # archivo quedaria con dos formatos distintos segun quien lo escribiera.
-    temporal.write_text(texto, encoding="utf-8", newline="\n")
-    os.replace(temporal, destino)
+    temporal = _reservar(directorio, md.nombre_desde_markdown(sobre["respuesta_markdown"]))
+    destino = temporal.with_name(temporal.name[: -len(".tmp")])
+    try:
+        texto = json.dumps(sobre, ensure_ascii=False, indent=2) + "\n"
+        # newline="\n": en Windows, write_text convertiria los saltos a CRLF y
+        # el archivo quedaria con dos formatos distintos segun quien lo
+        # escribiera.
+        temporal.write_text(texto, encoding="utf-8", newline="\n")
+        os.replace(temporal, destino)
+    except BaseException as error:
+        try:
+            temporal.unlink(missing_ok=True)
+        except Exception:  # noqa: BLE001 - la causa original manda
+            pass
+        raise FalloDeEscritura(destino, error) from error
     return destino
