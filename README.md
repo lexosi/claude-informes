@@ -12,17 +12,18 @@ cuesta tokens.
 **El orden importa.** El proyecto se deriva de donde **arranca** la sesion, no
 de donde este la shell: los `cd` de dentro del turno no cambian nada.
 
-1. Crear la carpeta del proyecto dentro de `example-projects`.
+1. Crear la carpeta del proyecto donde tengas tus repos.
 2. Registrarlo en la config de claude-informes (nombre + cwd).
 3. **Abrir el CLI dentro de esa carpeta**, no en el padre.
 
-Los pasos 1 y 2 son una sola orden:
+Los pasos 1 y 2 son una sola orden (las rutas de ejemplo son ficticias; en tu
+maquina saldran las tuyas):
 
 ```sh
 python -m claude_informes nuevo mi-proyecto
-# carpeta   : E:\example-projects\mi-proyecto
-# registrado: E:\example-projects\claude-informes\config\proyectos.json
-# Ya puedes abrir el CLI ahi:  cd E:\example-projects\mi-proyecto
+# carpeta   : /ruta/a/proyectos/mi-proyecto
+# registrado: <tu config de usuario>/proyectos.json
+# Ya puedes abrir el CLI ahi:  cd /ruta/a/proyectos/mi-proyecto
 ```
 
 > **Si abres el CLI en el directorio padre, esa sesion NO se archiva.** Y son
@@ -39,15 +40,15 @@ python -m claude_informes nuevo mi-proyecto
 
 ## Donde escribe
 
-Todo va a un archivo central que vive **fuera de cualquier repositorio git**.
-Hoy, `E:\example-reports`:
+Todo va a un archivo central que vive **fuera de cualquier repositorio git**,
+en la raiz que declara `raiz_informes` (por ejemplo `~/informes-claude`):
 
 ```
-<raiz_informes>\<proyecto>\<AAAA-MM-DD>\<NN>-<slug>.json
+<raiz_informes>/<proyecto>/<AAAA-MM-DD>/<NN>-<slug>.json
 ```
 
 ```
-E:\example-reports\
+<raiz_informes>/
 └── loopward/
     └── 2026-08-28/
         ├── 01-readme-extracto-gate-e-infraestructura-informes.json
@@ -98,7 +99,7 @@ integro; no hay estructura semantica ninguna.
   "fecha": "2026-08-28",
   "hora": "13:35:17",
   "session_id": "a6e5a399-f600-4b6a-a258-e7f1bcae90f8",
-  "cwd": "E:\\example-projects\\loopward",
+  "cwd": "/ruta/a/proyectos/loopward",
   "git_branch": "main",
   "git_head": "ac72eff...",
   "respuesta_markdown": "...el texto INTEGRO, byte a byte...",
@@ -113,24 +114,67 @@ mismo markdown, por comodidad de quien lo consuma. El original manda.
 
 ## Configuracion
 
-Un unico fichero, `config/proyectos.json`, que vive **fuera** de los
-repositorios vigilados. Anadir un proyecto es anadir una entrada; el codigo no
-conoce ninguna ruta concreta.
+### Por que la config vive fuera del repo
+
+**Decision de diseño.** Este proyecto es publico y se instala en maquinas que
+no son la del autor. Por eso el repositorio **no contiene ninguna configuracion
+real**: solo `config/proyectos.ejemplo.json`, con rutas ficticias.
+
+Una config real dentro del repo tendria dos problemas graves:
+
+1. **Filtracion.** Las rutas absolutas revelan la estructura de directorios del
+   autor, y publicarlas es publicar informacion que no pinta nada en un repo.
+2. **Conflictos.** Cada maquina tiene rutas distintas. Un fichero versionado
+   con rutas dentro convierte cada cambio de equipo en un conflicto de git.
+
+La config real vive, por tanto, **fuera del repo**, en la ubicacion de
+configuracion de usuario estandar de cada sistema operativo:
+
+| Sistema | Fichero de config de usuario |
+| --- | --- |
+| Windows | `%APPDATA%\claude-informes\proyectos.json` (la carpeta *Roaming* del perfil) |
+| macOS | `~/Library/Application Support/claude-informes/proyectos.json` |
+| Linux | `$XDG_CONFIG_HOME/claude-informes/proyectos.json` (o `~/.config/claude-informes/proyectos.json`) |
+
+**Orden de resolucion** (documentado y testeado en `tests/test_config_ubicacion.py`):
+
+1. La variable de entorno `CLAUDE_INFORMES_CONFIG`, si esta definida. Gana
+   siempre.
+2. La config de usuario en la ubicacion estandar del SO, si existe.
+3. Si no hay ninguna: un **mensaje claro** que dice como crearla. Nunca un
+   traceback, y el hook/guardian no se rompen (se comportan como si la lista
+   estuviera vacia).
+
+### Crear la config la primera vez
+
+```sh
+python -m claude_informes init
+# Config de usuario creada: <ubicacion estandar del SO>/proyectos.json
+```
+
+`init` copia el ejemplo a la ubicacion de usuario y no pisa una que ya exista.
+Despues se edita a mano y se ponen las rutas reales.
+
+### Forma del fichero
+
+Anadir un proyecto es anadir una entrada; el codigo no conoce ninguna ruta
+concreta. En Windows las rutas usan `\` (doblada en JSON: `"C:\\Users\\..."`);
+en macOS y Linux, `/`.
 
 ```json
 {
-  "raiz_informes": "E:\\example-reports",
+  "raiz_informes": "/ruta/absoluta/fuera/de/git/informes-claude",
   "proyectos": [
     {
       "nombre": "loopward",
-      "cwd": "E:\\example-projects\\loopward",
+      "cwd": "/ruta/absoluta/a/loopward",
       "activo": true,
       "umbral_lineas": 5
     },
     {
       "nombre": "project-b",
-      "cwd": "E:\\example-projects\\project-b",
-      "raiz_informes": "E:\\example-reports-privado"
+      "cwd": "/ruta/absoluta/a/project-b",
+      "raiz_informes": "/ruta/absoluta/fuera/de/git/informes-privado"
     }
   ]
 }
@@ -146,9 +190,8 @@ conoce ninguna ruta concreta.
 | `activo` | `true` | `false` lo apaga sin borrar la linea. |
 | `umbral_lineas` | `5` | Se escribe con **mas** de estas lineas. |
 
-Se puede apuntar a otro fichero con la variable de entorno
-`CLAUDE_INFORMES_CONFIG`. Si la config falta o esta rota, la herramienta se
-comporta como si la lista estuviera vacia: no escribe en ningun sitio.
+Si la config falta o esta rota, la herramienta se comporta como si la lista
+estuviera vacia: no escribe en ningun sitio.
 
 ## Seguridad
 
@@ -159,9 +202,6 @@ ninguna, jamas.
   silencio.
 - Nunca escribe en `stdout` ni en `stderr`.
 - `cwd` fuera de la lista: sale 0 sin tocar nada.
-- **`cwd` dentro del propio `claude-informes`: no se escribe nunca**, ni aunque
-  alguien lo meta en la lista. La carpeta de destino vive aqui dentro, y un
-  turno de este proyecto acabaria escribiendose a si mismo.
 - `stop_hook_active`: sale 0 sin tocar nada, para no reentrar.
 - Si el directorio de salida no existe, lo crea; si no puede, sale 0.
 - El nombre del fichero se reserva con `O_CREAT|O_EXCL`: dos turnos a la vez no
@@ -170,17 +210,24 @@ ninguna, jamas.
 - El archivo vive fuera de todo repositorio: ningun `git add -A` puede barrerlo
   a un commit, y ningun `git clean -xdf` puede borrarlo.
 
+> La herramienta puede vigilarse a si misma como un proyecto mas. Mientras el
+> archivo vivio dentro de `claude-informes/informes/`, un turno suyo se habria
+> escrito en su propia carpeta de salida, y por eso habia una guardia que lo
+> impedia. Desde que el archivo vive en una raiz propia fuera de todo repo esa
+> premisa desaparecio, y la guardia se retiro: lo unico que hacia era tirar los
+> turnos de quien trabajaba en la propia herramienta.
+
 ## El log
 
 Salir en silencio evita romper sesiones, pero convertiria cualquier fallo en
 algo invisible. Por eso **cada turno deja una linea**, pase lo que pase:
 
 ```
-2026-08-28T16:50:38 | loopward  | escrito         | E:\example-reports\loopward\2026-08-28\08-....json
+2026-08-28T16:50:38 | loopward  | escrito         | <raiz_informes>/loopward/2026-08-28/08-....json
 2026-08-28T16:50:38 | loopward  | omitido-umbral  | 2 lineas, umbral 5
-2026-08-28T16:50:38 | -         | omitido-cwd     | cwd fuera de la lista: 'E:\example-projects\project-b'
+2026-08-28T16:50:38 | -         | omitido-cwd     | cwd fuera de la lista: '/ruta/a/project-b'
 2026-08-28T16:50:38 | -         | omitido-sesion  | proyecto no registrado; nombre=...; arranque=...
-2026-08-28T16:50:38 | loopward  | ERROR           | UnicodeEncodeError: ...; ruta=...\14-....json; sesion=abc123
+2026-08-28T16:50:38 | loopward  | ERROR           | UnicodeEncodeError: ...; ruta=.../14-....json; sesion=abc123
 ```
 
 `marca | proyecto | resultado | ruta o motivo`, solo se anade, y en LF. Hay dos
@@ -193,8 +240,8 @@ registra que algo fallo pero no se puede contrastar contra el disco, y el
 fallo sigue siendo silencioso en la practica.
 
 Vive fuera de las carpetas de informes y fuera de todo repositorio. Por defecto
-es el hermano del archivo: con `raiz_informes` en `E:\example-reports`, el log
-es `E:\example-reports.log`. Se puede fijar con `ruta_log` en la config, o con
+es el hermano del archivo: con `raiz_informes` en `~/informes-claude`, el log
+es `~/informes-claude.log`. Se puede fijar con `ruta_log` en la config, o con
 la variable de entorno `CLAUDE_INFORMES_LOG`, que manda sobre las dos.
 
 Escribir el log tambien va dentro del `try/except`. Si el log falla, el hook
@@ -214,7 +261,7 @@ python -m claude_informes ultimo --proyecto loopward
 ```
 proyecto : loopward
 informe  : 08-prueba-humo-hook.json
-ruta     : E:\example-reports\loopward\2026-08-28\08-prueba-humo-hook.json
+ruta     : <raiz_informes>/loopward/2026-08-28/08-prueba-humo-hook.json
 anotado  : 2026-08-28T16:50:38
 estado   : existe en disco, 453 bytes
 ```
@@ -246,7 +293,7 @@ tener guardian: rompe sesiones ajenas por un fallo suyo.
 - Las zonas salen de la config, no del codigo: la raiz global, la de cada
   proyecto, y el log. Gana la mas especifica.
 - La ruta se resuelve antes de comparar (absoluta, `..`, enlaces), asi que
-  `..\..\informes-claude\x.json` cae igual.
+  `../../informes-claude/x.json` cae igual.
 - `Bash` queda fuera a proposito: adivinar rutas dentro de una linea de shell
   da falsos positivos.
 - Cada denegacion se anota como `denegado-escritura`. Las escrituras permitidas
@@ -256,13 +303,13 @@ tener guardian: rompe sesiones ajenas por un fallo suyo.
 El mensaje dice por que y que hacer en su lugar:
 
 ```
-claude-informes: e:\example-reports\loopward\2026-08-28\99-x.json esta dentro
-del archivo de informes (archivo: e:\example-reports).
+claude-informes: <raiz_informes>/loopward/2026-08-28/99-x.json esta dentro
+del archivo de informes (archivo: <raiz_informes>).
 Los informes los escribe el hook Stop al terminar el turno; no se escriben ni
 se editan a mano.
 Para saber cual fue el ultimo y comprobar que existe de verdad:
-    cd E:\example-projects\claude-informes
-    .venv\Scripts\python -m claude_informes ultimo --proyecto loopward
+    cd <ruta a claude-informes>
+    .venv/Scripts/python -m claude_informes ultimo --proyecto loopward
 ```
 
 ### Servidores MCP
@@ -302,7 +349,7 @@ El `transcript_path` identifica la sesion y no se mueve:
 
 1. Se compara el directorio del transcript con el slug que produce el `cwd`
    declarado de cada proyecto. El mapeo es explicito y comprobable; no se
-   intenta deshacer el slug, que es ambiguo (`e--example-projects-loopward-audit`
+   intenta deshacer el slug, que es ambiguo (`--proyectos-loopward-audit`
    tanto podria ser `loopward/audit` como el proyecto hermano `loopward-audit`).
 2. Si no hay coincidencia exacta, se lee el **primer registro** del transcript,
    que lleva el `cwd` de arranque sin ambiguedad. Eso resuelve las sesiones
@@ -319,10 +366,10 @@ anota una linea extra, `proyecto-por-cwd`, para que el camino degradado se vea.
 ```sh
 python -m claude_informes pendientes
 # 9 turno(s) sin archivar de un proyecto no registrado: claude-informes
-#    transcript: C:\Users\...\projects\e--example-projects\978e2c78-....jsonl
+#    transcript: ~/.claude/projects/--proyectos-claude-informes/978e2c78-....jsonl
 #    registrar : python -m claude_informes nuevo claude-informes
 #    recuperar : python -m claude_informes backfill --transcript "..." \
-#                --proyecto claude-informes --salida "E:\example-reports"
+#                --proyecto claude-informes --salida "<raiz_informes>"
 ```
 
 `pendientes` sale con 1 cuando hay algo que recuperar, para que se note. El
@@ -337,14 +384,14 @@ vacio.
 
 ```sh
 # Toda la sesion mas reciente de un proyecto, a su carpeta del archivo
-python -m claude_informes backfill --cwd "E:\example-projects\loopward"
+python -m claude_informes backfill --cwd "/ruta/a/loopward"
 
 # Una sesion concreta, a otro archivo distinto
 python -m claude_informes backfill --session a6e5a399-... \
-    --salida C:\tmp\archivo --proyecto loopward
+    --salida /tmp/archivo --proyecto loopward
 
 # Un transcript en disco, sin escribir nada
-python -m claude_informes backfill --transcript ruta\sesion.jsonl --dry-run
+python -m claude_informes backfill --transcript ruta/sesion.jsonl --dry-run
 ```
 
 | Opcion | Que hace |
@@ -369,6 +416,6 @@ Ver [INSTALACION.md](INSTALACION.md).
 
 ```sh
 python -m venv .venv
-.venv\Scripts\python -m pip install pytest
-.venv\Scripts\python -m pytest
+.venv/Scripts/python -m pip install pytest
+.venv/Scripts/python -m pytest
 ```

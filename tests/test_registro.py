@@ -43,14 +43,14 @@ def ejecutar(datos, ruta_config, texto_crudo=None):
 
 def test_la_linea_lleva_marca_proyecto_resultado_y_detalle():
     linea = reg.formatear(
-        reg.ESCRITO, "loopward", "E:\\example-reports\\x.json", datetime(2026, 8, 28, 16, 5, 9)
+        reg.ESCRITO, "loopward", "C:\\informes-claude\\x.json", datetime(2026, 8, 28, 16, 5, 9)
     )
     campos = [t.strip() for t in linea.split(" | ")]
     assert campos == [
         "2026-08-28T16:05:09",
         "loopward",
         "escrito",
-        "E:\\example-reports\\x.json",
+        "C:\\informes-claude\\x.json",
     ]
 
 
@@ -92,8 +92,8 @@ def test_un_log_inexistente_se_lee_como_vacio(tmp_path):
 
 
 def test_la_ruta_por_defecto_es_hermana_del_archivo_no_hija():
-    ruta = reg.ruta_por_defecto("E:\\example-reports")
-    assert ruta == Path("E:\\example-reports.log")
+    ruta = reg.ruta_por_defecto("C:\\informes-claude")
+    assert ruta == Path("C:\\informes-claude.log")
     assert "informes-claude" not in ruta.parent.name
 
 

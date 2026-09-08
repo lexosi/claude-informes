@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -18,10 +19,47 @@ VAR_ENTORNO = "CLAUDE_INFORMES_CONFIG"
 VAR_LOG = "CLAUDE_INFORMES_LOG"
 UMBRAL_POR_DEFECTO = 5
 
+# Nombre de la carpeta y del fichero de configuracion de usuario. La config
+# REAL vive FUERA del repositorio (ver README, "Por que la config vive fuera
+# del repo"): asi el repo se publica sin ninguna ruta de nadie, y cambiar de
+# maquina no genera conflictos en un fichero versionado.
+CARPETA_APP = "claude-informes"
+NOMBRE_CONFIG = "proyectos.json"
+
 
 def raiz_de_la_herramienta() -> Path:
-    """El propio E:\\example-projects\\claude-informes."""
+    """El directorio del propio paquete claude-informes (la raiz del repo)."""
     return Path(__file__).resolve().parent.parent
+
+
+def dir_config_usuario() -> Path:
+    """Carpeta de configuracion por-usuario, segun la convencion de cada SO.
+
+    - Windows: ``%APPDATA%\\claude-informes`` (la carpeta Roaming del usuario,
+      donde Windows guarda config de aplicaciones que sigue al perfil).
+    - macOS: ``~/Library/Application Support/claude-informes`` (el directorio
+      estandar de datos de aplicacion en macOS).
+    - Linux y demas: ``$XDG_CONFIG_HOME/claude-informes`` o, si no esta
+      definida, ``~/.config/claude-informes`` (la especificacion XDG Base
+      Directory, el estandar de facto en Linux).
+    """
+    if sys.platform == "win32":
+        base = os.environ.get("APPDATA") or str(Path.home() / "AppData" / "Roaming")
+        return Path(base) / CARPETA_APP
+    if sys.platform == "darwin":
+        return Path.home() / "Library" / "Application Support" / CARPETA_APP
+    base = os.environ.get("XDG_CONFIG_HOME") or str(Path.home() / ".config")
+    return Path(base) / CARPETA_APP
+
+
+def ruta_config_usuario() -> Path:
+    """El fichero de config de usuario en la ubicacion estandar del SO."""
+    return dir_config_usuario() / NOMBRE_CONFIG
+
+
+def ruta_de_ejemplo() -> Path:
+    """El ejemplo versionado en el repo. Rutas ficticias, nunca reales."""
+    return raiz_de_la_herramienta() / "config" / "proyectos.ejemplo.json"
 
 
 @dataclass(frozen=True)
@@ -69,15 +107,36 @@ def por_defecto() -> Configuracion:
     return Configuracion(raiz_informes=raiz, ruta_log=ruta_de_log(None, raiz))
 
 
-def ruta_de_config() -> Path:
-    """Ruta del fichero de configuracion, sin comprobar que exista."""
+def ruta_de_config() -> Path | None:
+    """La config que se debe usar, o None si no hay ninguna.
+
+    Orden de resolucion, documentado y testeado:
+      1. La variable de entorno ``CLAUDE_INFORMES_CONFIG``, si esta definida.
+         Gana siempre, exista o no el fichero: quien la pone sabe lo que hace.
+      2. La config de usuario en la ubicacion estandar del SO, si existe.
+      3. Nada: ``None``. El repositorio NO contiene ninguna config real, solo
+         el ejemplo, asi que aqui no hay tercer sitio donde mirar.
+    """
     del_entorno = os.environ.get(VAR_ENTORNO)
     if del_entorno:
         return Path(del_entorno)
-    propia = raiz_de_la_herramienta() / "config" / "proyectos.json"
-    if propia.exists():
-        return propia
-    return Path.home() / ".claude-informes" / "proyectos.json"
+    usuario = ruta_config_usuario()
+    if usuario.exists():
+        return usuario
+    return None
+
+
+def mensaje_sin_config() -> str:
+    """Que decirle a quien arranca sin config. Nunca un traceback."""
+    return (
+        "No hay configuracion de claude-informes.\n"
+        f"El fichero de usuario deberia estar en:\n    {ruta_config_usuario()}\n\n"
+        "Crealo a partir del ejemplo con:\n"
+        "    python -m claude_informes init\n\n"
+        "O indica uno propio con la variable de entorno "
+        f"{VAR_ENTORNO}, o con --config.\n"
+        f"El ejemplo versionado esta en: {ruta_de_ejemplo()}"
+    )
 
 
 def _nombre_de(entrada: dict, raiz: str) -> str:
@@ -103,6 +162,8 @@ def cargar_estricto(ruta: str | os.PathLike[str] | None = None) -> Configuracion
     no puede afirmar que una ruta este protegida, y entonces permite.
     """
     destino = Path(ruta) if ruta is not None else ruta_de_config()
+    if destino is None:
+        raise FileNotFoundError("no hay configuracion de claude-informes")
     crudo = json.loads(destino.read_text(encoding="utf-8"))
 
     entradas = crudo.get("proyectos") if isinstance(crudo, dict) else crudo

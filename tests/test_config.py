@@ -160,38 +160,11 @@ def test_la_guardia_reconoce_la_herramienta():
     assert cfg.es_la_propia_herramienta(None) is False
 
 
-def test_ningun_destino_de_archivo_cae_en_la_herramienta_ni_en_un_repositorio():
-    """La unica afirmacion que de verdad protegia algo, entera y en un sitio.
-
-    El test que habia aqui mezclaba dos cosas: esta, que sigue viva, y "la
-    herramienta no puede ser un proyecto vigilado", que caduco el 28-ago
-    cuando el archivo se mudo a su propia raiz. Lo que hay que impedir no es
-    vigilar la herramienta: es que el texto de las sesiones acabe dentro de
-    un arbol git, del que sea, y desde ahi en un remoto.
-    """
-    reales = cfg.cargar(cfg.raiz_de_la_herramienta() / "config" / "proyectos.json")
-    assert reales.proyectos, "la config real deberia tener al menos un proyecto"
-
-    destinos = [reales.raiz_informes, *(p.raiz_informes for p in reales.proyectos)]
-    for destino in destinos:
-        assert not cfg.es_la_propia_herramienta(str(destino)), f"{destino}: en la herramienta"
-        for carpeta in [Path(destino), *Path(destino).parents]:
-            assert not (carpeta / ".git").exists(), f"{destino} cuelga del repo {carpeta}"
-
-
-def test_la_config_real_archiva_fuera_de_la_herramienta():
-    """El archivo no vive en ningun repositorio, ni en este."""
-    reales = cfg.cargar(cfg.raiz_de_la_herramienta() / "config" / "proyectos.json")
-    propia = cfg.normalizar(cfg.raiz_de_la_herramienta())
-    for destino in [reales.raiz_informes, *(p.raiz_informes for p in reales.proyectos)]:
-        assert not cfg.normalizar(destino).startswith(propia), destino
-
-
-def test_la_config_real_no_archiva_dentro_de_ningun_repositorio():
-    reales = cfg.cargar(cfg.raiz_de_la_herramienta() / "config" / "proyectos.json")
-    for destino in [reales.raiz_informes, *(p.raiz_informes for p in reales.proyectos)]:
-        for carpeta in [Path(destino), *Path(destino).parents]:
-            assert not (carpeta / ".git").exists(), f"{destino} cuelga de {carpeta}"
+# Los tests que afirmaban sobre "la config real del repo" se retiraron: la
+# config real ya no vive en el repositorio (vive en la config de usuario del
+# SO). La invariante equivalente -que el EJEMPLO sea JSON valido y no lleve
+# rutas reales, y que el archivo caiga fuera de todo repo- se comprueba ahora
+# en test_publicable.py y test_config_ubicacion.py.
 
 
 # --- raiz por proyecto ---
@@ -242,6 +215,3 @@ def test_una_raiz_propia_invalida_cae_a_la_global(escribir_config, tmp_path):
     assert configuracion.proyectos[0].raiz_informes == comun
 
 
-def test_la_config_real_manda_todo_a_la_raiz_global():
-    reales = cfg.cargar(cfg.raiz_de_la_herramienta() / "config" / "proyectos.json")
-    assert all(p.raiz_informes == reales.raiz_informes for p in reales.proyectos)

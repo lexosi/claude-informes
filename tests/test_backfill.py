@@ -28,7 +28,7 @@ AYER = fecha_local("2026-08-27T10:00:00Z")
 HOY = fecha_local("2026-08-28T10:00:00Z")
 
 
-def turno(texto, *, marca="2026-08-28T10:00:00Z", uuid="u1", cwd="E:\\repo", sesion="s1"):
+def turno(texto, *, marca="2026-08-28T10:00:00Z", uuid="u1", cwd="C:\\repo", sesion="s1"):
     return {
         "type": "assistant",
         "uuid": uuid,
@@ -166,7 +166,7 @@ def test_los_metadatos_vienen_del_registro_no_del_reloj(transcripcion, tmp_path)
     sobre = json.loads((raiz / "repo" / HOY / SLUG_A).read_text("utf-8"))
     assert sobre["fecha"] == HOY
     assert sobre["session_id"] == "s1"
-    assert sobre["cwd"] == "E:\\repo"
+    assert sobre["cwd"] == "C:\\repo"
     assert sobre["git_branch"] == "main"
 
 
@@ -255,7 +255,7 @@ def test_el_umbral_del_backfill_es_configurable(transcripcion, tmp_path):
 
 
 def test_se_localiza_el_transcript_por_sesion(tmp_path):
-    raiz = tmp_path / "projects" / "E--repo"
+    raiz = tmp_path / "projects" / "C--repo"
     raiz.mkdir(parents=True)
     esperado = escribir_transcript(raiz / "abc-123.jsonl", [turno(LARGO_A)])
 
@@ -266,17 +266,17 @@ def test_se_localiza_el_transcript_mas_reciente_del_proyecto(tmp_path):
     import os
 
     base = tmp_path / "projects"
-    carpeta = base / "E--repo"
+    carpeta = base / "C--repo"
     carpeta.mkdir(parents=True)
     viejo = escribir_transcript(carpeta / "viejo.jsonl", [turno(LARGO_A)])
     nuevo = escribir_transcript(carpeta / "nuevo.jsonl", [turno(LARGO_B)])
     os.utime(viejo, (1, 1))
 
-    assert tr.localizar(cwd="E:\\repo", raiz=base) == nuevo
+    assert tr.localizar(cwd="C:\\repo", raiz=base) == nuevo
 
 
 def test_sin_transcript_se_devuelve_none(tmp_path):
-    assert tr.localizar(cwd="E:\\ninguno", raiz=tmp_path) is None
+    assert tr.localizar(cwd="C:\\ninguno", raiz=tmp_path) is None
 
 
 # --- la orden de consola ---

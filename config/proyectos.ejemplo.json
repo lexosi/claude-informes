@@ -1,20 +1,21 @@
 {
-  "_comentario": "Anadir un proyecto = anadir una entrada aqui. Nunca tocar codigo.",
-  "_raiz_informes": "Raiz global del archivo. Cada proyecto puede declarar la suya.",
-  "raiz_informes": "E:\\example-reports",
+  "_comentario": "EJEMPLO. No es la config real. Copialo a tu config de usuario con 'python -m claude_informes init' y sustituye estas rutas ficticias por las tuyas. Este fichero, versionado en el repo, NO debe contener ninguna ruta real de nadie.",
+  "_donde_va_la_config_real": "Windows: %APPDATA%/claude-informes/proyectos.json | macOS: ~/Library/Application Support/claude-informes/proyectos.json | Linux: $XDG_CONFIG_HOME/claude-informes/proyectos.json (o ~/.config/claude-informes/proyectos.json)",
+  "_raiz_informes": "Raiz global del archivo. DEBE vivir FUERA de cualquier repositorio git: los informes llevan texto integro de sesiones y no deben acabar versionados ni en un remoto. Cada proyecto puede declarar la suya y anular esta.",
+  "raiz_informes": "/ruta/absoluta/fuera/de/todo/repo/informes-claude",
   "proyectos": [
     {
-      "nombre": "loopward",
-      "cwd": "E:\\example-projects\\loopward",
+      "nombre": "mi-proyecto",
+      "cwd": "/ruta/absoluta/a/mi-proyecto",
       "activo": true,
       "umbral_lineas": 5
     },
     {
-      "_nota": "un proyecto sensible puede archivarse aparte",
-      "nombre": "project-b",
-      "cwd": "E:\\example-projects\\project-b",
+      "_nota": "un proyecto sensible puede archivarse en una raiz aparte",
+      "nombre": "proyecto-privado",
+      "cwd": "/ruta/absoluta/a/proyecto-privado",
       "activo": false,
-      "raiz_informes": "E:\\example-reports-privado",
+      "raiz_informes": "/ruta/absoluta/fuera/de/todo/repo/informes-privado",
       "umbral_lineas": 5
     }
   ]

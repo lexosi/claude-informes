@@ -16,7 +16,7 @@ from claude_informes import registro as reg
 RAIZ = Path(__file__).resolve().parent.parent
 
 
-def payload(ruta, herramienta="Write", cwd="E:\\example-projects\\loopward", **extras):
+def payload(ruta, herramienta="Write", cwd="C:\\example-projects\\loopward", **extras):
     datos = {
         "session_id": "s",
         "cwd": cwd,
@@ -55,10 +55,10 @@ def archivo(tmp_path, escribir_config, log):
     cofre = tmp_path / "informes-claude-privado"
     ruta_config = escribir_config(
         [
-            {"nombre": "loopward", "cwd": "E:\\example-projects\\loopward"},
+            {"nombre": "loopward", "cwd": "C:\\example-projects\\loopward"},
             {
                 "nombre": "project-b",
-                "cwd": "E:\\example-projects\\project-b",
+                "cwd": "C:\\example-projects\\project-b",
                 "raiz_informes": cofre,
             },
         ],
@@ -129,7 +129,7 @@ def test_una_edicion_multiple_se_revisa_entrada_por_entrada(archivo):
     datos = payload(comun / "x.json", herramienta="MultiEdit")
     datos["tool_input"] = {
         "edits": [
-            {"file_path": "E:\\example-projects\\loopward\\README.md"},
+            {"file_path": "C:\\example-projects\\loopward\\README.md"},
             {"file_path": str(comun / "loopward" / "x.json")},
         ]
     }
@@ -152,10 +152,10 @@ def test_el_mensaje_dice_por_que_y_que_hacer(archivo):
 def test_una_escritura_normal_en_un_repo_se_permite(archivo):
     _, _, ruta_config = archivo
     for ruta in [
-        "E:\\example-projects\\loopward\\README.md",
-        "E:\\example-projects\\loopward\\loopward\\cli.py",
-        "E:\\example-projects\\project-b\\cv.md",
-        "E:\\example-projects\\claude-informes\\claude_informes\\hook.py",
+        "C:\\example-projects\\loopward\\README.md",
+        "C:\\example-projects\\loopward\\loopward\\cli.py",
+        "C:\\example-projects\\project-b\\cv.md",
+        "C:\\example-projects\\claude-informes\\claude_informes\\hook.py",
     ]:
         codigo, salida = ejecutar(payload(ruta), ruta_config)
         assert codigo == 0 and salida == "", ruta
@@ -231,7 +231,7 @@ def test_si_revisar_revienta_se_permite(archivo, monkeypatch, log):
         raise RuntimeError("algo se ha roto por dentro")
 
     monkeypatch.setattr(gd, "revisar", revisar_roto)
-    codigo, salida = ejecutar(payload("E:\\lo\\que\\sea"), ruta_config)
+    codigo, salida = ejecutar(payload("C:\\lo\\que\\sea"), ruta_config)
 
     assert codigo == 0 and salida == ""
     assert reg.leer(log)[0].resultado == reg.PERMITIDO_POR_ERROR
@@ -254,7 +254,7 @@ def test_nunca_devuelve_un_codigo_distinto_de_cero(archivo, tmp_path):
     comun, _, ruta_config = archivo
     casos = [
         (payload(comun / "x.json"), ruta_config),
-        (payload("E:\\normal\\x.md"), ruta_config),
+        (payload("C:\\normal\\x.md"), ruta_config),
         (payload(comun / "x.json"), tmp_path / "no-existe.json"),
     ]
     for datos, config in casos:
@@ -278,7 +278,7 @@ def test_la_denegacion_queda_en_el_log(archivo, log):
 def test_una_escritura_permitida_no_ensucia_el_log(archivo, log):
     """Una linea por tool call llenaria el log de ruido."""
     _, _, ruta_config = archivo
-    ejecutar(payload("E:\\example-projects\\loopward\\README.md"), ruta_config)
+    ejecutar(payload("C:\\example-projects\\loopward\\README.md"), ruta_config)
 
     assert reg.leer(log) == []
 
@@ -307,7 +307,7 @@ def test_la_lanzadera_deniega_con_la_config_real():
 
 
 def test_la_lanzadera_permite_una_escritura_normal():
-    proceso = lanzar(json.dumps(payload("E:\\example-projects\\loopward\\README.md")))
+    proceso = lanzar(json.dumps(payload("C:\\example-projects\\loopward\\README.md")))
 
     assert proceso.returncode == 0
     assert proceso.stdout == ""
@@ -327,7 +327,7 @@ def test_una_raiz_propia_anidada_en_la_global_gana_a_la_global(
     comun = tmp_path / "archivo"
     dentro = comun / "privado"
     ruta_config = escribir_config(
-        [{"nombre": "project-b", "cwd": "E:\\example-projects\\project-b", "raiz_informes": dentro}],
+        [{"nombre": "project-b", "cwd": "C:\\example-projects\\project-b", "raiz_informes": dentro}],
         raiz_informes=comun,
     )
 

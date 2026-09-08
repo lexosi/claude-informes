@@ -242,7 +242,7 @@ def test_la_lanzadera_archiva_con_el_cwd_de_la_propia_herramienta(
     pasarle config, con lo que leia la real. Pasaba porque miraba en
     `claude-informes/informes/`, el destino viejo, que ya no existe. La
     guardia lo tapaba; al retirarla, empezo a dejar informes de prueba en
-    `E:/example-reports/claude-informes/`.
+    `C:/informes-claude/claude-informes/`.
     """
     ruta_config = escribir_config(
         [{"nombre": "claude-informes", "cwd": str(RAIZ)}], raiz_informes=informes

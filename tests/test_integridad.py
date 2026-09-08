@@ -17,7 +17,7 @@ MUESTRAS = {
     "crlf": "# Con CRLF\r\n\r\nlinea uno\r\nlinea dos\r\nlinea tres\r\nlinea cuatro\r\n",
     "tabuladores": "# Tabs\n\n\tsangrado con tab\n\t\tdoble\n1\n2\n3\n4",
     "espacios_finales": "# Cola   \n\nlinea con dos espacios  \notra \n1\n2\n3\n4",
-    "barras": "# Rutas\n\nC:\\Users\\iamle\\.claude\nregex: \\d+\\s*\\\\\n1\n2\n3\n4",
+    "barras": "# Rutas\n\nC:\\Users\\user\\.claude\nregex: \\d+\\s*\\\\\n1\n2\n3\n4",
     "comillas": '# Comillas\n\n"dobles" y \'simples\' y `back`\n1\n2\n3\n4\n5',
     "bloque_de_codigo": "# Codigo\n\n```python\ndef f():\n    return {'a': 1}\n```\n\nfin\n1\n2",
     "vallas_anidadas": "# Anidado\n\n````md\n```py\nx = 1\n```\n````\n1\n2\n3",

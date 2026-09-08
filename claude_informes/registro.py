@@ -45,7 +45,7 @@ class Anotacion:
 
 
 def ruta_por_defecto(raiz_informes: str | os.PathLike[str]) -> Path:
-    """Hermano del archivo, nunca dentro: `E:\\example-reports` -> `...-claude.log`."""
+    """Hermano del archivo, nunca dentro: `.../informes-claude` -> `.../informes-claude.log`."""
     raiz = Path(raiz_informes)
     return raiz.parent / (raiz.name + ".log")
 

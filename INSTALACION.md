@@ -1,15 +1,14 @@
 # Instalacion de los hooks
 
-**Instalados el 2026-08-28.** Los dos estan en `C:\Users\iamle\.claude\settings.json`;
-la copia previa quedo en `settings.json.antes-de-claude-informes`. Esto documenta
-lo que hay puesto, como comprobarlo y como quitarlo.
-
-Son dos hooks con reglas opuestas a proposito:
+Son dos hooks de Claude Code con reglas opuestas a proposito:
 
 | Hook | Cuando | Que hace | Si algo falla |
 | --- | --- | --- | --- |
 | `Stop` | fin de turno | escribe el informe | sale 0 y calla (**falla cerrado**) |
 | `PreToolUse` | antes de `Write`/`Edit`/... | deniega escribir dentro del archivo | **permite** (**falla abierto**) |
+
+En lo que sigue, `<claude-informes>` es la ruta donde has clonado este
+repositorio. Sustituyela por la tuya.
 
 ## 0. La regla de operacion
 
@@ -23,31 +22,55 @@ Por eso, para un proyecto nuevo, el orden es: crear la carpeta, registrarlo, y
 Si abres el CLI en el directorio padre, esa sesion no se archiva. Se puede
 recuperar despues con `pendientes` y `backfill`, pero no sobre la marcha.
 
-## 1. La config: a donde apunta
+## 1. La config
 
-`E:\example-projects\claude-informes\config\proyectos.json` es la lista blanca.
-Hoy solo lleva `E:\example-projects\loopward`, con el nombre de carpeta
-`loopward`. En cualquier otro proyecto el hook sale 0 sin tocar nada, y en el
-propio `claude-informes` no escribe aunque se le anada.
+La configuracion real **no vive en el repo**: vive en la config de usuario de
+tu sistema operativo. Crea la tuya a partir del ejemplo:
 
-Los informes van a `E:\example-reports\<proyecto>\<dia>\`, y el log a
-`E:\example-reports.log`, los dos fuera de todo repositorio git. Un proyecto
-puede declarar su propia `raiz_informes` si quieres archivarlo en otro sitio.
+```sh
+python -m claude_informes init
+```
 
-## 2. Lo que hay en `~/.claude/settings.json`
+Edita el fichero que crea y pon las rutas reales de tus proyectos y de la raiz
+de informes. El detalle del formato, la ubicacion por sistema operativo y el
+orden de resolucion estan en el [README](README.md#configuracion).
+
+## 2. El entorno (venv)
+
+El hook corre en **todas** tus sesiones de Claude Code. Para que no dependa del
+`python` del PATH (que puede cambiar de version sin avisar), se usa un venv
+propio con ruta absoluta:
+
+```sh
+# desde <claude-informes>
+python -m venv .venv
+.venv/Scripts/python -m pip install pytest    # Windows
+# .venv/bin/python -m pip install pytest       # macOS / Linux
+```
+
+El intérprete del venv es el que iran a buscar los hooks:
+
+- Windows: `<claude-informes>\.venv\Scripts\python.exe`
+- macOS / Linux: `<claude-informes>/.venv/bin/python`
+
+Las lanzaderas anaden su propio directorio al `sys.path` y no tienen
+dependencias, asi que tecnicamente valdria cualquier Python 3.10+; se prefiere
+el venv por determinismo.
+
+## 3. Lo que va en `~/.claude/settings.json`
+
+Ejemplo para Windows (en JSON las barras invertidas van dobladas; tambien sirve
+`/`). En macOS/Linux, usa `<claude-informes>/.venv/bin/python`.
 
 ```json
 {
-  "autoUpdatesChannel": "latest",
-  "theme": "dark",
-  "tui": "fullscreen",
   "hooks": {
     "Stop": [
       {
         "hooks": [
           {
             "type": "command",
-            "command": "python \"E:\\example-projects\\claude-informes\\hook_informes.py\"",
+            "command": "\"<claude-informes>\\.venv\\Scripts\\python.exe\" \"<claude-informes>\\hook_informes.py\"",
             "timeout": 15
           }
         ]
@@ -59,7 +82,7 @@ puede declarar su propia `raiz_informes` si quieres archivarlo en otro sitio.
         "hooks": [
           {
             "type": "command",
-            "command": "python \"E:\\example-projects\\claude-informes\\guardian_informes.py\"",
+            "command": "\"<claude-informes>\\.venv\\Scripts\\python.exe\" \"<claude-informes>\\guardian_informes.py\"",
             "timeout": 10
           }
         ]
@@ -69,81 +92,50 @@ puede declarar su propia `raiz_informes` si quieres archivarlo en otro sitio.
 }
 ```
 
-Notas:
-
-- En JSON las barras invertidas van dobladas. Si prefieres evitarlo, sirve
-  igual `python E:/example-projects/claude-informes/hook_informes.py`.
-- `python` tiene que ser el del PATH. Comprueba con `python --version` (aqui,
-  3.12.10). Si un dia no lo estuviera, pon la ruta completa al interprete.
-- No hace falta instalar el paquete ni un entorno virtual: las lanzaderas
-  anaden su propio directorio al `sys.path`. No hay dependencias.
+- El matcher del guardian incluye `mcp__.*` para cubrir servidores MCP con
+  escritura (ver README).
 - Los `timeout` son una red de seguridad mas; los hooks ya se autolimitan.
+- Si ya tienes otros hooks para `Stop` o `PreToolUse`, **anade** estas entradas
+  al array existente; no las sustituyas. Claude Code ejecuta todos los hooks de
+  un evento y, en `PreToolUse`, gana la decision mas restrictiva.
 
-## 3. Reiniciar Claude Code
+## 4. Reiniciar Claude Code
 
 **Los hooks se leen al arrancar la sesion.** Una sesion que ya estuviera
 abierta cuando se instalaron sigue sin ellos hasta que se reinicie.
 
-## 4. Comprobar que funcionan
+## 5. Comprobar que funcionan
 
 Los dos se pueden ejercitar sin abrir una sesion: leen el payload por stdin,
 tal cual se lo pasa Claude Code.
 
-```powershell
+```sh
 # fin de turno en un proyecto vigilado -> escribe el informe
-Get-Content turno.json | python E:\example-projects\claude-informes\hook_informes.py
-echo $LASTEXITCODE   # 0, y sin imprimir nada
+python <claude-informes>/hook_informes.py < turno.json
+echo $?    # 0, y sin imprimir nada
 
 # intento de escribir dentro del archivo -> deniega
-Get-Content escritura.json | python E:\example-projects\claude-informes\guardian_informes.py
+python <claude-informes>/guardian_informes.py < escritura.json
 # imprime un JSON con permissionDecision: "deny"; exit sigue siendo 0
 ```
 
-Lo que de verdad conviene mirar es el log, porque ahi queda todo:
+Lo que de verdad conviene mirar es el log, porque ahi queda todo. Su ruta por
+defecto es el hermano de la raiz de informes (`<raiz_informes>.log`). Para
+contrastar el log con el disco:
 
-```powershell
-Get-Content E:\example-reports.log -Tail 10
+```sh
+cd <claude-informes>
+.venv/Scripts/python -m claude_informes ultimo --proyecto <proyecto>
 ```
 
-```
-2026-08-28T17:02:00 | loopward | escrito            | E:\example-reports\loopward\2026-08-28\08-....json
-2026-08-28T17:02:00 | loopward | denegado-escritura | Write -> e:\example-reports\...\99-escrito-a-mano.json
-2026-08-28T17:02:00 | -        | omitido-cwd        | cwd fuera de la lista: 'E:\example-projects\project-c'
-```
+Para mandar el log a otro sitio mientras pruebas, sin tocar el real, define la
+variable de entorno `CLAUDE_INFORMES_LOG`.
 
-Y para contrastar el log con el disco:
+## 6. Desinstalar
 
-```powershell
-cd E:\example-projects\claude-informes
-.venv\Scripts\python -m claude_informes ultimo --proyecto loopward
-```
-
-Para mandar el log a otro sitio mientras pruebas, sin tocar el real:
-
-```powershell
-$env:CLAUDE_INFORMES_LOG = "C:\Users\iamle\AppData\Local\Temp\informes.log"
-```
-
-## 5. Desinstalar
-
-Quitar el bloque `"hooks"` de `~/.claude/settings.json`, o restaurar la copia:
-
-```powershell
-Copy-Item C:\Users\iamle\.claude\settings.json.antes-de-claude-informes `
-          C:\Users\iamle\.claude\settings.json
-```
+Quita las dos entradas que anadiste al bloque `"hooks"` de
+`~/.claude/settings.json` (o restaura tu copia previa de ese fichero).
 
 Para apagar solo la escritura sin tocar los ajustes de Claude Code, basta con
 `"activo": false` en la config. El guardian se puede quitar solo, borrando su
 entrada `PreToolUse`.
-
-## Lo que hay fuera de este repositorio
-
-- `C:\Users\iamle\.claude\settings.json`: los dos hooks.
-- `C:\Users\iamle\.claude\CLAUDE.md`: las instrucciones permanentes de no
-  escribir informes a mano. Es contexto, no imposicion; lo que impone es el
-  guardian.
-- `E:\example-reports\` y `E:\example-reports.log`: el archivo y el log, fuera
-  de todo arbol git.
-- El repositorio `E:\example-projects\loopward`: solo el commit que quito
-  `informes/` de su `.gitignore` y el que lo restauro. Ni una linea de codigo.

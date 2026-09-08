@@ -3,12 +3,25 @@
 __pycache__/
 *.pyc
 .pytest_cache/
+*.egg-info/
 
 # Temporales de escritura atomica (nunca deberian sobrevivir a un turno)
 *.json.tmp
 
+# La configuracion REAL no se versiona: vive fuera del repo, en la config de
+# usuario del SO (ver README, "Por que la config vive fuera del repo"). El repo
+# solo lleva config/proyectos.ejemplo.json. Esta linea es un cinturon extra por
+# si alguien crea el fichero dentro del repo a mano.
+config/proyectos.json
+
 # El archivo de informes NO se versiona y no vive aqui: va a una raiz fuera de
-# todo repositorio (hoy E:\example-reports, ver config/proyectos.json). Esta
-# linea es el segundo cinturon, por si algun dia raiz_informes vuelve a
-# apuntar dentro: los informes llevan texto integro de sesiones de trabajo.
+# todo repositorio git. Esta linea es el segundo cinturon, por si algun dia
+# raiz_informes vuelve a apuntar dentro: los informes llevan texto integro de
+# sesiones de trabajo.
 informes/
+
+# El log del hook es un artefacto de runtime, igual que la config: se genera al
+# ejecutar, cambia en cada maquina, y no pinta nada en un repo publico. Su sitio
+# real es el hermano del archivo (fuera de git); esta linea cubre el caso en que
+# se genere aqui por caer a la config por defecto.
+informes.log

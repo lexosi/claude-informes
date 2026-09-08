@@ -58,7 +58,19 @@ def _construir_parser() -> argparse.ArgumentParser:
         "pendientes", help="turnos que no se archivaron por proyecto no registrado"
     )
     p_pen.add_argument("--config", default=None)
+
+    p_ini = subs.add_parser(
+        "init", help="crea la config de usuario a partir del ejemplo, la primera vez"
+    )
+    p_ini.add_argument(
+        "--config", default=None, help="donde crearla; por defecto, la ubicacion estandar del SO"
+    )
     return parser
+
+
+def _sin_config(args) -> bool:
+    """No hay config utilizable: ni --config, ni entorno, ni fichero de usuario."""
+    return not args.config and cfg.ruta_de_config() is None
 
 
 def _resolver_transcript(args) -> Path | None:
@@ -125,8 +137,30 @@ def _ejecutar_backfill(args) -> int:
     return 0
 
 
+def _ejecutar_init(args) -> int:
+    """Crea la config de usuario copiando el ejemplo. Idempotente: no pisa."""
+    destino = Path(args.config) if args.config else cfg.ruta_config_usuario()
+    if destino.exists():
+        print(f"Ya existe una config de usuario: {destino}")
+        print("No se ha tocado. Editala a mano si quieres cambiarla.")
+        return 0
+    try:
+        contenido = cfg.ruta_de_ejemplo().read_text(encoding="utf-8")
+    except FileNotFoundError:
+        print(f"No se encuentra el ejemplo: {cfg.ruta_de_ejemplo()}", file=sys.stderr)
+        return 2
+    destino.parent.mkdir(parents=True, exist_ok=True)
+    destino.write_text(contenido, encoding="utf-8", newline="\n")
+    print(f"Config de usuario creada: {destino}")
+    print("Editala y pon las rutas reales de tus proyectos y de la raiz de informes.")
+    return 0
+
+
 def _ejecutar_ultimo(args) -> int:
     """El log dice donde esta; el disco dice si es verdad. Manda el disco."""
+    if _sin_config(args):
+        print(cfg.mensaje_sin_config(), file=sys.stderr)
+        return 2
     configuracion = cfg.cargar(args.config)
     anotaciones = reg.leer(configuracion.ruta_log)
     if not anotaciones:
@@ -157,7 +191,9 @@ def _ejecutar_ultimo(args) -> int:
 
 def _ejecutar_nuevo(args) -> int:
     """Los tres pasos del arranque en uno, y en el orden correcto."""
-    ruta_config = Path(args.config) if args.config else cfg.ruta_de_config()
+    ruta_config = Path(args.config) if args.config else (
+        cfg.ruta_de_config() or cfg.ruta_config_usuario()
+    )
     donde = Path(args.en) if args.en else cfg.raiz_de_la_herramienta().parent
     try:
         carpeta, destino = alta.registrar(
@@ -182,6 +218,9 @@ def _ejecutar_nuevo(args) -> int:
 
 def _ejecutar_pendientes(args) -> int:
     """Lo que el log sabe de los turnos que no se archivaron."""
+    if _sin_config(args):
+        print(cfg.mensaje_sin_config(), file=sys.stderr)
+        return 2
     configuracion = cfg.cargar(args.config)
     anotaciones = [
         a for a in reg.leer(configuracion.ruta_log) if a.resultado == reg.OMITIDO_SESION
@@ -231,6 +270,8 @@ def main(argv: list[str] | None = None) -> int:
         return _ejecutar_nuevo(args)
     if args.modo == "pendientes":
         return _ejecutar_pendientes(args)
+    if args.modo == "init":
+        return _ejecutar_init(args)
     return _ejecutar_backfill(args)
 
 

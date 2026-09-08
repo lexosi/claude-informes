@@ -58,11 +58,11 @@ def test_el_slug_del_directorio_se_mapea_al_nombre_de_la_config(
     """`e--example-projects-loopward` -> `loopward`, via el cwd declarado."""
     configuracion = cfg.cargar(
         escribir_config(
-            [{"nombre": "loopward", "cwd": "E:\\example-projects\\loopward"}],
+            [{"nombre": "loopward", "cwd": "C:\\example-projects\\loopward"}],
             raiz_informes=informes,
         )
     )
-    ruta = "C:\\Users\\x\\.claude\\projects\\E--example-projects-loopward\\abc.jsonl"
+    ruta = "C:\\Users\\x\\.claude\\projects\\C--example-projects-loopward\\abc.jsonl"
 
     proyecto = hk.proyecto_del_transcript(ruta, configuracion)
     assert proyecto is not None and proyecto.nombre == "loopward"
@@ -74,11 +74,11 @@ def test_el_mapeo_no_depende_del_nombre_del_directorio_sino_del_cwd(
     """El nombre de carpeta puede no parecerse al slug: manda el cwd."""
     configuracion = cfg.cargar(
         escribir_config(
-            [{"nombre": "informes-del-curro", "cwd": "E:\\example-projects\\project-b"}],
+            [{"nombre": "informes-del-curro", "cwd": "C:\\example-projects\\project-b"}],
             raiz_informes=informes,
         )
     )
-    ruta = "C:\\p\\E--example-projects-project-b\\abc.jsonl"
+    ruta = "C:\\p\\C--example-projects-project-b\\abc.jsonl"
 
     proyecto = hk.proyecto_del_transcript(ruta, configuracion)
     assert proyecto is not None and proyecto.nombre == "informes-del-curro"
@@ -91,11 +91,11 @@ def test_un_slug_de_un_hermano_no_se_confunde_con_un_subdirectorio(
     no hay mapeo: el slug es ambiguo y no se intenta deshacer."""
     configuracion = cfg.cargar(
         escribir_config(
-            [{"nombre": "loopward", "cwd": "E:\\example-projects\\loopward"}],
+            [{"nombre": "loopward", "cwd": "C:\\example-projects\\loopward"}],
             raiz_informes=informes,
         )
     )
-    ruta = "C:\\p\\E--example-projects-loopward-audit\\abc.jsonl"
+    ruta = "C:\\p\\C--example-projects-loopward-audit\\abc.jsonl"
 
     assert hk.proyecto_del_transcript(ruta, configuracion) is None
 
@@ -103,11 +103,11 @@ def test_un_slug_de_un_hermano_no_se_confunde_con_un_subdirectorio(
 def test_un_proyecto_desactivado_no_se_mapea(escribir_config, informes):
     configuracion = cfg.cargar(
         escribir_config(
-            [{"nombre": "loopward", "cwd": "E:\\example-projects\\loopward", "activo": False}],
+            [{"nombre": "loopward", "cwd": "C:\\example-projects\\loopward", "activo": False}],
             raiz_informes=informes,
         )
     )
-    ruta = "C:\\p\\E--example-projects-loopward\\abc.jsonl"
+    ruta = "C:\\p\\C--example-projects-loopward\\abc.jsonl"
 
     assert hk.proyecto_del_transcript(ruta, configuracion) is None
 
@@ -128,7 +128,7 @@ def test_dos_turnos_con_cwd_distinto_van_al_mismo_proyecto(
 
     ejecutar(turno(raiz, transcript, RESPUESTA + "A"), ruta_config)
     ejecutar(turno(raiz / "subdir" / "hondo", transcript, RESPUESTA + "B"), ruta_config)
-    ejecutar(turno("E:\\otro\\sitio\\del\\todo", transcript, RESPUESTA + "C"), ruta_config)
+    ejecutar(turno("C:\\otro\\sitio\\del\\todo", transcript, RESPUESTA + "C"), ruta_config)
 
     assert len(escritos(informes, "loopward")) == 3
     assert [p.name for p in Path(informes).iterdir()] == ["loopward"]
@@ -223,7 +223,7 @@ def test_el_aviso_solo_aparece_cuando_el_camino_degradado_archiva(
         raiz_informes=informes,
     )
 
-    ejecutar(turno("E:\\nada\\que\\ver", ""), ruta_config)
+    ejecutar(turno("C:\\nada\\que\\ver", ""), ruta_config)
 
     (anotacion,) = reg.leer(log)
     assert anotacion.resultado == reg.OMITIDO_CWD

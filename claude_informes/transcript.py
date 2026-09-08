@@ -13,7 +13,10 @@ def directorio_de_proyectos() -> Path:
 
 
 def slug_de_cwd(cwd: str) -> str:
-    r"""`E:\example-projects\loopward` -> `E--example-projects-loopward`."""
+    r"""El nombre de carpeta que Claude Code da al proyecto: separadores y
+    dos-puntos pasan a guiones. P.ej. ``<disco>:\ruta\proyecto`` ->
+    ``<disco>--ruta-proyecto``.
+    """
     return re.sub(r"[\\/:]", "-", str(cwd))
 
 

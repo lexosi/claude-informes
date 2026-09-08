@@ -13,7 +13,7 @@ from claude_informes import registro as reg
 from test_guardian import archivo, deniega, ejecutar, razon  # noqa: F401
 
 
-def mcp(herramienta, entrada, cwd="E:\\example-projects\\loopward"):
+def mcp(herramienta, entrada, cwd="C:\\example-projects\\loopward"):
     return {
         "session_id": "s",
         "cwd": cwd,
@@ -96,7 +96,7 @@ def test_una_lista_de_rutas_se_revisa_entera(archivo):
     comun, _, ruta_config = archivo
     datos = mcp(
         "mcp__x__delete_files",
-        {"paths": ["E:\\example-projects\\loopward\\README.md", str(comun / "x.json")]},
+        {"paths": ["C:\\example-projects\\loopward\\README.md", str(comun / "x.json")]},
     )
 
     assert deniega(ejecutar(datos, ruta_config)[1])
@@ -133,9 +133,9 @@ def test_una_escritura_mcp_al_log_se_deniega(archivo, log):
 def test_una_escritura_mcp_fuera_del_archivo_se_permite(archivo, log):
     _, _, ruta_config = archivo
     for ruta in [
-        "E:\\example-projects\\loopward\\README.md",
-        "E:\\example-projects\\project-b\\cv.md",
-        "C:\\Users\\iamle\\Documents\\notas.txt",
+        "C:\\example-projects\\loopward\\README.md",
+        "C:\\example-projects\\project-b\\cv.md",
+        "C:\\Users\\user\\Documents\\notas.txt",
     ]:
         codigo, salida = ejecutar(mcp("mcp__x__write_file", {"path": ruta}), ruta_config)
         assert codigo == 0 and salida == "", ruta

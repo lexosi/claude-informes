@@ -66,7 +66,7 @@ def test_lo_que_registra_nuevo_lo_reconoce_el_hook(tmp_path, escribir_config, in
 
 def test_nuevo_conserva_los_proyectos_que_ya_habia(tmp_path, escribir_config, informes):
     ruta_config = escribir_config(
-        [{"nombre": "loopward", "cwd": "E:\\example-projects\\loopward"}],
+        [{"nombre": "loopward", "cwd": "C:\\example-projects\\loopward"}],
         raiz_informes=informes,
     )
     alta.registrar("otro", tmp_path / "p", ruta_config)
@@ -161,14 +161,14 @@ def test_la_omision_lleva_transcript_y_el_nombre_que_tendria(
 
 
 def test_el_nombre_que_tendria_sale_del_arranque_no_del_cwd(tmp_path):
-    transcripcion = "C:\\p\\E--example-projects-claude-informes\\s.jsonl"
-    assert hk.nombre_que_tendria(transcripcion, "E:\\example-projects\\claude-informes") == (
+    transcripcion = "C:\\p\\C--example-projects-claude-informes\\s.jsonl"
+    assert hk.nombre_que_tendria(transcripcion, "C:\\example-projects\\claude-informes") == (
         "claude-informes"
     )
 
 
 def test_sin_arranque_legible_el_nombre_sale_del_slug(tmp_path):
-    transcripcion = "C:\\p\\E--example-projects-loopward\\s.jsonl"
+    transcripcion = "C:\\p\\C--example-projects-loopward\\s.jsonl"
     assert hk.nombre_que_tendria(transcripcion, None) == "loopward"
 
 
