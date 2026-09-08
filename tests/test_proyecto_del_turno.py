@@ -55,7 +55,7 @@ def escritos(informes, proyecto, fecha=None):
 def test_the_directory_slug_maps_to_the_name_declared_in_the_config(
     escribir_config, informes, tmp_path
 ):
-    """`e--proyectos-alfa` -> `alfa`, via the declared cwd."""
+    """`C--proyectos-alfa` -> `alfa`, via the declared cwd."""
     configuracion = cfg.cargar(
         escribir_config(
             [{"nombre": "alfa", "cwd": "C:\\proyectos\\alfa"}],

@@ -57,9 +57,10 @@ SLUG_LLANA = "turno-normal-corriente"
 def lanzar(markdown, raiz_proyecto, ruta_config):
     """The real hook, in another process, with the payload in utf-8 bytes.
 
-    The environment is deliberately cleared of PYTHONUTF8 and PYTHONIOENCODING:
-    if one day someone sets them on their machine, the test has to keep seeing
-    the real case, which is Claude Code launching `python` bare.
+    The environment is deliberately cleared of PYTHONUTF8, PYTHONIOENCODING and
+    PYTHONLEGACYWINDOWSSTDIO: if one day someone sets them on their machine, the
+    test has to keep seeing the real case, which is Claude Code launching
+    `python` bare.
     """
     entorno = dict(os.environ)
     for variable in ("PYTHONUTF8", "PYTHONIOENCODING", "PYTHONLEGACYWINDOWSSTDIO"):
