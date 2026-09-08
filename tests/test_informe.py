@@ -407,7 +407,7 @@ def test_if_the_write_fails_nothing_is_left_on_disk(tmp_path, monkeypatch):
     assert list(dia(tmp_path).iterdir()) == []
 
 
-# --- sweeping orphan .json.tmp (F-1) ---
+# --- sweeping orphan .json.tmp ---
 
 
 def test_a_stale_tmp_is_swept_so_it_does_not_inflate_the_ordinal(tmp_path):
@@ -462,7 +462,7 @@ def test_the_sweep_leaves_its_own_line_in_the_log(tmp_path):
     assert barridos[0].proyecto == "repo"
 
 
-# --- position in the day (C-1) ---
+# --- position in the day ---
 
 
 def test_the_envelope_carries_its_position_in_the_day(tmp_path):

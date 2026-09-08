@@ -3,8 +3,8 @@
 The old code returned a bare ``[]`` for an unreadable file, a session with no
 turn, and a format that drifted --three very different things collapsed into one
 silent value. ``leer()`` separates them (LEIDO / VACIO / DERIVA / ILEGIBLE) so a
-format drift does not look like an empty session, which is the H1 the auditor
-flagged: today the drift returns ``[]`` and the hook stops archiving in silence.
+format drift does not look like an empty session -- otherwise a drift returns
+``[]`` and the hook stops archiving in silence.
 """
 
 import json
@@ -67,7 +67,7 @@ def test_an_unreadable_transcript_is_ilegible(tmp_path):
 
 
 def test_the_three_empty_states_are_distinct(tmp_path):
-    """The whole point of H1: what the old code collapsed into one silent []."""
+    """What the old code collapsed into one silent []: the three empty states."""
     vacio = tr.leer(_escribir(tmp_path, [{"type": "user", "message": {}}]))
     deriva_reg = [{"type": "assistant", "message": {"stopReason": "end_turn", "content": [{"type": "text", "text": "x\ny\nz\n1\n2\n3\n"}]}}]
     otra = tmp_path / "otra.jsonl"

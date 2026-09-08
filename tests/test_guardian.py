@@ -154,7 +154,7 @@ def test_a_normal_write_inside_a_repo_is_allowed(archivo):
     for ruta in [
         "C:\\proyectos\\alfa\\README.md",
         "C:\\proyectos\\alfa\\alfa\\cli.py",
-        "C:\\proyectos\\beta\\cv.md",
+        "C:\\proyectos\\beta\\notes.md",
         "C:\\proyectos\\claude-informes\\claude_informes\\hook.py",
     ]:
         codigo, salida = ejecutar(payload(ruta), ruta_config)

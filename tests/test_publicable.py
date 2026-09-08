@@ -8,7 +8,7 @@ absolute archive root) or a HOME-DIRECTORY path under any username.
 Names vs shapes: what is private, and what is not
 -------------------------------------------------
 Not every occurrence of the author's name is a leak. The public handle --the one
-in the GitHub URL, the CV, the personal site-- is public by construction:
+in the GitHub URL-- is public by construction:
 forbidding it would forbid the author's own public identity. And a substring
 blocklist could not separate it anyway, because the handle is a SUBSTRING of a
 private token (the email prefix) and a SUPERSTRING of another (the local account

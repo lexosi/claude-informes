@@ -64,7 +64,7 @@ def _texto_de(mensaje: dict) -> str:
 
 # The four ways reading a transcript can end. The old code collapsed the last
 # three into a single silent `[]`, so a format change and a legitimately empty
-# session looked identical --the drift the auditor flagged (H1).
+# session looked identical.
 LEIDO = "leido"        # at least one closed turn was extracted
 VACIO = "vacio"        # readable, but no `assistant` line at all: nothing to archive yet
 DERIVA = "deriva"      # readable, `assistant` lines PRESENT but none produced a turn
