@@ -266,15 +266,20 @@ anotado  : 2026-08-28T16:50:38
 estado   : existe en disco, 453 bytes
 ```
 
-Si el log dice que se escribio y el fichero no esta, lo dice y sale con 1:
+**El log es un registro de lo que ocurrio, no un indice de ficheros vivos.** Si
+un informe se renombra o se mueve, la linea `escrito` sigue siendo cierta
+--describe un hecho del pasado-- y `ultimo` lo informa sin alarma: dice que ya
+no esta donde se registro, y distingue si su carpeta sigue ahi (renombrado o
+borrado dentro) o si el archivo entero se movio.
 
 ```
-estado   : NO EXISTE EN DISCO. El log dice que se escribio el 2026-08-28T16:50:38,
-           pero el fichero no esta.
+estado   : ya no esta donde el log lo registro. Su carpeta del dia sigue ahi,
+           asi que se renombro o se borro dentro de ella. El log no miente:
+           describe lo que paso el 2026-08-28T16:50:38.
 ```
 
-Sin `--proyecto`, el ultimo de cualquiera. Codigos: `0` existe, `1` el log
-miente, `2` no hay nada anotado.
+Sin `--proyecto`, el ultimo de cualquiera. Codigos: `0` hay un informe
+registrado (el mensaje dice si sigue o no en su ruta), `2` no hay nada anotado.
 
 ## El guardian: que no se escriban informes a mano
 

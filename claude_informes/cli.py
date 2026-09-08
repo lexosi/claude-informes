@@ -178,14 +178,23 @@ def _ejecutar_ultimo(args) -> int:
     print(f"informe  : {ruta.name}")
     print(f"ruta     : {ruta}")
     print(f"anotado  : {anotacion.marca}")
-    if not ruta.is_file():
+    # El log registra un HECHO PASADO --que ese dia se escribio esto ahi--, no
+    # un indice de ficheros vivos. Que el fichero siga o no en esa ruta es
+    # informacion, no una alarma: renombrarlo o mover el archivo no convierte
+    # la linea en mentira. Por eso todo esto sale por stdout y el codigo es 0.
+    if ruta.is_file():
+        print(f"estado   : sigue en disco, {ruta.stat().st_size} bytes")
+    elif ruta.parent.is_dir():
         print(
-            f"estado   : NO EXISTE EN DISCO. El log dice que se escribio el "
-            f"{anotacion.marca}, pero el fichero no esta.",
-            file=sys.stderr,
+            "estado   : ya no esta donde el log lo registro. Su carpeta del dia "
+            "sigue ahi, asi que se renombro o se borro dentro de ella."
         )
-        return 1
-    print(f"estado   : existe en disco, {ruta.stat().st_size} bytes")
+    else:
+        print(
+            f"estado   : ya no esta donde el log lo registro, y su carpeta "
+            f"({ruta.parent}) tampoco existe: el archivo entero se movio o se "
+            f"relocalizo. El log conserva donde estaba el {anotacion.marca}."
+        )
     return 0
 
 

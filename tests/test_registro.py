@@ -280,20 +280,49 @@ def test_ultimo_da_el_fichero_real_verificado_en_disco(
     assert codigo == 0
     assert escrito.name in salida
     assert str(escrito) in salida
-    assert "existe en disco" in salida
+    assert "sigue en disco" in salida
 
 
-def test_ultimo_avisa_si_el_log_miente(escribir_config, informes, tmp_path, capsys):
-    """El caso que ya paso una vez: se anuncio un fichero que no existia."""
+def test_ultimo_informa_si_el_fichero_ya_no_esta_sin_alarmar(
+    escribir_config, informes, tmp_path, capsys
+):
+    """El log registra un hecho pasado, no un indice de ficheros vivos.
+
+    Borrar o mover un informe no convierte su linea `escrito` en mentira: sigue
+    describiendo lo que paso ese dia. `ultimo` lo reporta como informacion (sale
+    0, por stdout), no como alarma (antes: exit 1, stderr, 'NO EXISTE EN DISCO').
+    """
     raiz, ruta_config = escribir_config_con_proyecto(escribir_config, informes, tmp_path)
     ejecutar(payload(cwd=str(raiz)), ruta_config)
-    next(Path(informes).rglob("*.json")).unlink()
+    next(Path(informes).rglob("*.json")).unlink()  # su carpeta del dia sigue ahi
 
     codigo = cli.main(["ultimo", "--config", str(ruta_config)])
 
     capturado = capsys.readouterr()
-    assert codigo == 1
-    assert "NO EXISTE EN DISCO" in capturado.err
+    assert codigo == 0, "la ausencia del fichero es informacion, no error"
+    assert capturado.err == "", "no es una alarma: nada por stderr"
+    assert "ya no esta donde el log lo registro" in capturado.out
+    assert "renombro o se borro dentro" in capturado.out, "distingue: su carpeta sigue"
+    assert "miente" not in capturado.out
+
+
+def test_ultimo_distingue_cuando_la_carpeta_entera_desaparece(
+    escribir_config, informes, tmp_path, capsys
+):
+    """La otra rama: no solo falta el fichero, falta su carpeta del dia."""
+    raiz, ruta_config = escribir_config_con_proyecto(escribir_config, informes, tmp_path)
+    ejecutar(payload(cwd=str(raiz)), ruta_config)
+    escrito = next(Path(informes).rglob("*.json"))
+    import shutil
+
+    shutil.rmtree(escrito.parent)  # se lleva la carpeta del dia entera
+
+    codigo = cli.main(["ultimo", "--config", str(ruta_config)])
+    salida = capsys.readouterr().out
+
+    assert codigo == 0
+    assert "tampoco existe" in salida
+    assert "se movio o se relocalizo" in salida
 
 
 def test_ultimo_coge_el_mas_reciente_de_ese_proyecto(
