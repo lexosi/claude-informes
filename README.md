@@ -13,6 +13,39 @@ the model.
 Why: the `.md` files arrive empty to the recipient, and duplicating the response
 by hand costs tokens.
 
+**For whom.** You run Claude Code and someone else reads the result: the
+recipient gets the `.md` export and it comes out empty. This is what fills it.
+
+**It invents nothing.** Claude Code already stores the full transcript of every
+session — this tool reads those very files. What is different is the execution,
+not the idea: one JSON per turn, live, at no token cost, only for the projects
+you watch, ready to hand to whoever receives the result.
+
+## What a report looks like
+
+One turn, one file (trimmed here; the full shape is in [The envelope](#the-envelope)):
+
+```json
+{
+  "version_esquema": 1,
+  "instante": "2026-08-28T13:35:17+02:00",
+  "proyecto": "alfa",
+  "ordinal": 8,
+  "respuesta_markdown": "...the FULL text of the turn, byte for byte...",
+  "secciones": ["..."],
+  "bloques_codigo": ["..."],
+  "casillas": ["..."]
+}
+```
+
+## Quickstart
+
+```sh
+python -m claude_informes init                # create your config (once)
+python -m claude_informes nuevo mi-proyecto   # register a project, open the CLI there
+# then wire the Stop hook once (see INSTALACION.md); from then on that project's turns are archived automatically
+```
+
 ## Starting a new project
 
 **Order matters.** The project is derived from where the session **starts**, not
