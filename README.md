@@ -1,5 +1,9 @@
 # claude-informes
 
+> ⛔ **NO PUBLICAR todavia.** El historial de git contiene datos reales del
+> autor; la punta esta limpia pero el pasado no. Antes de hacer publico este
+> repo, leer y resolver [NO-PUBLICAR.md](NO-PUBLICAR.md).
+
 Captura la respuesta de cada turno de Claude Code y la guarda como JSON. Cero
 coste de tokens: lo escribe un hook `Stop`, que es un proceso externo, no una
 llamada al modelo.
