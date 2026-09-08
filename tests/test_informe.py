@@ -9,6 +9,7 @@ from pathlib import Path
 
 import pytest
 
+from claude_informes import journal as reg
 from claude_informes import report as inf
 
 RAIZ = Path(__file__).resolve().parent.parent
@@ -404,3 +405,58 @@ def test_if_the_write_fails_nothing_is_left_on_disk(tmp_path, monkeypatch):
     assert fallo.value.ruta.name == f"01-{SLUG}.json"
     assert isinstance(fallo.value.causa, UnicodeEncodeError)
     assert list(dia(tmp_path).iterdir()) == []
+
+
+# --- sweeping orphan .json.tmp (F-1) ---
+
+
+def test_a_stale_tmp_is_swept_so_it_does_not_inflate_the_ordinal(tmp_path):
+    """A hard kill leaves a `.json.tmp` that nothing removes; it counts toward the
+    ordinal forever. A .tmp old enough that no live writer could hold it is swept
+    before the ordinal is computed.
+    """
+    dest_dia = dia(tmp_path)
+    dest_dia.mkdir(parents=True)
+    huerfano = dest_dia / "05-viejo.json.tmp"
+    huerfano.write_text("basura", encoding="utf-8")
+    os.utime(huerfano, (0, 0))  # 1970: unmistakably orphaned
+
+    destino = inf.escribir(tmp_path, "repo", sobre(cuando="2026-08-28T10:00:00"))
+
+    assert destino.name.startswith("01-"), "a stale .tmp must not inflate the ordinal"
+    assert not huerfano.exists(), "the stale .tmp must be swept"
+
+
+def test_a_fresh_tmp_is_kept_a_live_writer_is_not_killed(tmp_path):
+    """The safety guard: a RECENT .tmp may be a live writer mid-write. Sweeping it
+    would be worse than the orphan, so it is kept AND still reserves its ordinal.
+    """
+    dest_dia = dia(tmp_path)
+    dest_dia.mkdir(parents=True)
+    vivo = dest_dia / "05-vivo.json.tmp"
+    vivo.write_text("en curso", encoding="utf-8")  # fresh mtime = now
+
+    destino = inf.escribir(tmp_path, "repo", sobre(cuando="2026-08-28T10:00:00"))
+
+    assert vivo.exists(), "a fresh .tmp may be a live writer: it must never be swept"
+    assert destino.name.startswith("06-"), "the live lock keeps its ordinal reserved"
+
+
+def test_the_sweep_leaves_its_own_line_in_the_log(tmp_path):
+    """Sweeping a file in silence is the silent failure this project exists to
+    kill --even when the file is garbage. If something is ever swept that should
+    not have been, there must be a trace.
+    """
+    dest_dia = dia(tmp_path)
+    dest_dia.mkdir(parents=True)
+    huerfano = dest_dia / "05-viejo.json.tmp"
+    huerfano.write_text("basura", encoding="utf-8")
+    os.utime(huerfano, (0, 0))
+    log = tmp_path / "hook.log"
+
+    inf.escribir(tmp_path, "repo", sobre(cuando="2026-08-28T10:00:00"), ruta_log=log)
+
+    barridos = [a for a in reg.leer(log) if a.resultado == reg.TMP_BARRIDO]
+    assert barridos, "the sweep must leave a line in the log"
+    assert "05-viejo.json.tmp" in barridos[0].detalle
+    assert barridos[0].proyecto == "repo"

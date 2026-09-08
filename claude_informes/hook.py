@@ -198,7 +198,9 @@ def procesar(payload: dict, configuracion: cfg.Configuracion) -> Resultado:
         proyecto=proyecto.nombre,
     )
     try:
-        destino = inf.escribir(proyecto.raiz_informes, proyecto.nombre, sobre)
+        destino = inf.escribir(
+            proyecto.raiz_informes, proyecto.nombre, sobre, ruta_log=configuracion.ruta_log
+        )
     except inf.FalloDeEscritura as fallo:
         # The only ERROR that knows whose turn it was. Without a project, a path
         # and a session, the log line cannot be checked against anything and the

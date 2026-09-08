@@ -6,13 +6,25 @@ import json
 import os
 import re
 import subprocess
+import time
 from datetime import datetime
 from pathlib import Path
 
 from . import __version__
+from . import journal as reg
 from . import markdown as md
 
 _PATRON_ORDINAL = re.compile(r"^(\d{2,})-")
+
+# A `.json.tmp` younger than this may belong to a LIVE writer, mid-write. An
+# atomic write here is create -> write a few KB -> os.replace, sub-second in
+# practice, so a `.tmp` older than this is unmistakably an orphan left by a
+# killed process. DO NOT lower it to a handful of seconds: the window exists so
+# the sweep never deletes a write in progress (two sessions can archive into the
+# same day folder at once, and killing a live .tmp would be worse than the orphan
+# it removes). Its only cost is that a fresh orphan lingers until it ages past
+# this and the next turn to that folder sweeps it -- never "forever".
+_SEGUNDOS_TMP_VIVO = 300
 
 
 def _git(cwd: str, *argumentos: str) -> str | None:
@@ -238,7 +250,38 @@ class FalloDeEscritura(Exception):
         self.causa = causa
 
 
-def escribir(raiz_informes: Path, proyecto: str, sobre: dict) -> Path:
+def _barrer_tmp_huerfanos(directorio: Path) -> list[str]:
+    """Remove `.json.tmp` files old enough that no live writer could hold them.
+
+    Returns the names removed, for the log. Best-effort and never raises: a file
+    that vanished between the listing and the unlink, or one still locked, is
+    left alone. The age window (see `_SEGUNDOS_TMP_VIVO`) is the whole point --a
+    recent `.tmp` may be a write in progress, and killing it would be worse than
+    the orphan it is meant to remove.
+    """
+    barridos: list[str] = []
+    ahora = time.time()
+    try:
+        candidatos = list(directorio.glob("*.json.tmp"))
+    except Exception:  # noqa: BLE001 - hygiene never raises
+        return barridos
+    for tmp in candidatos:
+        try:
+            if ahora - tmp.stat().st_mtime < _SEGUNDOS_TMP_VIVO:
+                continue
+            tmp.unlink()
+            barridos.append(tmp.name)
+        except Exception:  # noqa: BLE001 - a vanished or locked file is left alone
+            continue
+    return barridos
+
+
+def escribir(
+    raiz_informes: Path,
+    proyecto: str,
+    sobre: dict,
+    ruta_log: str | os.PathLike[str] | None = None,
+) -> Path:
     """Create `<root>/<project>/<date>/` if missing and write the envelope.
 
     Order: the `.tmp` is reserved, it is written whole, and only then does the
@@ -252,12 +295,23 @@ def escribir(raiz_informes: Path, proyecto: str, sobre: dict) -> Path:
     eliminates--. `destino` holds the best name known at each moment (the day
     folder until the `.tmp` is reserved), so the path identifies the turn even if
     the failure happens before the file is chosen.
+
+    Before reserving, stale `.tmp` orphans in the day folder are swept (a hard
+    kill leaves one and it inflates the ordinal forever). The sweep is logged
+    with its own label and is strictly hygiene: it can NEVER bring down the
+    report, which is what matters.
     """
     directorio = carpeta_del_dia(Path(raiz_informes), proyecto, sobre["fecha"])
     destino: Path = directorio
     temporal: Path | None = None
     try:
         directorio.mkdir(parents=True, exist_ok=True)
+        try:
+            for nombre in _barrer_tmp_huerfanos(directorio):
+                if ruta_log is not None:
+                    reg.anotar(ruta_log, reg.TMP_BARRIDO, proyecto, f"barrido huerfano: {nombre}")
+        except Exception:  # noqa: BLE001 - hygiene must not tumble the write
+            pass
         temporal = _reservar(directorio, md.nombre_desde_markdown(sobre["respuesta_markdown"]))
         destino = temporal.with_name(temporal.name[: -len(".tmp")])
         texto = json.dumps(sobre, ensure_ascii=False, indent=2) + "\n"

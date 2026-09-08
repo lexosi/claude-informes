@@ -114,7 +114,7 @@ def reconstruir(
                 }
             )
             continue
-        destino = inf.escribir(raiz, proyecto, sobre)
+        destino = inf.escribir(raiz, proyecto, sobre, ruta_log=ruta_log)
         if ruta_log is not None:
             try:
                 reg.anotar(ruta_log, reg.ESCRITO, proyecto, str(destino))

@@ -67,6 +67,14 @@ def registrar(
     carpeta.mkdir(parents=True, exist_ok=True)
     crudo["proyectos"].append(nueva)
     destino.parent.mkdir(parents=True, exist_ok=True)
+    # KNOWN ISSUE (recorded, not fixed here): this write is NOT atomic --no
+    # `.tmp` + os.replace like report.escribir-- so a hard kill between open and
+    # close can leave a TRUNCATED proyectos.json. This is the real user config,
+    # not a throwaway artifact; it is the same class of failure as the report
+    # writer's orphan `.tmp`, one folder up. Repro: SIGKILL the process during
+    # this write_text -> a partial/invalid JSON config. `cli._ejecutar_init`
+    # shares the pattern. Rare (a manual command), so it is written down for a
+    # later pass rather than fixed now; the fix is the same reserve-and-replace.
     destino.write_text(
         json.dumps(crudo, indent=2, ensure_ascii=False) + "\n",
         encoding="utf-8",
