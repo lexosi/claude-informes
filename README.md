@@ -90,7 +90,9 @@ the global one.
    `tabla-veredicto-final`.
 3. If it is still poor, or there are no headings, the first significant words of
    the body.
-4. Capped at 60 characters, always cutting at a hyphen.
+4. Capped at 60 characters. It cuts at a word boundary (a hyphen) when there is
+   one within the limit; a single word longer than the limit is cut hard,
+   because the result is a filename.
 
 Significant = discarding articles, prepositions and common connectors in Spanish
 and English, and lone numbers.

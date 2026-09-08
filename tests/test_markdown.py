@@ -168,6 +168,19 @@ def test_una_sola_palabra_larguisima_se_corta_igual():
     assert len(slug) <= md.TOPE
 
 
+def test_recortar_una_palabra_mas_larga_que_el_tope_corta_duro():
+    """Caso degenerado, fijado: una sola palabra sin guion mas larga que el tope
+    no cabe en ninguna frontera de palabra. Como el resultado es un NOMBRE DE
+    FICHERO, el tope es DURO: se corta duro y el resultado NUNCA excede el tope,
+    aunque eso parta la palabra. Un cap blando que devolviera la palabra entera
+    (mas de TOPE) fallaria aqui.
+    """
+    resultado = md.recortar("x" * 300)
+
+    assert len(resultado) <= md.TOPE, "el tope es duro: nunca se excede"
+    assert len(resultado) == md.TOPE, "una palabra de 300 se corta justo al tope"
+
+
 # --- slug llano, para nombres propios ---
 
 

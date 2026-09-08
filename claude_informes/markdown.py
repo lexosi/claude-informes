@@ -164,10 +164,18 @@ def palabras_significativas(texto: str) -> list[str]:
 
 
 def recortar(slug: str, maximo: int = TOPE) -> str:
-    """Cut at a hyphen, never in the middle of a word."""
+    """Cuts at a word boundary when there is one within the limit; a single word
+    longer than the limit is cut hard, because the result is a filename.
+
+    The length limit is HARD: the result never exceeds `maximo`. A 300-character
+    single word would give a 300-character name, which can be invalid on some
+    systems, so it is cut even though that splits the word.
+    """
     if len(slug) <= maximo:
         return slug
     cortado = slug[:maximo].rsplit("-", 1)[0].strip("-")
+    # `cortado` is empty when there is no hyphen within the limit (a single word
+    # longer than `maximo`): then the hard cut wins, to keep the name bounded.
     return cortado or slug[:maximo].strip("-")
 
 
