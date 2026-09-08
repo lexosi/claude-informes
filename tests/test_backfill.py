@@ -428,7 +428,7 @@ def test_la_orden_escribe_en_la_raiz_indicada(transcripcion, tmp_path, capsys):
     )
     assert codigo == 0
     assert nombres(raiz) == [SLUG_A, SLUG_B, SLUG_C]
-    assert "3 informe(s) escrito(s)" in capsys.readouterr().out
+    assert "3 report(s) written" in capsys.readouterr().out
 
 
 def test_la_orden_respeta_la_lista_blanca(transcripcion, tmp_path, capsys):
@@ -442,7 +442,7 @@ def test_la_orden_respeta_la_lista_blanca(transcripcion, tmp_path, capsys):
         ]
     )
     assert codigo == 3
-    assert "no esta en la lista" in capsys.readouterr().err
+    assert "is not in the list" in capsys.readouterr().err
     assert list(tmp_path.glob("**/*.json")) == []
 
 
@@ -475,4 +475,4 @@ def test_la_orden_usa_la_raiz_y_el_nombre_de_la_config(
 def test_la_orden_avisa_si_no_hay_transcript(tmp_path, capsys):
     codigo = cli.main(["backfill", "--transcript", str(tmp_path / "no.jsonl")])
     assert codigo == 2
-    assert "No se ha encontrado" in capsys.readouterr().err
+    assert "Transcript not found" in capsys.readouterr().err

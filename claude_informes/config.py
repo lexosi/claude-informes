@@ -130,13 +130,13 @@ def ruta_de_config() -> Path | None:
 def mensaje_sin_config() -> str:
     """What to tell whoever starts without a config. Never a traceback."""
     return (
-        "No hay configuracion de claude-informes.\n"
-        f"El fichero de usuario deberia estar en:\n    {ruta_config_usuario()}\n\n"
-        "Crealo a partir del ejemplo con:\n"
+        "There is no claude-informes configuration.\n"
+        f"The user file should be at:\n    {ruta_config_usuario()}\n\n"
+        "Create it from the example with:\n"
         "    python -m claude_informes init\n\n"
-        "O indica uno propio con la variable de entorno "
-        f"{VAR_ENTORNO}, o con --config.\n"
-        f"El ejemplo versionado esta en: {ruta_de_ejemplo()}"
+        "Or point to your own with the environment variable "
+        f"{VAR_ENTORNO}, or with --config.\n"
+        f"The versioned example is at: {ruta_de_ejemplo()}"
     )
 
 

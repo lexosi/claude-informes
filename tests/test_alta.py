@@ -121,7 +121,7 @@ def test_la_orden_nuevo_dice_donde_abrir_el_cli(tmp_path, escribir_config, capsy
     salida = capsys.readouterr().out
 
     assert codigo == 0
-    assert "Ya puedes abrir el CLI ahi" in salida
+    assert "You can now open the CLI there" in salida
     assert str(tmp_path / "p" / "un-proyecto") in salida
 
 
@@ -192,7 +192,7 @@ def test_pendientes_cuenta_los_turnos_no_archivados(
     salida = capsys.readouterr().out
 
     assert codigo == 1
-    assert "3 turno(s) sin archivar" in salida
+    assert "3 turn(s) unarchived" in salida
     assert "claude-informes" in salida
     assert str(transcripcion) in salida
     assert "nuevo claude-informes" in salida, "dice como registrarlo"
@@ -204,7 +204,7 @@ def test_pendientes_no_dice_nada_si_no_hay_nada(escribir_config, informes, capsy
     codigo = cli.main(["pendientes", "--config", str(ruta_config)])
 
     assert codigo == 0
-    assert "No hay turnos sin archivar" in capsys.readouterr().out
+    assert "No unarchived turns" in capsys.readouterr().out
 
 
 def test_pendientes_ignora_las_demas_omisiones(
@@ -214,4 +214,4 @@ def test_pendientes_ignora_las_demas_omisiones(
     ejecutar(turno(raiz, transcript_de(raiz)) | {"last_assistant_message": "corta\n1"}, ruta_config)
 
     cli.main(["pendientes", "--config", str(ruta_config)])
-    assert "No hay turnos sin archivar" in capsys.readouterr().out
+    assert "No unarchived turns" in capsys.readouterr().out

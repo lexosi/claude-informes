@@ -82,16 +82,16 @@ def _resolver_transcript(args) -> Path | None:
 
 def _ejecutar_backfill(args) -> int:
     if not (args.transcript or args.session or args.cwd):
-        print("Indica --transcript, --session o --cwd.", file=sys.stderr)
+        print("Specify --transcript, --session or --cwd.", file=sys.stderr)
         return 2
     ruta = _resolver_transcript(args)
     if ruta is None:
-        print("No se ha encontrado el transcript.", file=sys.stderr)
+        print("Transcript not found.", file=sys.stderr)
         return 2
 
     turnos = tr.turnos(ruta)
     if not turnos:
-        print(f"{ruta}: sin turnos cerrados.", file=sys.stderr)
+        print(f"{ruta}: no closed turns.", file=sys.stderr)
         return 1
 
     cwd_transcript = args.cwd or turnos[-1].get("cwd") or ""
@@ -101,8 +101,8 @@ def _ejecutar_backfill(args) -> int:
 
     if proyecto is None and not args.salida:
         print(
-            f"{cwd_transcript!r} no esta en la lista de proyectos. "
-            "Usa --salida para escribir en otro sitio.",
+            f"{cwd_transcript!r} is not in the list of projects. "
+            "Use --salida to write elsewhere.",
             file=sys.stderr,
         )
         return 3
@@ -114,13 +114,13 @@ def _ejecutar_backfill(args) -> int:
         proyecto.nombre if proyecto else md.slug_llano(Path(cwd_transcript).name)
     )
     if not nombre:
-        print("No se ha podido deducir el nombre del proyecto. Usa --proyecto.", file=sys.stderr)
+        print("Could not deduce the project name. Use --proyecto.", file=sys.stderr)
         return 4
     if umbral is None:
         umbral = proyecto.umbral_lineas if proyecto else cfg.UMBRAL_POR_DEFECTO
 
     print(f"transcript: {ruta}")
-    print(f"salida    : {raiz / nombre}")
+    print(f"output    : {raiz / nombre}")
     resultados = bf.reconstruir(
         ruta,
         raiz,
@@ -136,12 +136,12 @@ def _ejecutar_backfill(args) -> int:
             escritos += 1
             print(f"  + {Path(entrada['ruta']).name}")
         elif entrada["motivo"] == "simulacion":
-            print(f"  ~ {Path(entrada['ruta']).name} (simulacion)")
+            print(f"  ~ {Path(entrada['ruta']).name} (simulation)")
         elif entrada["motivo"] == "ya archivado":
-            print(f"  = ya archivado: {Path(entrada['ruta']).name}")
+            print(f"  = already archived: {Path(entrada['ruta']).name}")
         else:
-            print(f"  - omitido: {entrada['motivo']}")
-    print(f"{escritos} informe(s) escrito(s) de {len(resultados)} turno(s).")
+            print(f"  - skipped: {entrada['motivo']}")
+    print(f"{escritos} report(s) written of {len(resultados)} turn(s).")
     return 0
 
 
@@ -149,18 +149,18 @@ def _ejecutar_init(args) -> int:
     """Create the user config by copying the example. Idempotent: does not overwrite."""
     destino = Path(args.config) if args.config else cfg.ruta_config_usuario()
     if destino.exists():
-        print(f"Ya existe una config de usuario: {destino}")
-        print("No se ha tocado. Editala a mano si quieres cambiarla.")
+        print(f"A user config already exists: {destino}")
+        print("It was not touched. Edit it by hand if you want to change it.")
         return 0
     try:
         contenido = cfg.ruta_de_ejemplo().read_text(encoding="utf-8")
     except FileNotFoundError:
-        print(f"No se encuentra el ejemplo: {cfg.ruta_de_ejemplo()}", file=sys.stderr)
+        print(f"Example not found: {cfg.ruta_de_ejemplo()}", file=sys.stderr)
         return 2
     destino.parent.mkdir(parents=True, exist_ok=True)
     destino.write_text(contenido, encoding="utf-8", newline="\n")
-    print(f"Config de usuario creada: {destino}")
-    print("Editala y pon las rutas reales de tus proyectos y de la raiz de informes.")
+    print(f"User config created: {destino}")
+    print("Edit it and put in the real paths of your projects and of the report root.")
     return 0
 
 
@@ -172,36 +172,36 @@ def _ejecutar_ultimo(args) -> int:
     configuracion = cfg.cargar(args.config)
     anotaciones = reg.leer(configuracion.ruta_log)
     if not anotaciones:
-        print(f"El log esta vacio o no existe: {configuracion.ruta_log}", file=sys.stderr)
+        print(f"The log is empty or does not exist: {configuracion.ruta_log}", file=sys.stderr)
         return 2
 
     anotacion = reg.ultimo_escrito(anotaciones, args.proyecto)
     if anotacion is None:
-        de_quien = f" de {args.proyecto}" if args.proyecto else ""
-        print(f"El log no registra ningun informe escrito{de_quien}.", file=sys.stderr)
+        de_quien = f" for {args.proyecto}" if args.proyecto else ""
+        print(f"The log records no written report{de_quien}.", file=sys.stderr)
         return 2
 
     ruta = anotacion.ruta
-    print(f"proyecto : {anotacion.proyecto}")
-    print(f"informe  : {ruta.name}")
-    print(f"ruta     : {ruta}")
-    print(f"anotado  : {anotacion.marca}")
+    print(f"project  : {anotacion.proyecto}")
+    print(f"report   : {ruta.name}")
+    print(f"path     : {ruta}")
+    print(f"recorded : {anotacion.marca}")
     # The log records a PAST FACT --that this was written there that day--, not an
     # index of live files. Whether the file is still at that path is information,
     # not an alarm: renaming it or moving the archive does not make the line a
     # lie. That is why all this goes to stdout and the code is 0.
     if ruta.is_file():
-        print(f"estado   : sigue en disco, {ruta.stat().st_size} bytes")
+        print(f"status   : still on disk, {ruta.stat().st_size} bytes")
     elif ruta.parent.is_dir():
         print(
-            "estado   : ya no esta donde el log lo registro. Su carpeta del dia "
-            "sigue ahi, asi que se renombro o se borro dentro de ella."
+            "status   : no longer where the log recorded it. Its day folder is "
+            "still there, so it was renamed or deleted within it."
         )
     else:
         print(
-            f"estado   : ya no esta donde el log lo registro, y su carpeta "
-            f"({ruta.parent}) tampoco existe: el archivo entero se movio o se "
-            f"relocalizo. El log conserva donde estaba el {anotacion.marca}."
+            f"status   : no longer where the log recorded it, and its folder "
+            f"({ruta.parent}) does not exist either: the whole archive was moved "
+            f"or relocated. The log keeps where it was on {anotacion.marca}."
         )
     return 0
 
@@ -221,15 +221,15 @@ def _ejecutar_nuevo(args) -> int:
             raiz_informes=args.raiz_informes,
         )
     except alta.YaExiste as choque:
-        print(f"No se ha registrado: {choque}", file=sys.stderr)
+        print(f"Not registered: {choque}", file=sys.stderr)
         return 3
     except Exception as error:  # noqa: BLE001
-        print(f"No se ha podido registrar: {error}", file=sys.stderr)
+        print(f"Could not register: {error}", file=sys.stderr)
         return 4
 
-    print(f"carpeta   : {carpeta}")
-    print(f"registrado: {destino}")
-    print(f"Ya puedes abrir el CLI ahi:  cd {carpeta}")
+    print(f"folder    : {carpeta}")
+    print(f"registered: {destino}")
+    print(f"You can now open the CLI there:  cd {carpeta}")
     return 0
 
 
@@ -243,7 +243,7 @@ def _ejecutar_pendientes(args) -> int:
         a for a in reg.leer(configuracion.ruta_log) if a.resultado == reg.OMITIDO_SESION
     ]
     if not anotaciones:
-        print("No hay turnos sin archivar por proyecto no registrado.")
+        print("No unarchived turns from an unregistered project.")
         return 0
 
     por_proyecto: dict[tuple[str, str], int] = {}
@@ -257,11 +257,11 @@ def _ejecutar_pendientes(args) -> int:
         por_proyecto[clave] = por_proyecto.get(clave, 0) + 1
 
     for (nombre, transcripcion), cuantos in sorted(por_proyecto.items()):
-        print(f"{cuantos} turno(s) sin archivar de un proyecto no registrado: {nombre}")
+        print(f"{cuantos} turn(s) unarchived from an unregistered project: {nombre}")
         print(f"   transcript: {transcripcion}")
-        print(f"   registrar : python -m claude_informes nuevo {nombre}")
+        print(f"   register  : python -m claude_informes nuevo {nombre}")
         print(
-            f"   recuperar : python -m claude_informes backfill "
+            f"   recover   : python -m claude_informes backfill "
             f'--transcript "{transcripcion}" --proyecto {nombre} '
             f'--salida "{configuracion.raiz_informes}"'
         )

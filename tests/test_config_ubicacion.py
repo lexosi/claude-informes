@@ -127,4 +127,4 @@ def test_init_no_pisa_una_config_existente(tmp_path, monkeypatch, capsys):
 
     assert codigo == 0
     assert destino.read_text(encoding="utf-8") == antes, "no pisa lo que ya hay"
-    assert "Ya existe" in capsys.readouterr().out
+    assert "already exists" in capsys.readouterr().out

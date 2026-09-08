@@ -280,7 +280,7 @@ def test_ultimo_da_el_fichero_real_verificado_en_disco(
     assert codigo == 0
     assert escrito.name in salida
     assert str(escrito) in salida
-    assert "sigue en disco" in salida
+    assert "still on disk" in salida
 
 
 def test_ultimo_informa_si_el_fichero_ya_no_esta_sin_alarmar(
@@ -301,8 +301,8 @@ def test_ultimo_informa_si_el_fichero_ya_no_esta_sin_alarmar(
     capturado = capsys.readouterr()
     assert codigo == 0, "la ausencia del fichero es informacion, no error"
     assert capturado.err == "", "no es una alarma: nada por stderr"
-    assert "ya no esta donde el log lo registro" in capturado.out
-    assert "renombro o se borro dentro" in capturado.out, "distingue: su carpeta sigue"
+    assert "no longer where the log recorded it" in capturado.out
+    assert "renamed or deleted within" in capturado.out, "distingue: su carpeta sigue"
     assert "miente" not in capturado.out
 
 
@@ -321,8 +321,8 @@ def test_ultimo_distingue_cuando_la_carpeta_entera_desaparece(
     salida = capsys.readouterr().out
 
     assert codigo == 0
-    assert "tampoco existe" in salida
-    assert "se movio o se relocalizo" in salida
+    assert "does not exist either" in salida
+    assert "was moved or relocated" in salida
 
 
 def test_ultimo_coge_el_mas_reciente_de_ese_proyecto(
@@ -343,7 +343,7 @@ def test_ultimo_coge_el_mas_reciente_de_ese_proyecto(
     cli.main(["ultimo", "--proyecto", "uno", "--config", str(ruta_config)])
     salida = capsys.readouterr().out
 
-    assert "proyecto : uno" in salida
+    assert "project  : uno" in salida
     assert "02-" in salida, "el segundo de 'uno', no el de 'dos'"
 
 
@@ -364,7 +364,7 @@ def test_ultimo_sin_log_lo_dice(escribir_config, tmp_path, capsys):
     codigo = cli.main(["ultimo", "--config", str(ruta_config)])
 
     assert codigo == 2
-    assert "vacio o no existe" in capsys.readouterr().err
+    assert "empty or does not exist" in capsys.readouterr().err
 
 
 def test_ultimo_sin_informes_de_ese_proyecto_lo_dice(

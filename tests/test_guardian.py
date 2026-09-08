@@ -93,7 +93,7 @@ def test_una_escritura_al_fichero_de_log_se_deniega(archivo, log):
     codigo, salida = ejecutar(payload(log), ruta_config)
 
     assert deniega(salida)
-    assert "log del hook" in razon(salida)
+    assert "hook's log" in razon(salida)
 
 
 def test_una_ruta_relativa_con_dos_puntos_se_resuelve_y_se_deniega(archivo, tmp_path):
@@ -140,8 +140,8 @@ def test_el_mensaje_dice_por_que_y_que_hacer(archivo):
     comun, _, ruta_config = archivo
     motivo = razon(ejecutar(payload(comun / "alfa" / "x.json"), ruta_config)[1])
 
-    assert "archivo de informes" in motivo
-    assert "hook Stop" in motivo
+    assert "report archive" in motivo
+    assert "Stop hook" in motivo
     assert "ultimo" in motivo, "tiene que decir que hacer en su lugar"
     assert "--proyecto alfa" in motivo
 

@@ -25,9 +25,9 @@ machine you will see yours):
 
 ```sh
 python -m claude_informes nuevo mi-proyecto
-# carpeta   : /ruta/a/proyectos/mi-proyecto
-# registrado: <tu config de usuario>/proyectos.json
-# Ya puedes abrir el CLI ahi:  cd /ruta/a/proyectos/mi-proyecto
+# folder    : /ruta/a/proyectos/mi-proyecto
+# registered: <tu config de usuario>/proyectos.json
+# You can now open the CLI there:  cd /ruta/a/proyectos/mi-proyecto
 ```
 
 > **If you open the CLI in the parent directory, that session is NOT archived.**
@@ -159,7 +159,7 @@ configuration location of each operating system:
 
 ```sh
 python -m claude_informes init
-# Config de usuario creada: <ubicacion estandar del SO>/proyectos.json
+# User config created: <ubicacion estandar del SO>/proyectos.json
 ```
 
 `init` copies the example to the user location and does not overwrite one that
@@ -275,11 +275,11 @@ python -m claude_informes ultimo --proyecto alfa
 ```
 
 ```
-proyecto : alfa
-informe  : 08-prueba-humo-hook.json
-ruta     : <raiz_informes>/alfa/2026-08-28/08-prueba-humo-hook.json
-anotado  : 2026-08-28T16:50:38
-estado   : existe en disco, 453 bytes
+project  : alfa
+report   : 08-prueba-humo-hook.json
+path     : <raiz_informes>/alfa/2026-08-28/08-prueba-humo-hook.json
+recorded : 2026-08-28T16:50:38
+status   : still on disk, 453 bytes
 ```
 
 **The log is a record of what happened, not an index of live files.** If a report
@@ -289,9 +289,8 @@ recorded, and distinguishes whether its folder is still there (renamed or delete
 within) or whether the whole archive was moved.
 
 ```
-estado   : ya no esta donde el log lo registro. Su carpeta del dia sigue ahi,
-           asi que se renombro o se borro dentro de ella. El log no miente:
-           describe lo que paso el 2026-08-28T16:50:38.
+status   : no longer where the log recorded it. Its day folder is still there,
+           so it was renamed or deleted within it.
 ```
 
 Without `--proyecto`, the last of any of them. Exit codes: `0` there is a
@@ -325,13 +324,13 @@ breaks other people's sessions through a fault of its own.
 The message says why and what to do instead:
 
 ```
-claude-informes: <raiz_informes>/alfa/2026-08-28/99-x.json esta dentro
-del archivo de informes (archivo: <raiz_informes>).
-Los informes los escribe el hook Stop al terminar el turno; no se escriben ni
-se editan a mano.
-Para saber cual fue el ultimo y comprobar que existe de verdad:
-    cd <ruta a claude-informes>
-    .venv/Scripts/python -m claude_informes ultimo --proyecto alfa
+claude-informes: <raiz_informes>/alfa/2026-08-28/99-x.json is inside
+the report archive (archive: <raiz_informes>).
+The reports are written by the Stop hook at the end of the turn; they are not
+written or edited by hand.
+To find out which was the last one and check that it really exists:
+    cd <path to claude-informes>
+    .venv\Scripts\python -m claude_informes ultimo --proyecto alfa
 ```
 
 ### MCP servers
@@ -389,10 +388,10 @@ records an extra line, `proyecto-por-cwd`, so the degraded path is visible.
 
 ```sh
 python -m claude_informes pendientes
-# 9 turno(s) sin archivar de un proyecto no registrado: claude-informes
+# 9 turn(s) unarchived from an unregistered project: claude-informes
 #    transcript: ~/.claude/projects/--proyectos-claude-informes/978e2c78-....jsonl
-#    registrar : python -m claude_informes nuevo claude-informes
-#    recuperar : python -m claude_informes backfill --transcript "..." \
+#    register  : python -m claude_informes nuevo claude-informes
+#    recover   : python -m claude_informes backfill --transcript "..." \
 #                --proyecto claude-informes --salida "<raiz_informes>"
 ```
 

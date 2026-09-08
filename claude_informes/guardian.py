@@ -66,10 +66,10 @@ CAMPOS_MCP = CAMPOS_DE_RUTA + (
 )
 
 MENSAJE = (
-    "claude-informes: {ruta} esta dentro del archivo de informes ({motivo}).\n"
-    "Los informes los escribe el hook Stop al terminar el turno; no se "
-    "escriben ni se editan a mano.\n"
-    "Para saber cual fue el ultimo y comprobar que existe de verdad:\n"
+    "claude-informes: {ruta} is inside the report archive ({motivo}).\n"
+    "The reports are written by the Stop hook at the end of the turn; they are "
+    "not written or edited by hand.\n"
+    "To find out which was the last one and check that it really exists:\n"
     "    cd {herramienta}\n"
     "    .venv\\Scripts\\python -m claude_informes ultimo{proyecto}"
 )
@@ -210,7 +210,7 @@ def revisar(payload: dict, configuracion: cfg.Configuracion) -> Hallazgo | None:
         destino = resolver(ruta, cwd)
         for zona, tipo, proyecto in zonas:
             if _dentro(destino, zona, tipo):
-                donde = "el log del hook" if tipo == "fichero" else f"archivo: {zona}"
+                donde = "the hook's log" if tipo == "fichero" else f"archive: {zona}"
                 if not proyecto and tipo == "carpeta":
                     proyecto = _proyecto_de_la_carpeta(destino, zona, configuracion)
                 return Hallazgo(destino, donde, proyecto)
