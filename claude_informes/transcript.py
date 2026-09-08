@@ -44,10 +44,19 @@ def localizar(
 
 
 def _texto_de(mensaje: dict) -> str:
+    """Concatena el texto de los bloques `text`.
+
+    Un bloque cuyo `text` no es una cadena (un numero, `null`, una lista) se
+    salta como los que no aportan texto: `"".join` reventaria con un
+    `TypeError`, y eso tumbaba la lectura del transcript entero --y con ella el
+    backfill de la CLI, con traceback crudo-- por un solo turno mal formado.
+    """
     partes = [
-        bloque.get("text", "")
+        bloque["text"]
         for bloque in mensaje.get("content", [])
-        if isinstance(bloque, dict) and bloque.get("type") == "text"
+        if isinstance(bloque, dict)
+        and bloque.get("type") == "text"
+        and isinstance(bloque.get("text"), str)
     ]
     return "".join(partes)
 
@@ -56,7 +65,9 @@ def turnos(ruta: str | os.PathLike[str]) -> list[dict]:
     """Turnos cerrados del asistente, en orden.
 
     Criterio: type=='assistant' AND stop_reason=='end_turn' AND algun bloque
-    'text' no vacio. Las lineas rotas se ignoran una a una.
+    'text' no vacio. Las lineas rotas se ignoran una a una, y un bloque con un
+    'text' que no es cadena se salta igual (ver `_texto_de`): un turno mal
+    formado se omite, no tumba la lectura.
     """
     resultado: list[dict] = []
     try:

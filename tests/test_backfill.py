@@ -116,6 +116,60 @@ def test_las_lineas_rotas_no_tumban_la_lectura(transcripcion):
     assert len(tr.turnos(transcripcion)) == 4
 
 
+def test_un_bloque_text_no_string_no_tumba_la_lectura(tmp_path):
+    """Un `text` que no es cadena (numero, null, lista) daba TypeError en
+    _texto_de y tumbaba la lectura entera --y con ella el backfill de la CLI, con
+    traceback crudo--. Ahora ese bloque se salta como uno que no aporta texto:
+    un turno con solo bloques asi se omite, y uno mixto conserva su parte string.
+    """
+    malo = {
+        "type": "assistant", "uuid": "malo", "timestamp": "2026-08-28T09:30:00Z",
+        "sessionId": "s", "cwd": "C:\\repo", "gitBranch": "main",
+        "message": {"stop_reason": "end_turn", "content": [{"type": "text", "text": 123}]},
+    }
+    mixto = {
+        "type": "assistant", "uuid": "mixto", "timestamp": "2026-08-28T09:40:00Z",
+        "sessionId": "s", "cwd": "C:\\repo", "gitBranch": "main",
+        "message": {"stop_reason": "end_turn", "content": [
+            {"type": "text", "text": None},
+            {"type": "text", "text": "# Titulo con texto de verdad\nuno\ndos\ntres\ncuatro"},
+        ]},
+    }
+    registros = [
+        turno(LARGO_A, marca="2026-08-28T09:00:00Z", uuid="ok1"),
+        malo,
+        mixto,
+        turno(LARGO_B, marca="2026-08-28T10:00:00Z", uuid="ok2"),
+    ]
+    ruta = escribir_transcript(tmp_path / "sesion.jsonl", registros)
+
+    leidos = tr.turnos(ruta)
+
+    assert [t["uuid"] for t in leidos] == ["ok1", "mixto", "ok2"]
+    assert "de verdad" in dict((t["uuid"], t["respuesta_markdown"]) for t in leidos)["mixto"]
+
+
+def test_el_backfill_no_revienta_con_un_turno_malformado(tmp_path):
+    """El backfill leia el transcript con tr.turnos, asi que el mismo TypeError
+    lo mataba con traceback y exit 1. Ahora reconstruye los turnos buenos y salta
+    el malo sin lanzar."""
+    malo = {
+        "type": "assistant", "uuid": "malo", "timestamp": "2026-08-28T09:30:00Z",
+        "sessionId": "s", "cwd": "C:\\repo", "gitBranch": "main",
+        "message": {"stop_reason": "end_turn", "content": [{"type": "text", "text": 123}]},
+    }
+    registros = [
+        turno(LARGO_A, marca="2026-08-28T09:00:00Z", uuid="ok1"),
+        malo,
+        turno(LARGO_B, marca="2026-08-28T10:00:00Z", uuid="ok2"),
+    ]
+    ruta = escribir_transcript(tmp_path / "sesion.jsonl", registros)
+
+    resultados = bf.reconstruir(ruta, tmp_path / "archivo", "repo")
+
+    assert sum(1 for r in resultados if r["escrito"]) == 2
+
+
 def test_un_transcript_inexistente_da_lista_vacia(tmp_path):
     assert tr.turnos(tmp_path / "no-existe.jsonl") == []
 
