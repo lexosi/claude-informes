@@ -1,21 +1,20 @@
-"""Las fronteras de codificacion del proceso. utf-8 explicito, siempre.
+"""The process's encoding boundaries. Explicit utf-8, always.
 
-Python en Windows abre `sys.stdin` y `sys.stdout` con el encoding de la
-consola --cp1252 aqui-- y con `errors='surrogateescape'`. Ninguno de los dos
-se declara en ningun sitio: se heredan. Claude Code entrega y espera utf-8.
+Python on Windows opens `sys.stdin` and `sys.stdout` with the console encoding
+--cp1252 here-- and with `errors='surrogateescape'`. Neither of the two is
+declared anywhere: they are inherited. Claude Code delivers and expects utf-8.
 
-Lo que eso provocaba:
+What that caused:
 
-- Todo caracter no-ASCII llegaba partido en dos. `ó` (utf-8 C3 B3) se leia
-  como `Ã` + `³`, y de ahi el mojibake en los nombres y en el markdown
-  archivado.
-- cp1252 tiene cinco huecos sin asignar: 0x81 0x8D 0x8F 0x90 0x9D. Un
-  caracter cuyo utf-8 pise uno de ellos --`Á` (C3 81), `Í` (C3 8D), `❌`
-  (E2 9D 8C), `←` (E2 86 90)-- dejaba un surrogate suelto que reventaba
-  cien lineas mas tarde, al escribir el informe en utf-8.
+- Every non-ASCII character arrived split in two. `ó` (utf-8 C3 B3) was read as
+  `Ã` + `³`, and from there the mojibake in the archived names and markdown.
+- cp1252 has five unassigned holes: 0x81 0x8D 0x8F 0x90 0x9D. A character whose
+  utf-8 lands on one of them --`Á` (C3 81), `Í` (C3 8D), `❌` (E2 9D 8C), `←`
+  (E2 86 90)-- left a stray surrogate that blew up a hundred lines later, when
+  writing the report in utf-8.
 
-Por eso la entrada se lee en BYTES y se decodifica a mano, y la salida se
-escribe en BYTES. Ningun flujo de este proyecto hereda su encoding.
+That is why the input is read as BYTES and decoded by hand, and the output is
+written as BYTES. No stream in this project inherits its encoding.
 """
 
 from __future__ import annotations
@@ -24,11 +23,11 @@ import json
 
 
 def leer_payload(flujo) -> dict:
-    """El payload del hook, decodificado como utf-8 venga como venga.
+    """The hook's payload, decoded as utf-8 whatever it comes as.
 
-    Si el flujo tiene `.buffer` --lo tiene `sys.stdin`-- se leen los bytes
-    crudos. Un flujo de texto en memoria no lo tiene, y entonces ya viene
-    decodificado por quien lo construyo.
+    If the stream has `.buffer` --`sys.stdin` does-- the raw bytes are read. An
+    in-memory text stream does not have it, and then it already comes decoded by
+    whoever built it.
     """
     crudo = getattr(flujo, "buffer", None)
     if crudo is None:
@@ -37,13 +36,13 @@ def leer_payload(flujo) -> dict:
 
 
 def escribir(flujo, texto: str) -> None:
-    """Escribe en utf-8, sin pasar por el encoding heredado del flujo.
+    """Write in utf-8, without going through the stream's inherited encoding.
 
-    Importa mas de lo que parece: el guardian devuelve su denegacion por
-    aqui. Con cp1252, una ruta con un caracter que no quepa reventaba el
-    `write`, el guardian caia a su `except`, y **permitia** la escritura que
-    tenia que denegar. Fallar abierto por un fallo propio de codificacion no
-    es fallar abierto: es no estar.
+    It matters more than it seems: the guardian returns its denial through here.
+    With cp1252, a path with a character that did not fit blew up the `write`,
+    the guardian fell to its `except`, and **allowed** the write it was supposed
+    to deny. Failing open through an encoding fault of its own is not failing
+    open: it is not being there.
     """
     crudo = getattr(flujo, "buffer", None)
     if crudo is None:
@@ -55,11 +54,10 @@ def escribir(flujo, texto: str) -> None:
 
 
 def salida_en_utf8(*flujos) -> None:
-    """Pone los flujos de salida en utf-8. Para la CLI, que imprime rutas.
+    """Put the output streams in utf-8. For the CLI, which prints paths.
 
-    `errors='replace'` a proposito: que un nombre raro salga con un
-    interrogante es mejor que un `UnicodeEncodeError` en mitad de un informe
-    de resultados.
+    `errors='replace'` on purpose: a strange name coming out as a question mark
+    is better than a `UnicodeEncodeError` in the middle of a results report.
     """
     for flujo in flujos:
         reconfigurar = getattr(flujo, "reconfigure", None)
@@ -67,5 +65,5 @@ def salida_en_utf8(*flujos) -> None:
             continue
         try:
             reconfigurar(encoding="utf-8", errors="replace")
-        except Exception:  # noqa: BLE001 - un flujo redirigido puede no dejarse
+        except Exception:  # noqa: BLE001 - a redirected stream may not allow it
             pass

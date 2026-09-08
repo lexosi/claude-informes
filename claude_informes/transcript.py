@@ -1,4 +1,4 @@
-"""Lectura del transcript JSONL de Claude Code."""
+"""Reading Claude Code's JSONL transcript."""
 
 from __future__ import annotations
 
@@ -13,9 +13,8 @@ def directorio_de_proyectos() -> Path:
 
 
 def slug_de_cwd(cwd: str) -> str:
-    r"""El nombre de carpeta que Claude Code da al proyecto: separadores y
-    dos-puntos pasan a guiones. P.ej. ``<disco>:\ruta\proyecto`` ->
-    ``<disco>--ruta-proyecto``.
+    r"""The folder name Claude Code gives the project: separators and colons
+    become hyphens. E.g. ``<drive>:\path\project`` -> ``<drive>--path-project``.
     """
     return re.sub(r"[\\/:]", "-", str(cwd))
 
@@ -23,7 +22,7 @@ def slug_de_cwd(cwd: str) -> str:
 def localizar(
     *, cwd: str | None = None, session_id: str | None = None, raiz: Path | None = None
 ) -> Path | None:
-    """Encuentra un transcript por sesion o por proyecto (el mas reciente)."""
+    """Find a transcript by session or by project (the most recent one)."""
     base = raiz or directorio_de_proyectos()
     if not base.is_dir():
         return None
@@ -44,12 +43,13 @@ def localizar(
 
 
 def _texto_de(mensaje: dict) -> str:
-    """Concatena el texto de los bloques `text`.
+    """Concatenate the text of the `text` blocks.
 
-    Un bloque cuyo `text` no es una cadena (un numero, `null`, una lista) se
-    salta como los que no aportan texto: `"".join` reventaria con un
-    `TypeError`, y eso tumbaba la lectura del transcript entero --y con ella el
-    backfill de la CLI, con traceback crudo-- por un solo turno mal formado.
+    A block whose `text` is not a string (a number, `null`, a list) is skipped
+    like the ones that carry no text: `"".join` would blow up with a
+    `TypeError`, and that brought down the reading of the whole transcript --and
+    with it the CLI's backfill, with a raw traceback-- over a single malformed
+    turn.
     """
     partes = [
         bloque["text"]
@@ -62,12 +62,12 @@ def _texto_de(mensaje: dict) -> str:
 
 
 def turnos(ruta: str | os.PathLike[str]) -> list[dict]:
-    """Turnos cerrados del asistente, en orden.
+    """Closed assistant turns, in order.
 
-    Criterio: type=='assistant' AND stop_reason=='end_turn' AND algun bloque
-    'text' no vacio. Las lineas rotas se ignoran una a una, y un bloque con un
-    'text' que no es cadena se salta igual (ver `_texto_de`): un turno mal
-    formado se omite, no tumba la lectura.
+    Criterion: type=='assistant' AND stop_reason=='end_turn' AND some non-empty
+    'text' block. Broken lines are ignored one by one, and a block with a 'text'
+    that is not a string is skipped the same way (see `_texto_de`): a malformed
+    turn is omitted, it does not bring down the reading.
     """
     resultado: list[dict] = []
     try:
@@ -109,10 +109,10 @@ def ultimo_turno(ruta: str | os.PathLike[str]) -> dict | None:
 
 
 def cwd_de_arranque(ruta: str | os.PathLike[str]) -> str | None:
-    """El `cwd` del primer registro: donde se abrio la sesion.
+    """The `cwd` of the first record: where the session was opened.
 
-    Los registros siguientes llevan el cwd del momento, que se mueve con cada
-    `cd`. El primero no: identifica el directorio de arranque.
+    The following records carry the cwd of the moment, which moves with every
+    `cd`. The first one does not: it identifies the startup directory.
     """
     try:
         with open(ruta, encoding="utf-8", errors="replace") as fichero:

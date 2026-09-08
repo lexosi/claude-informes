@@ -1,14 +1,14 @@
-"""Modo guardian: un hook PreToolUse que impide escribir informes a mano.
+"""Guardian mode: a PreToolUse hook that prevents writing reports by hand.
 
-Los informes los escribe el hook Stop. Cualquier otra escritura dentro del
-archivo es un error, casi siempre el de anunciar un fichero que no existe.
+The reports are written by the Stop hook. Any other write inside the archive is
+a mistake, almost always the mistake of announcing a file that does not exist.
 
-Regla numero uno, y es la CONTRARIA a la del hook Stop: esto **falla abierto**.
-Cualquier excepcion, config ilegible o ruta que no se pueda resolver termina
-en "permitido", en silencio. Un guardian que bloquea por error es peor que no
-tener guardian: rompe sesiones ajenas por un fallo suyo.
+Rule number one, and it is the OPPOSITE of the Stop hook's: this **fails open**.
+Any exception, unreadable config or path that cannot be resolved ends in
+"allowed", silently. A guardian that blocks by mistake is worse than having no
+guardian: it breaks other people's sessions through a fault of its own.
 
-Solo deniega cuando la ruta esta INEQUIVOCAMENTE dentro del archivo.
+It only denies when the path is UNEQUIVOCALLY inside the archive.
 """
 
 from __future__ import annotations
@@ -24,19 +24,19 @@ from . import config as cfg
 from . import flujos
 from . import registro as reg
 
-# Herramientas cuya ruta de destino es un dato estructurado y sin ambiguedad.
-# `Bash` queda fuera a proposito: adivinar rutas dentro de una linea de shell
-# da falsos positivos, y ante la duda se permite.
+# Tools whose destination path is structured data with no ambiguity. `Bash` is
+# left out on purpose: guessing paths inside a shell line gives false positives,
+# and when in doubt it is allowed.
 HERRAMIENTAS = frozenset({"Write", "Edit", "MultiEdit", "NotebookEdit"})
 CAMPOS_DE_RUTA = ("file_path", "notebook_path", "path")
 
-# Los servidores MCP no tienen esquema comun: ni el nombre de la herramienta
-# ni el del campo de la ruta estan estandarizados. Lo que sigue es heuristica,
-# y por eso solo sirve para DENEGAR mejor; permitir sigue garantizado.
+# MCP servers do not share a common schema: neither the tool name nor the path
+# field name are standardized. What follows is a heuristic, and that is why it
+# only serves to DENY better; allowing remains guaranteed.
 PREFIJO_MCP = "mcp__"
 
-# Verbos que delatan una escritura. Se comparan contra las palabras del nombre
-# de la herramienta, no como subcadena: si no, `get_output` contendria "put".
+# Verbs that give away a write. They are compared against the words of the tool
+# name, not as a substring: otherwise `get_output` would contain "put".
 VERBOS_DE_ESCRITURA = frozenset(
     {
         "write", "edit", "create", "mkdir", "move", "rename", "copy",
@@ -80,17 +80,17 @@ def es_mcp(nombre) -> bool:
 
 
 def parece_escritura(nombre: str) -> bool:
-    """Solo mira el nombre de la herramienta, no el del servidor.
+    """Only looks at the tool name, not the server's.
 
-    `mcp__servidor__write_file` escribe; `mcp__servidor__read_file` no. Un
-    verbo desconocido se trata como lectura: fallar abierto manda.
+    `mcp__servidor__write_file` writes; `mcp__servidor__read_file` does not. An
+    unknown verb is treated as a read: failing open rules.
     """
     palabras = re.split(r"[^a-z0-9]+", nombre.split("__")[-1].lower())
     return bool(VERBOS_DE_ESCRITURA & set(palabras))
 
 
 def campos_a_mirar(nombre) -> tuple[str, ...] | None:
-    """Que campos de `tool_input` pueden llevar la ruta. None = no mirar."""
+    """Which `tool_input` fields may carry the path. None = do not look."""
     if nombre in HERRAMIENTAS:
         return CAMPOS_DE_RUTA
     if es_mcp(nombre) and parece_escritura(nombre):
@@ -99,7 +99,7 @@ def campos_a_mirar(nombre) -> tuple[str, ...] | None:
 
 
 def rutas_del_payload(payload: dict, campos: tuple[str, ...]) -> list[str]:
-    """Las rutas de destino declaradas por la herramienta."""
+    """The destination paths declared by the tool."""
     entrada = payload.get("tool_input")
     if not isinstance(entrada, dict):
         return []
@@ -119,9 +119,9 @@ def rutas_del_payload(payload: dict, campos: tuple[str, ...]) -> list[str]:
 
 
 def es_un_punto_ciego(payload: dict) -> bool:
-    """Una herramienta MCP que dice escribir y no declara ninguna ruta.
+    """An MCP tool that says it writes and declares no path.
 
-    Se permite, porque no se puede afirmar nada, pero no en silencio.
+    It is allowed, because nothing can be asserted, but not silently.
     """
     if not isinstance(payload, dict):
         return False
@@ -132,7 +132,7 @@ def es_un_punto_ciego(payload: dict) -> bool:
 
 
 def resolver(ruta: str, cwd: str | None) -> str:
-    """Absoluta y real: relativas, `..` y enlaces incluidos."""
+    """Absolute and real: relatives, `..` and links included."""
     candidata = Path(ruta)
     if not candidata.is_absolute() and isinstance(cwd, str) and cwd.strip():
         candidata = Path(cwd) / candidata
@@ -140,9 +140,9 @@ def resolver(ruta: str, cwd: str | None) -> str:
 
 
 def zonas_protegidas(configuracion: cfg.Configuracion) -> list[tuple[str, str, str]]:
-    """(ruta normalizada, tipo, proyecto) de todo lo que no se toca a mano.
+    """(normalized path, type, project) of everything that is not touched by hand.
 
-    Salen de la config: la raiz global, la de cada proyecto, y el log.
+    They come from the config: the global root, each project's, and the log.
     """
     zonas = [
         (os.path.normcase(os.path.realpath(configuracion.raiz_informes)), "carpeta", ""),
@@ -156,17 +156,17 @@ def zonas_protegidas(configuracion: cfg.Configuracion) -> list[tuple[str, str, s
                 proyecto.nombre,
             )
         )
-    # La mas especifica primero: una raiz propia anidada dentro de la global
-    # tiene que ganarle a la global.
+    # The most specific one first: a project root nested inside the global one
+    # has to beat the global one.
     return sorted(zonas, key=lambda z: len(z[0]), reverse=True)
 
 
 def _proyecto_de_la_carpeta(
     destino: str, zona: str, configuracion: cfg.Configuracion
 ) -> str:
-    """Bajo una raiz compartida, el proyecto es la primera carpeta.
+    """Under a shared root, the project is the first folder.
 
-    No se adivina: solo cuenta si ese nombre esta en la config.
+    It is not guessed: it only counts if that name is in the config.
     """
     resto = destino[len(zona.rstrip(os.sep)) :].strip(os.sep)
     if not resto:
@@ -194,9 +194,9 @@ class Hallazgo:
 
 
 def revisar(payload: dict, configuracion: cfg.Configuracion) -> Hallazgo | None:
-    """Devuelve el hallazgo si hay que denegar. None es permitir.
+    """Returns the finding if it has to deny. None means allow.
 
-    Puede lanzar: quien llama permite y calla.
+    It may raise: the caller allows and stays quiet.
     """
     if not isinstance(payload, dict):
         return None
@@ -237,9 +237,9 @@ def denegar(hallazgo: Hallazgo) -> str:
 
 
 def main(entrada=None, salida=None, ruta_config: str | os.PathLike[str] | None = None) -> int:
-    """Punto de entrada del guardian. SIEMPRE devuelve 0.
+    """Guardian entry point. ALWAYS returns 0.
 
-    Sin salida = sin decision = la herramienta sigue su curso normal.
+    No output = no decision = the tool goes on its normal course.
     """
     flujo_salida = salida if salida is not None else sys.stdout
     anotacion = None
@@ -263,7 +263,7 @@ def main(entrada=None, salida=None, ruta_config: str | os.PathLike[str] | None =
                 reg.SIN_PROYECTO,
                 f"{payload.get('tool_name')}: sin ruta reconocible en tool_input",
             )
-    except Exception as error:  # noqa: BLE001 - falla abierto, siempre
+    except Exception as error:  # noqa: BLE001 - fails open, always
         try:
             anotacion = (
                 cfg.por_defecto().ruta_log,
@@ -277,6 +277,6 @@ def main(entrada=None, salida=None, ruta_config: str | os.PathLike[str] | None =
     if anotacion is not None:
         try:
             reg.anotar(*anotacion)
-        except Exception:  # noqa: BLE001 - el log no puede tumbar una sesion
+        except Exception:  # noqa: BLE001 - the log cannot bring down a session
             pass
     return 0

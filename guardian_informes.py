@@ -1,8 +1,8 @@
 #!/usr/bin/env python
-"""Lanzadera del hook PreToolUse. Es lo que se pone en ~/.claude/settings.json.
+"""Launcher for the PreToolUse hook. This is what goes in ~/.claude/settings.json.
 
-Falla abierto: si algo va mal, no imprime nada y sale 0, y la herramienta
-sigue su curso normal.
+Fails open: if something goes wrong, it prints nothing and exits 0, and the tool
+goes on its normal course.
 """
 
 import os
@@ -12,7 +12,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 try:
     from claude_informes.guardian import main
-except Exception:  # el paquete no esta, o esta roto: no se bloquea nada
+except Exception:  # the package is not there, or is broken: nothing is blocked
     sys.exit(0)
 
 sys.exit(main())

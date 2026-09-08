@@ -1,8 +1,8 @@
-"""El log del hook: una linea por turno, pase lo que pase.
+"""The hook's log: one line per turn, no matter what.
 
-El hook sale en silencio ante cualquier error para no romper la sesion. Sin
-este log, un fallo seria invisible. Vive fuera de las carpetas de informes y
-fuera de todo repositorio.
+The hook exits silently on any error so as not to break the session. Without
+this log, a failure would be invisible. It lives outside the report folders and
+outside any repository.
 """
 
 from __future__ import annotations
@@ -40,12 +40,12 @@ class Anotacion:
 
     @property
     def ruta(self) -> Path | None:
-        """Para las lineas de escritura, el detalle es la ruta del informe."""
+        """For the write lines, the detail is the report's path."""
         return Path(self.detalle) if self.resultado == ESCRITO else None
 
 
 def ruta_por_defecto(raiz_informes: str | os.PathLike[str]) -> Path:
-    """Hermano del archivo, nunca dentro: `.../informes-claude` -> `.../informes-claude.log`."""
+    """Sibling of the archive, never inside: `.../informes-claude` -> `.../informes-claude.log`."""
     raiz = Path(raiz_informes)
     return raiz.parent / (raiz.name + ".log")
 
@@ -65,10 +65,10 @@ def anotar(
     detalle: str,
     cuando: datetime | None = None,
 ) -> None:
-    """Anade una linea. Solo anade: nunca reescribe lo ya anotado.
+    """Append a line. Append-only: it never rewrites what is already recorded.
 
-    Puede lanzar; quien llama tiene que tragarselo. El log no vale nada si
-    tumba una sesion.
+    It may raise; the caller has to swallow it. The log is worthless if it brings
+    down a session.
     """
     destino = Path(ruta_log)
     if destino.parent and not destino.parent.exists():
@@ -83,7 +83,7 @@ def leer_linea(linea: str) -> Anotacion | None:
 
 
 def leer(ruta_log: str | os.PathLike[str]) -> list[Anotacion]:
-    """Las anotaciones en orden. Las lineas ilegibles se ignoran una a una."""
+    """The annotations in order. Unreadable lines are ignored one by one."""
     try:
         crudo = Path(ruta_log).read_text(encoding="utf-8", errors="replace")
     except Exception:

@@ -1,10 +1,10 @@
-"""Modo hook: lee el payload de Stop por stdin y escribe el informe del turno.
+"""Hook mode: reads the Stop payload from stdin and writes the turn's report.
 
-Regla numero uno: este codigo corre en TODAS las sesiones de Claude Code.
-Pase lo que pase, sale 0 y en silencio.
+Rule number one: this code runs in EVERY Claude Code session. No matter what, it
+exits 0 and silently.
 
-Silencio no es invisibilidad: cada turno deja una linea en el log, y el fallo
-del log tampoco puede tumbar nada.
+Silence is not invisibility: every turn leaves a line in the log, and the log's
+failure cannot bring anything down either.
 """
 
 from __future__ import annotations
@@ -24,26 +24,26 @@ from . import transcript as tr
 
 @dataclass(frozen=True)
 class Resultado:
-    """Lo que ha pasado en este turno, listo para anotar."""
+    """What happened in this turn, ready to record."""
 
     resultado: str
     proyecto: str = reg.SIN_PROYECTO
     detalle: str = ""
     ruta: Path | None = None
     aviso: tuple[str, str] | None = None
-    """(resultado, detalle) de una linea extra que se anota ANTES que la suya."""
+    """(result, detail) of an extra line recorded BEFORE its own."""
 
 
 def proyecto_del_transcript(
     ruta_transcript: str, configuracion: cfg.Configuracion
 ) -> cfg.Proyecto | None:
-    """Mapea el directorio del transcript al proyecto de la config.
+    """Maps the transcript's directory to the config's project.
 
-    El mapeo es explicito y comprobable: se compara el nombre del directorio
-    con el slug que produce el `cwd` declarado de cada proyecto. No se intenta
-    deshacer el slug, que es una operacion ambigua (`e--proyectos-alfa-audit`
-    tanto podria ser un subdirectorio de `alfa` como el proyecto hermano
-    `alfa-audit`). Sin coincidencia exacta, no hay mapeo.
+    The mapping is explicit and checkable: the directory name is compared with
+    the slug that each project's declared `cwd` produces. There is no attempt to
+    undo the slug, which is an ambiguous operation (`e--proyectos-alfa-audit`
+    could be either a subdirectory of `alfa` or the sibling project
+    `alfa-audit`). Without an exact match, there is no mapping.
     """
     carpeta = os.path.normcase(Path(ruta_transcript).parent.name)
     for proyecto in configuracion.proyectos:
@@ -57,28 +57,28 @@ def proyecto_del_transcript(
 def proyecto_del_turno(
     payload: dict, configuracion: cfg.Configuracion
 ) -> tuple[cfg.Proyecto | None, str, str]:
-    """El proyecto sale de la SESION, no del directorio donde este la shell.
+    """The project comes from the SESSION, not from the directory the shell is in.
 
-    El `cwd` del payload sigue a los `cd` que se hagan durante el turno, asi
-    que archivar por el mete turnos en la carpeta equivocada y pierde otros.
-    El `transcript_path` identifica la sesion y no se mueve.
+    The payload's `cwd` follows the `cd` commands made during the turn, so
+    archiving by it puts turns in the wrong folder and loses others. The
+    `transcript_path` identifies the session and does not move.
 
-    Cuando hay `transcript_path`, **manda**: si no mapea a ningun proyecto de
-    la config, la sesion no esta vigilada y no se archiva. Caer al cwd aqui
-    reabriria el mismo agujero, porque una shell paseando por un proyecto
-    vigilado volveria a archivar turnos que no son suyos.
+    When there is a `transcript_path`, it **rules**: if it does not map to any
+    project in the config, the session is not watched and is not archived.
+    Falling back to cwd here would reopen the same hole, because a shell strolling
+    through a watched project would archive turns that are not its own again.
 
-    El cwd solo entra cuando no hay transcript del que fiarse.
+    The cwd only comes into play when there is no transcript to trust.
 
-    Devuelve (proyecto, motivo de degradacion, motivo de omision).
+    Returns (project, degradation reason, omission reason).
     """
     ruta = payload.get("transcript_path")
     if isinstance(ruta, str) and ruta.strip():
         proyecto = proyecto_del_transcript(ruta, configuracion)
         if proyecto is not None:
             return proyecto, "", ""
-        # El slug es ambiguo para los subdirectorios, pero el primer registro
-        # del transcript lleva el cwd de arranque sin ambiguedad ninguna.
+        # The slug is ambiguous for subdirectories, but the transcript's first
+        # record carries the startup cwd without any ambiguity.
         arranque = tr.cwd_de_arranque(ruta)
         proyecto = cfg.buscar_proyecto(arranque, configuracion)
         if proyecto is not None:
@@ -89,7 +89,7 @@ def proyecto_del_turno(
 
 
 def nombre_que_tendria(ruta_transcript: str, arranque: str | None) -> str:
-    """Como se llamaria el proyecto si lo registraras ahora mismo."""
+    """What the project would be called if you registered it right now."""
     if isinstance(arranque, str) and arranque.strip():
         return md.slug_llano(Path(arranque).name) or "sin-nombre"
     tramo = Path(ruta_transcript).parent.name.rsplit("-", 1)[-1]
@@ -97,7 +97,7 @@ def nombre_que_tendria(ruta_transcript: str, arranque: str | None) -> str:
 
 
 def motivo_de_omision(ruta_transcript: str, arranque: str | None) -> str:
-    """Lo que hace falta para poder recuperar el turno mas tarde."""
+    """What is needed to be able to recover the turn later."""
     return (
         "proyecto no registrado"
         f"; nombre={nombre_que_tendria(ruta_transcript, arranque)}"
@@ -107,7 +107,7 @@ def motivo_de_omision(ruta_transcript: str, arranque: str | None) -> str:
 
 
 def _markdown_del_payload(payload: dict) -> str:
-    """El camino normal no parsea nada: el texto ya viene en el payload."""
+    """The normal path parses nothing: the text already comes in the payload."""
     directo = payload.get("last_assistant_message")
     if isinstance(directo, str) and directo.strip():
         return directo
@@ -120,10 +120,10 @@ def _markdown_del_payload(payload: dict) -> str:
 
 
 def procesar(payload: dict, configuracion: cfg.Configuracion) -> Resultado:
-    """Decide y escribe. Devuelve que ha pasado, para el log.
+    """Decide and write. Returns what happened, for the log.
 
-    Puede lanzar: quien llama es responsable de tragarse la excepcion y de
-    anotar el ERROR.
+    It may raise: the caller is responsible for swallowing the exception and
+    recording the ERROR.
     """
     if not isinstance(payload, dict):
         return Resultado(reg.ERROR, detalle=f"payload que no es un objeto: {type(payload).__name__}")
@@ -140,8 +140,8 @@ def procesar(payload: dict, configuracion: cfg.Configuracion) -> Resultado:
             detalle=f"{degradacion}; cwd fuera de la lista: {cwd!r}",
         )
 
-    # Solo se avisa cuando el camino degradado llega a archivar algo: es el
-    # caso en que un turno puede acabar en la carpeta de otro proyecto.
+    # A warning is only issued when the degraded path does archive something: it
+    # is the case in which a turn can end up in another project's folder.
     aviso = (
         (reg.PROYECTO_POR_CWD, f"{degradacion}; proyecto tomado del cwd: {cwd}")
         if degradacion
@@ -170,9 +170,9 @@ def procesar(payload: dict, configuracion: cfg.Configuracion) -> Resultado:
     try:
         destino = inf.escribir(proyecto.raiz_informes, proyecto.nombre, sobre)
     except inf.FalloDeEscritura as fallo:
-        # El unico ERROR que sabe de quien era el turno. Sin proyecto, sin
-        # ruta y sin sesion, la linea del log no se puede contrastar contra
-        # nada y el fallo sigue siendo, en la practica, silencioso.
+        # The only ERROR that knows whose turn it was. Without a project, a path
+        # and a session, the log line cannot be checked against anything and the
+        # failure remains, in practice, silent.
         return Resultado(
             reg.ERROR,
             proyecto.nombre,
@@ -183,14 +183,14 @@ def procesar(payload: dict, configuracion: cfg.Configuracion) -> Resultado:
 
 
 def main(entrada=None, ruta_config: str | os.PathLike[str] | None = None) -> int:
-    """Punto de entrada del hook. SIEMPRE devuelve 0."""
+    """Hook entry point. ALWAYS returns 0."""
     configuracion = None
     try:
         flujo = entrada if entrada is not None else sys.stdin
         payload = flujos.leer_payload(flujo)
         configuracion = cfg.cargar(ruta_config)
         resultado = procesar(payload, configuracion)
-    except Exception as error:  # noqa: BLE001 - por diseno: nada puede escapar
+    except Exception as error:  # noqa: BLE001 - by design: nothing can escape
         resultado = Resultado(reg.ERROR, detalle=f"{type(error).__name__}: {error}")
 
     try:
@@ -198,6 +198,6 @@ def main(entrada=None, ruta_config: str | os.PathLike[str] | None = None) -> int
         if resultado.aviso is not None:
             reg.anotar(ruta_log, resultado.aviso[0], resultado.proyecto, resultado.aviso[1])
         reg.anotar(ruta_log, resultado.resultado, resultado.proyecto, resultado.detalle)
-    except Exception:  # noqa: BLE001 - si el log falla, la sesion sigue igual
+    except Exception:  # noqa: BLE001 - if the log fails, the session goes on unchanged
         pass
     return 0

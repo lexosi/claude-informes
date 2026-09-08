@@ -1,4 +1,4 @@
-"""Modo backfill: reconstruye informes de turnos pasados desde un transcript."""
+"""Backfill mode: reconstructs reports of past turns from a transcript."""
 
 from __future__ import annotations
 
@@ -13,13 +13,13 @@ from . import transcript as tr
 
 
 def _ya_archivado(dia: Path, respuesta_markdown: str) -> Path | None:
-    """El informe de este turno ya esta en la carpeta del dia, o None.
+    """The report for this turn is already in the day folder, or None.
 
-    La identidad de un turno es su markdown integro: dos turnos distintos no
-    comparten texto byte a byte. Comparar por el markdown hace que reejecutar
-    un backfill rellene lo que falte sin duplicar lo que ya esta --y que un
-    turno ya escrito por el hook Stop no se archive por segunda vez--. Un
-    fichero ilegible no cuenta como coincidencia: ante la duda, se reescribe.
+    A turn's identity is its full markdown: two different turns do not share text
+    byte for byte. Comparing by the markdown makes re-running a backfill fill in
+    what is missing without duplicating what is already there --and a turn
+    already written by the Stop hook is not archived a second time--. An
+    unreadable file does not count as a match: when in doubt, it is rewritten.
     """
     if not dia.is_dir():
         return None
@@ -34,13 +34,13 @@ def _ya_archivado(dia: Path, respuesta_markdown: str) -> Path | None:
 
 
 def _nombre_simulado(dia: Path, sobre: dict, simulados_por_dia: dict[Path, int]) -> Path:
-    """El nombre que tendria el informe, contando los turnos ya simulados.
+    """The name the report would have, counting the turns already simulated.
 
-    Igual que `inf.nombre_de_fichero`, pero sin escribir: como en un dry-run no
-    aparece ningun `.json` en disco, todos los turnos del mismo dia elegirian el
-    ordinal `01`. Se lleva la cuenta de los ya simulados en esa carpeta --el
-    ordinal es por carpeta de dia, no por slug-- para que la simulacion prediga
-    los ordinales reales (01, 02, 03...) en vez de mentir.
+    Like `inf.nombre_de_fichero`, but without writing: since in a dry-run no
+    `.json` appears on disk, all the turns of the same day would pick ordinal
+    `01`. The already-simulated ones in that folder are counted --the ordinal is
+    per day folder, not per slug-- so the simulation predicts the real ordinals
+    (01, 02, 03...) instead of lying.
     """
     slug = md.nombre_desde_markdown(sobre["respuesta_markdown"])
     ordinal = inf.siguiente_ordinal(dia) + simulados_por_dia.get(dia, 0)
@@ -58,13 +58,13 @@ def reconstruir(
     simular: bool = False,
     ruta_log: str | os.PathLike[str] | None = None,
 ) -> list[dict]:
-    """Un fichero por turno. Devuelve una entrada por turno considerado.
+    """One file per turn. Returns one entry per considered turn.
 
-    Es idempotente: un turno cuyo informe ya esta en la carpeta del dia se
-    salta (`motivo == "ya archivado"`), asi que reejecutar rellena huecos sin
-    duplicar. Con `ruta_log`, cada informe escrito deja una linea ESCRITO en el
-    log, igual que el hook Stop: sin ella, `ultimo` seria ciego a lo que
-    reconstruye el backfill.
+    It is idempotent: a turn whose report is already in the day folder is skipped
+    (`motivo == "ya archivado"`), so re-running fills gaps without duplicating.
+    With `ruta_log`, each written report leaves an ESCRITO line in the log, just
+    like the Stop hook: without it, `ultimo` would be blind to what the backfill
+    reconstructs.
     """
     raiz = Path(raiz_informes)
     resultado: list[dict] = []
@@ -116,7 +116,7 @@ def reconstruir(
         if ruta_log is not None:
             try:
                 reg.anotar(ruta_log, reg.ESCRITO, proyecto, str(destino))
-            except Exception:  # noqa: BLE001 - el log no puede tumbar un backfill ya escrito
+            except Exception:  # noqa: BLE001 - the log cannot bring down an already-written backfill
                 pass
         resultado.append(
             {"escrito": True, "motivo": None, "ruta": destino, "turno": turno}

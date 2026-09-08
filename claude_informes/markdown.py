@@ -1,4 +1,4 @@
-"""Troceo sintactico del markdown. Nada semantico: solo sintaxis."""
+"""Syntactic splitting of the markdown. Nothing semantic: only syntax."""
 
 from __future__ import annotations
 
@@ -9,18 +9,18 @@ _FENCE = re.compile(r"^(\s{0,3})(`{3,}|~{3,})\s*(.*)$")
 _HEADING = re.compile(r"^(\s{0,3})(#{1,6})\s+(.*?)\s*#*\s*$")
 _CASILLA = re.compile(r"^\s*(?:[-*+]|\d+[.)])\s+\[([ xX])\]\s*(.*)$")
 
-# Marcas inline que se quitan solo para construir el slug o el titulo.
+# Inline marks removed only to build the slug or the title.
 _INLINE = re.compile(r"(\*\*|__|\*|_|`|~~)")
 _ENLACE = re.compile(r"\[([^\]]*)\]\([^)]*\)")
 
-# Numeracion al principio de un encabezado: "1. TRANSCRIPT", "2) Cosas", "1.3 - Tal".
+# Numbering at the start of a heading: "1. TRANSCRIPT", "2) Cosas", "1.3 - Tal".
 _NUMERACION = re.compile(r"^\s*\d+(?:\.\d+)*\s*[.)\-:]\s*")
 
 MINIMO_PALABRAS = 3
 TOPE = 60
 
-# Articulos, preposiciones y conectores comunes en es/en. Sin acentos: la
-# comparacion se hace despues de asciificar.
+# Articles, prepositions and common connectors in es/en. Without accents: the
+# comparison is done after ascii-folding.
 VACIAS = frozenset(
     """
     el la los las lo un una unos unas al del
@@ -38,9 +38,9 @@ VACIAS = frozenset(
 
 
 def _mapa_de_vallas(lineas: list[str]) -> list[bool]:
-    """Devuelve, por linea, si esa linea esta DENTRO de un bloque cercado.
+    """Returns, per line, whether that line is INSIDE a fenced block.
 
-    La linea de apertura y la de cierre cuentan como dentro.
+    The opening line and the closing line count as inside.
     """
     dentro = [False] * len(lineas)
     valla: str | None = None
@@ -58,23 +58,23 @@ def _mapa_de_vallas(lineas: list[str]) -> list[bool]:
 
 
 def limpiar_inline(texto: str) -> str:
-    """Quita marcas inline de markdown. Solo para titulos y slugs."""
+    """Remove inline markdown marks. Only for titles and slugs."""
     texto = _ENLACE.sub(r"\1", texto)
     return _INLINE.sub("", texto).strip()
 
 
 def contar_lineas(markdown: str) -> int:
-    """Lineas de markdown CRUDO, tal cual llega."""
+    """Lines of RAW markdown, exactly as it arrives."""
     return len(markdown.splitlines())
 
 
 def supera_umbral(markdown: str, umbral: int = 5) -> bool:
-    """Umbral: estrictamente MAS de `umbral` lineas de markdown crudo."""
+    """Threshold: strictly MORE than `umbral` lines of raw markdown."""
     return contar_lineas(markdown) > umbral
 
 
 def encabezados(markdown: str) -> list[tuple[int, str, int]]:
-    """(nivel, titulo, indice de linea) de cada encabezado ATX fuera de vallas."""
+    """(level, title, line index) of each ATX heading outside fences."""
     lineas = markdown.splitlines()
     dentro = _mapa_de_vallas(lineas)
     fuera = []
@@ -88,7 +88,7 @@ def encabezados(markdown: str) -> list[tuple[int, str, int]]:
 
 
 def secciones(markdown: str) -> list[dict]:
-    """Trocea por encabezados ATX. El contenido va crudo, sin el encabezado."""
+    """Split by ATX headings. The content is raw, without the heading."""
     lineas = markdown.splitlines()
     marcas = encabezados(markdown)
     if not marcas:
@@ -102,7 +102,7 @@ def secciones(markdown: str) -> list[dict]:
 
 
 def bloques_codigo(markdown: str) -> list[dict]:
-    """Bloques cercados con ``` o ~~~. El codigo va crudo, sin las vallas."""
+    """Blocks fenced with ``` or ~~~. The code is raw, without the fences."""
     lineas = markdown.splitlines()
     resultado: list[dict] = []
     valla: str | None = None
@@ -121,13 +121,13 @@ def bloques_codigo(markdown: str) -> list[dict]:
             valla = None
             continue
         cuerpo.append(linea)
-    if valla is not None:  # valla sin cerrar: se guarda igual
+    if valla is not None:  # unclosed fence: saved all the same
         resultado.append({"lenguaje": lenguaje, "codigo": "\n".join(cuerpo)})
     return resultado
 
 
 def casillas(markdown: str) -> list[dict]:
-    """Casillas de tarea `- [ ]` / `- [x]` fuera de bloques cercados."""
+    """Task checkboxes `- [ ]` / `- [x]` outside fenced blocks."""
     lineas = markdown.splitlines()
     dentro = _mapa_de_vallas(lineas)
     resultado = []
@@ -151,9 +151,9 @@ def _asciificar(texto: str) -> str:
 
 
 def palabras_significativas(texto: str) -> list[str]:
-    """Palabras del texto sin articulos, preposiciones ni conectores comunes.
+    """Words of the text without articles, prepositions or common connectors.
 
-    Tambien caen los numeros sueltos: son numeracion, no contenido.
+    Lone numbers also drop out: they are numbering, not content.
     """
     limpio = _asciificar(limpiar_inline(texto)).lower().replace("ß", "ss")
     return [
@@ -164,7 +164,7 @@ def palabras_significativas(texto: str) -> list[str]:
 
 
 def recortar(slug: str, maximo: int = TOPE) -> str:
-    """Corta por guion, nunca por la mitad de una palabra."""
+    """Cut at a hyphen, never in the middle of a word."""
     if len(slug) <= maximo:
         return slug
     cortado = slug[:maximo].rsplit("-", 1)[0].strip("-")
@@ -172,18 +172,18 @@ def recortar(slug: str, maximo: int = TOPE) -> str:
 
 
 def slugificar(texto: str, maximo: int = TOPE) -> str:
-    """Slug de contenido: solo palabras significativas."""
+    """Content slug: only significant words."""
     return recortar("-".join(palabras_significativas(texto)), maximo)
 
 
 def slug_llano(texto: str, maximo: int = TOPE) -> str:
-    """Slug de un nombre propio (un directorio, p. ej.): no se descarta nada."""
+    """Slug of a proper name (a directory, e.g.): nothing is discarded."""
     limpio = _asciificar(limpiar_inline(texto)).lower().replace("ß", "ss")
     return recortar(re.sub(r"[^a-z0-9]+", "-", limpio).strip("-"), maximo)
 
 
 def _de_los_encabezados(markdown: str) -> list[str]:
-    """Encabezados sucesivos hasta juntar palabras suficientes, o agotarlos."""
+    """Successive headings until enough words are gathered, or they run out."""
     palabras: list[str] = []
     for _, titulo, _ in encabezados(markdown):
         palabras.extend(palabras_significativas(_NUMERACION.sub("", titulo, count=1)))
@@ -206,11 +206,11 @@ def _del_cuerpo(markdown: str, maximo: int = 8) -> list[str]:
 
 
 def nombre_desde_markdown(markdown: str) -> str:
-    """El slug del informe.
+    """The report's slug.
 
-    1. Primer encabezado, si trae 3+ palabras significativas (sin su numeracion).
-    2. Si no, encabezados sucesivos concatenados hasta llegar a 3+ o agotarlos.
-    3. Si sigue pobre, o no hay encabezados, palabras del cuerpo.
+    1. First heading, if it carries 3+ significant words (without its numbering).
+    2. If not, successive headings concatenated until reaching 3+ or running out.
+    3. If it is still poor, or there are no headings, words from the body.
     """
     palabras = _de_los_encabezados(markdown)
     if len(palabras) < MINIMO_PALABRAS:

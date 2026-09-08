@@ -1,7 +1,7 @@
-"""Configuracion por proyecto. Vive FUERA de los repositorios vigilados.
+"""Per-project configuration. Lives OUTSIDE the watched repositories.
 
-Anadir un proyecto es anadir una entrada al JSON de configuracion.
-El codigo no conoce ninguna ruta concreta.
+Adding a project means adding an entry to the config JSON.
+The code knows no specific path.
 """
 
 from __future__ import annotations
@@ -19,29 +19,29 @@ VAR_ENTORNO = "CLAUDE_INFORMES_CONFIG"
 VAR_LOG = "CLAUDE_INFORMES_LOG"
 UMBRAL_POR_DEFECTO = 5
 
-# Nombre de la carpeta y del fichero de configuracion de usuario. La config
-# REAL vive FUERA del repositorio (ver README, "Por que la config vive fuera
-# del repo"): asi el repo se publica sin ninguna ruta de nadie, y cambiar de
-# maquina no genera conflictos en un fichero versionado.
+# Name of the config folder and file for the user. The REAL config lives OUTSIDE
+# the repository (see README, "Why the config lives outside the repo"): that way
+# the repo is published without anyone's path, and changing machines does not
+# generate conflicts in a versioned file.
 CARPETA_APP = "claude-informes"
 NOMBRE_CONFIG = "proyectos.json"
 
 
 def raiz_de_la_herramienta() -> Path:
-    """El directorio del propio paquete claude-informes (la raiz del repo)."""
+    """The directory of the claude-informes package itself (the repo root)."""
     return Path(__file__).resolve().parent.parent
 
 
 def dir_config_usuario() -> Path:
-    """Carpeta de configuracion por-usuario, segun la convencion de cada SO.
+    """Per-user config folder, following each OS's convention.
 
-    - Windows: ``%APPDATA%\\claude-informes`` (la carpeta Roaming del usuario,
-      donde Windows guarda config de aplicaciones que sigue al perfil).
-    - macOS: ``~/Library/Application Support/claude-informes`` (el directorio
-      estandar de datos de aplicacion en macOS).
-    - Linux y demas: ``$XDG_CONFIG_HOME/claude-informes`` o, si no esta
-      definida, ``~/.config/claude-informes`` (la especificacion XDG Base
-      Directory, el estandar de facto en Linux).
+    - Windows: ``%APPDATA%\\claude-informes`` (the user's Roaming folder, where
+      Windows keeps app config that follows the profile).
+    - macOS: ``~/Library/Application Support/claude-informes`` (the standard
+      application-data directory on macOS).
+    - Linux and others: ``$XDG_CONFIG_HOME/claude-informes`` or, if it is not
+      defined, ``~/.config/claude-informes`` (the XDG Base Directory
+      specification, the de facto standard on Linux).
     """
     if sys.platform == "win32":
         base = os.environ.get("APPDATA") or str(Path.home() / "AppData" / "Roaming")
@@ -53,12 +53,12 @@ def dir_config_usuario() -> Path:
 
 
 def ruta_config_usuario() -> Path:
-    """El fichero de config de usuario en la ubicacion estandar del SO."""
+    """The user config file in the OS's standard location."""
     return dir_config_usuario() / NOMBRE_CONFIG
 
 
 def ruta_de_ejemplo() -> Path:
-    """El ejemplo versionado en el repo. Rutas ficticias, nunca reales."""
+    """The example versioned in the repo. Fictitious paths, never real ones."""
     return raiz_de_la_herramienta() / "config" / "proyectos.ejemplo.json"
 
 
@@ -69,16 +69,16 @@ class Proyecto:
     activo: bool
     umbral_lineas: int
     raiz_informes: Path
-    """Donde se archiva ESTE proyecto. Por defecto, la raiz global."""
+    """Where THIS project is archived. By default, the global root."""
 
 
 @dataclass(frozen=True)
 class Configuracion:
     raiz_informes: Path
-    """Raiz global: la que heredan los proyectos que no declaran la suya."""
+    """Global root: the one inherited by projects that do not declare their own."""
 
     ruta_log: Path
-    """El log del hook. Uno solo, para todos los proyectos."""
+    """The hook's log. Just one, for all projects."""
 
     proyectos: list[Proyecto] = field(default_factory=list)
 
@@ -92,7 +92,7 @@ def raiz_informes_por_defecto() -> Path:
 
 
 def ruta_de_log(declarada, raiz_informes) -> Path:
-    """Manda el entorno, luego la config, y si no, el hermano del archivo."""
+    """The environment rules, then the config, and if not, the archive's sibling."""
     del_entorno = os.environ.get(VAR_LOG)
     if del_entorno:
         return Path(del_entorno)
@@ -102,20 +102,21 @@ def ruta_de_log(declarada, raiz_informes) -> Path:
 
 
 def por_defecto() -> Configuracion:
-    """Sin config legible: ningun proyecto, pero el log sigue existiendo."""
+    """No readable config: no projects, but the log still exists."""
     raiz = raiz_informes_por_defecto()
     return Configuracion(raiz_informes=raiz, ruta_log=ruta_de_log(None, raiz))
 
 
 def ruta_de_config() -> Path | None:
-    """La config que se debe usar, o None si no hay ninguna.
+    """The config to use, or None if there is none.
 
-    Orden de resolucion, documentado y testeado:
-      1. La variable de entorno ``CLAUDE_INFORMES_CONFIG``, si esta definida.
-         Gana siempre, exista o no el fichero: quien la pone sabe lo que hace.
-      2. La config de usuario en la ubicacion estandar del SO, si existe.
-      3. Nada: ``None``. El repositorio NO contiene ninguna config real, solo
-         el ejemplo, asi que aqui no hay tercer sitio donde mirar.
+    Resolution order, documented and tested:
+      1. The environment variable ``CLAUDE_INFORMES_CONFIG``, if defined. Always
+         wins, whether or not the file exists: whoever sets it knows what they
+         are doing.
+      2. The user config in the OS's standard location, if it exists.
+      3. Nothing: ``None``. The repository contains NO real config, only the
+         example, so there is no third place to look here.
     """
     del_entorno = os.environ.get(VAR_ENTORNO)
     if del_entorno:
@@ -127,7 +128,7 @@ def ruta_de_config() -> Path | None:
 
 
 def mensaje_sin_config() -> str:
-    """Que decirle a quien arranca sin config. Nunca un traceback."""
+    """What to tell whoever starts without a config. Never a traceback."""
     return (
         "No hay configuracion de claude-informes.\n"
         f"El fichero de usuario deberia estar en:\n    {ruta_config_usuario()}\n\n"
@@ -140,7 +141,7 @@ def mensaje_sin_config() -> str:
 
 
 def _nombre_de(entrada: dict, raiz: str) -> str:
-    """El nombre sale de la config; renombrar el directorio no parte el historico."""
+    """The name comes from the config; renaming the directory does not split the history."""
     declarado = entrada.get("nombre")
     if isinstance(declarado, str) and declarado.strip():
         return declarado.strip()
@@ -148,7 +149,7 @@ def _nombre_de(entrada: dict, raiz: str) -> str:
 
 
 def cargar(ruta: str | os.PathLike[str] | None = None) -> Configuracion:
-    """Lee la configuracion. Si falta o esta rota, no hay ningun proyecto."""
+    """Read the configuration. If it is missing or broken, there is no project."""
     try:
         return cargar_estricto(ruta)
     except Exception:
@@ -156,10 +157,10 @@ def cargar(ruta: str | os.PathLike[str] | None = None) -> Configuracion:
 
 
 def cargar_estricto(ruta: str | os.PathLike[str] | None = None) -> Configuracion:
-    """Como `cargar`, pero revienta si la config no se puede leer.
+    """Like `cargar`, but blows up if the config cannot be read.
 
-    Quien vigila escrituras necesita saber si la config es fiable: sin ella
-    no puede afirmar que una ruta este protegida, y entonces permite.
+    Whoever watches writes needs to know whether the config is trustworthy:
+    without it, it cannot assert that a path is protected, and then it allows.
     """
     destino = Path(ruta) if ruta is not None else ruta_de_config()
     if destino is None:
@@ -213,19 +214,17 @@ def _esta_dentro(candidato: str, raiz: str) -> bool:
 
 
 def buscar_proyecto(cwd: str | None, configuracion: Configuracion) -> Proyecto | None:
-    """Lista blanca: el cwd debe ser la raiz de un proyecto activo o colgar de ella.
+    """Allowlist: the cwd must be the root of an active project or hang off it.
 
-    Devuelve None para cualquier cwd fuera de la lista. Ante empate, gana la
-    raiz mas larga.
+    Returns None for any cwd outside the list. On a tie, the longest root wins.
 
-    La herramienta ya no es un caso aparte. Lo fue mientras `raiz_informes`
-    apuntaba dentro de `claude-informes/informes/`: entonces un turno suyo
-    habria escrito en su propia carpeta de salida, dentro de un repo. Desde
-    que el archivo vive en una raiz propia, fuera de todo arbol git, esa
-    premisa no existe, y la guardia solo servia para tirar a la basura los
-    turnos de quien trabajaba en la propia herramienta. Lo que de verdad
-    protegia --que ningun destino de archivo caiga dentro de la herramienta
-    ni de ningun repositorio-- lo afirman los tests de la config real.
+    The tool is no longer a special case. It was while `raiz_informes` pointed
+    inside `claude-informes/informes/`: back then one of its own turns would have
+    written into its own output folder, inside a repo. Since the archive lives in
+    its own root, outside any git tree, that premise does not exist, and the guard
+    only served to throw away the turns of whoever was working on the tool
+    itself. What it really protected --that no archive destination falls inside
+    the tool or any repository-- is asserted by the tests of the real config.
     """
     if not isinstance(cwd, str) or not cwd.strip():
         return None

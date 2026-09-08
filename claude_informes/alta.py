@@ -1,7 +1,8 @@
-"""Dar de alta un proyecto: crear la carpeta y registrarlo, en un solo paso.
+"""Register a project: create the folder and register it, in a single step.
 
-El orden importa. Si se abre el CLI antes de registrar el proyecto, esa sesion
-no se archiva, y son justo las sesiones de arranque las que mas valen.
+Order matters. If the CLI is opened before the project is registered, that
+session is not archived, and it is precisely the startup sessions that are worth
+the most.
 """
 
 from __future__ import annotations
@@ -26,11 +27,11 @@ def registrar(
     umbral_lineas: int = cfg.UMBRAL_POR_DEFECTO,
     raiz_informes: str | None = None,
 ) -> tuple[Path, Path]:
-    """Crea la carpeta del proyecto y anade su entrada a la config.
+    """Create the project folder and add its entry to the config.
 
-    Devuelve (carpeta del proyecto, fichero de config). Es idempotente en la
-    carpeta (si ya existe, se reutiliza) pero no en la config: un proyecto ya
-    registrado es un error, para no pisar una entrada afinada a mano.
+    Returns (project folder, config file). It is idempotent on the folder (if it
+    already exists, it is reused) but not on the config: an already-registered
+    project is an error, so as not to overwrite an entry hand-tuned by hand.
     """
     limpio = md.slug_llano(nombre)
     if not limpio:

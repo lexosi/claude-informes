@@ -1,4 +1,4 @@
-"""Entrada de linea de ordenes: `hook`, `nuevo`, `ultimo`, `pendientes` y `backfill`."""
+"""Command-line entry point: `hook`, `nuevo`, `ultimo`, `pendientes` and `backfill`."""
 
 from __future__ import annotations
 
@@ -69,7 +69,7 @@ def _construir_parser() -> argparse.ArgumentParser:
 
 
 def _sin_config(args) -> bool:
-    """No hay config utilizable: ni --config, ni entorno, ni fichero de usuario."""
+    """No usable config: no --config, no environment, no user file."""
     return not args.config and cfg.ruta_de_config() is None
 
 
@@ -146,7 +146,7 @@ def _ejecutar_backfill(args) -> int:
 
 
 def _ejecutar_init(args) -> int:
-    """Crea la config de usuario copiando el ejemplo. Idempotente: no pisa."""
+    """Create the user config by copying the example. Idempotent: does not overwrite."""
     destino = Path(args.config) if args.config else cfg.ruta_config_usuario()
     if destino.exists():
         print(f"Ya existe una config de usuario: {destino}")
@@ -165,7 +165,7 @@ def _ejecutar_init(args) -> int:
 
 
 def _ejecutar_ultimo(args) -> int:
-    """El log dice donde esta; el disco dice si es verdad. Manda el disco."""
+    """The log says where it is; the disk says whether that is true. The disk rules."""
     if _sin_config(args):
         print(cfg.mensaje_sin_config(), file=sys.stderr)
         return 2
@@ -186,10 +186,10 @@ def _ejecutar_ultimo(args) -> int:
     print(f"informe  : {ruta.name}")
     print(f"ruta     : {ruta}")
     print(f"anotado  : {anotacion.marca}")
-    # El log registra un HECHO PASADO --que ese dia se escribio esto ahi--, no
-    # un indice de ficheros vivos. Que el fichero siga o no en esa ruta es
-    # informacion, no una alarma: renombrarlo o mover el archivo no convierte
-    # la linea en mentira. Por eso todo esto sale por stdout y el codigo es 0.
+    # The log records a PAST FACT --that this was written there that day--, not an
+    # index of live files. Whether the file is still at that path is information,
+    # not an alarm: renaming it or moving the archive does not make the line a
+    # lie. That is why all this goes to stdout and the code is 0.
     if ruta.is_file():
         print(f"estado   : sigue en disco, {ruta.stat().st_size} bytes")
     elif ruta.parent.is_dir():
@@ -207,7 +207,7 @@ def _ejecutar_ultimo(args) -> int:
 
 
 def _ejecutar_nuevo(args) -> int:
-    """Los tres pasos del arranque en uno, y en el orden correcto."""
+    """The three startup steps in one, and in the correct order."""
     ruta_config = Path(args.config) if args.config else (
         cfg.ruta_de_config() or cfg.ruta_config_usuario()
     )
@@ -234,7 +234,7 @@ def _ejecutar_nuevo(args) -> int:
 
 
 def _ejecutar_pendientes(args) -> int:
-    """Lo que el log sabe de los turnos que no se archivaron."""
+    """What the log knows about the turns that were not archived."""
     if _sin_config(args):
         print(cfg.mensaje_sin_config(), file=sys.stderr)
         return 2
@@ -271,7 +271,7 @@ def _ejecutar_pendientes(args) -> int:
 def main(argv: list[str] | None = None) -> int:
     flujos.salida_en_utf8(sys.stdout, sys.stderr)
     argumentos = list(sys.argv[1:] if argv is None else argv)
-    # El hook no debe fallar nunca, ni siquiera por un argparse enfadado.
+    # The hook must never fail, not even from an angry argparse.
     if argumentos and argumentos[0] == "hook":
         ruta_config = None
         if "--config" in argumentos:

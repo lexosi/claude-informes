@@ -1,3 +1,3 @@
-"""claude-informes: un JSON por turno de Claude Code, sin coste de tokens."""
+"""claude-informes: one JSON per Claude Code turn, at no token cost."""
 
 __version__ = "1.0.0"

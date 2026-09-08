@@ -1,4 +1,4 @@
-"""El sobre JSON y su escritura en disco. Un fichero por turno, siempre."""
+"""The JSON envelope and its writing to disk. One file per turn, always."""
 
 from __future__ import annotations
 
@@ -15,16 +15,16 @@ _PATRON_ORDINAL = re.compile(r"^(\d{2,})-")
 
 
 def _git(cwd: str, *argumentos: str) -> str | None:
-    """Consulta a git, sin ruido y sin colgarse. None si no se puede."""
+    """Query git, without noise and without hanging. None if it cannot."""
     try:
         salida = subprocess.run(
             ["git", *argumentos],
             cwd=cwd,
             capture_output=True,
             text=True,
-            # git habla utf-8; `text=True` a secas decodifica con el
-            # encoding de la consola (cp1252 aqui): una rama con acento
-            # salia con mojibake, o reventaba y se perdian rama Y head.
+            # git speaks utf-8; `text=True` on its own decodes with the console
+            # encoding (cp1252 here): a branch with an accent came out as
+            # mojibake, or blew up and both branch AND head were lost.
             encoding="utf-8",
             errors="replace",
             timeout=5,
@@ -47,7 +47,7 @@ def datos_git(cwd: str) -> tuple[str | None, str | None]:
 
 
 def _momento(cuando: str | datetime | None) -> datetime:
-    """Normaliza a hora local. Acepta ISO-8601 (con o sin Z)."""
+    """Normalize to local time. Accepts ISO-8601 (with or without Z)."""
     if isinstance(cuando, datetime):
         instante = cuando
     elif isinstance(cuando, str) and cuando.strip():
@@ -72,7 +72,7 @@ def construir(
     git_branch: str | None = None,
     git_head: str | None = None,
 ) -> dict:
-    """El sobre. Su unico requisito es llevar el markdown integro."""
+    """The envelope. Its only requirement is to carry the full markdown."""
     instante = _momento(cuando)
     return {
         "fecha": instante.strftime("%Y-%m-%d"),
@@ -89,10 +89,10 @@ def construir(
 
 
 def subcarpeta(base: Path, nombre: str) -> Path:
-    """Reutiliza la carpeta que ya exista. Nunca una variante ni un sufijo.
+    """Reuse the folder that already exists. Never a variant or a suffix.
 
-    En Windows `Alfa` y `alfa` son la misma carpeta; se devuelve la
-    que ya esta en disco para no acabar con dos historicos distintos.
+    On Windows `Alfa` and `alfa` are the same folder; the one already on disk is
+    returned so as not to end up with two separate histories.
     """
     buscado = os.path.normcase(nombre)
     try:
@@ -105,22 +105,22 @@ def subcarpeta(base: Path, nombre: str) -> Path:
 
 
 def carpeta_del_dia(raiz_informes: Path, proyecto: str, fecha: str) -> Path:
-    """`<raiz>/<proyecto>/<AAAA-MM-DD>`, reutilizando los dos niveles."""
+    """`<root>/<project>/<AAAA-MM-DD>`, reusing the two levels."""
     return subcarpeta(subcarpeta(Path(raiz_informes), proyecto), fecha)
 
 
 def _cuenta_para_el_ordinal(nombre: str) -> bool:
-    """Un `.json` ya escrito, o un `.json.tmp` que tiene su ordinal cogido.
+    """A `.json` already written, or a `.json.tmp` that has its ordinal taken.
 
-    Los `.tmp` cuentan porque son el cerrojo: mientras uno exista, su numero
-    esta reservado. Si no se contaran, dos turnos simultaneos elegirian el
-    mismo, que es justo lo que el cerrojo evita.
+    The `.tmp` files count because they are the lock: while one exists, its
+    number is reserved. If they were not counted, two simultaneous turns would
+    pick the same one, which is exactly what the lock prevents.
     """
     return nombre.endswith(".json") or nombre.endswith(".json.tmp")
 
 
 def siguiente_ordinal(directorio: Path) -> int:
-    """El ordinal empieza en 01 en cada carpeta de dia."""
+    """The ordinal starts at 01 in each day folder."""
     mayor = 0
     try:
         existentes = list(directorio.iterdir())
@@ -136,7 +136,7 @@ def siguiente_ordinal(directorio: Path) -> int:
 
 
 def nombre_de_fichero(directorio: Path, sobre: dict) -> Path:
-    """`NN-slug.json`. Sin fecha ni proyecto: ya los aporta la ruta."""
+    """`NN-slug.json`. No date or project: the path already provides them."""
     slug = md.nombre_desde_markdown(sobre["respuesta_markdown"])
     ordinal = siguiente_ordinal(directorio)
     while True:
@@ -147,27 +147,27 @@ def nombre_de_fichero(directorio: Path, sobre: dict) -> Path:
 
 
 def _reservar(directorio: Path, slug: str) -> Path:
-    """Reserva un nombre creando su `.tmp` en exclusiva. Devuelve el `.tmp`.
+    """Reserve a name by creating its `.tmp` exclusively. Returns the `.tmp`.
 
-    El cerrojo NO puede ser el fichero de destino. Cuando lo era, cualquier
-    fallo posterior --y bastaba un caracter que no cupiera en el encoding--
-    dejaba un `.json` de cero bytes indistinguible de un informe de verdad.
-    El `.json` ahora solo aparece por el `os.replace` final.
+    The lock CANNOT be the destination file. When it was, any later failure --and
+    a single character that did not fit in the encoding was enough-- left a
+    zero-byte `.json` indistinguishable from a real report. The `.json` now
+    appears only through the final `os.replace`.
 
-    La garantia es la de siempre, ni mas ni menos: dos turnos a la vez no
-    pueden quedarse con el MISMO NOMBRE, porque gana quien logre el O_EXCL y
-    el otro prueba con el siguiente ordinal. Para que siga siendo cierta,
-    `siguiente_ordinal` cuenta tambien los `.tmp`.
+    The guarantee is the same as always, no more and no less: two turns at once
+    cannot take the SAME NAME, because whoever wins the O_EXCL keeps it and the
+    other tries the next ordinal. For that to stay true, `siguiente_ordinal` also
+    counts the `.tmp` files.
 
-    El O_EXCL del `.tmp` NO basta por si solo: `os.replace` lo renombra al
-    `.json` final y libera su nombre, asi que un turno rezagado que eligio ese
-    mismo ordinal antes de la liberacion volveria a lograr el O_EXCL y su
-    `os.replace` machacaria el `.json` ya escrito --perdida de datos silenciosa,
-    sin excepcion--. La liberacion del `.tmp` y la aparicion del `.json` final
-    son el MISMO `os.replace` atomico: por eso, tras lograr el `.tmp`, si el
-    `.json` de este ordinal ya existe, el ordinal esta tomado; se suelta el
-    `.tmp` y se sube. Mientras tengamos el `.tmp` (O_EXCL) nadie mas puede
-    crear ese `.json`, asi que la comprobacion no tiene ventana de carrera.
+    The O_EXCL on the `.tmp` is NOT enough on its own: `os.replace` renames it to
+    the final `.json` and frees its name, so a straggler turn that had picked
+    that same ordinal before the release would win the O_EXCL again and its
+    `os.replace` would clobber the already-written `.json` --silent data loss,
+    with no exception--. The release of the `.tmp` and the appearance of the
+    final `.json` are the SAME atomic `os.replace`: so, after winning the `.tmp`,
+    if the `.json` of this ordinal already exists, the ordinal is taken; the
+    `.tmp` is released and we move up. While we hold the `.tmp` (O_EXCL) nobody
+    else can create that `.json`, so the check has no race window.
     """
     ordinal = siguiente_ordinal(directorio)
     for _ in range(1000):
@@ -175,11 +175,11 @@ def _reservar(directorio: Path, slug: str) -> Path:
         try:
             descriptor = os.open(temporal, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
         except (FileExistsError, PermissionError):
-            # FileExistsError: otro turno tiene ese `.tmp`. PermissionError: en
-            # Windows, un `.tmp` recien soltado queda en "pending delete" y su
-            # nombre da EACCES, no FileExistsError; en ambos casos el ordinal
-            # esta tomado y se prueba el siguiente. Un directorio de verdad sin
-            # permiso agota los 1000 intentos y termina en el OSError de abajo.
+            # FileExistsError: another turn holds that `.tmp`. PermissionError: on
+            # Windows, a just-released `.tmp` stays in "pending delete" and its
+            # name gives EACCES, not FileExistsError; in both cases the ordinal is
+            # taken and the next one is tried. A directory truly without
+            # permission exhausts the 1000 attempts and ends in the OSError below.
             ordinal += 1
             continue
         os.close(descriptor)
@@ -192,11 +192,11 @@ def _reservar(directorio: Path, slug: str) -> Path:
 
 
 class FalloDeEscritura(Exception):
-    """Un informe que no llego a existir, y el nombre que iba a tener.
+    """A report that never came to exist, and the name it was going to have.
 
-    Lleva la ruta encima para que la linea de ERROR del log pueda decir QUE
-    turno se perdio. Sin ella el log solo dice que algo fallo, y `ultimo` no
-    tiene nada que contrastar.
+    It carries the path so the log's ERROR line can say WHICH turn was lost.
+    Without it the log only says that something failed, and `ultimo` has nothing
+    to check against.
     """
 
     def __init__(self, ruta: Path, causa: BaseException) -> None:
@@ -206,19 +206,19 @@ class FalloDeEscritura(Exception):
 
 
 def escribir(raiz_informes: Path, proyecto: str, sobre: dict) -> Path:
-    """Crea `<raiz>/<proyecto>/<fecha>/` si falta y escribe el sobre.
+    """Create `<root>/<project>/<date>/` if missing and write the envelope.
 
-    Orden: se reserva el `.tmp`, se escribe entero, y solo entonces aparece
-    el `.json`. Si algo falla por el camino no queda nada en disco: ni un
-    informe a cero ni un `.tmp` huerfano.
+    Order: the `.tmp` is reserved, it is written whole, and only then does the
+    `.json` appear. If something fails along the way nothing is left on disk:
+    neither a zero-byte report nor an orphan `.tmp`.
 
-    TODO el cuerpo va dentro del try, `mkdir` y la reserva incluidos: cuando
-    estaban fuera, un fallo de permisos al crear la carpeta salia crudo en vez
-    de `FalloDeEscritura` y la linea de ERROR del hook perdia proyecto, ruta y
-    sesion --justo el fallo silencioso que el diseño dice eliminar--. `destino`
-    guarda el mejor nombre conocido en cada momento (la carpeta del dia hasta
-    que se reserva el `.tmp`), para que la ruta identifique el turno aunque el
-    fallo ocurra antes de elegir el fichero.
+    The WHOLE body goes inside the try, `mkdir` and the reservation included:
+    when they were outside, a permission failure while creating the folder came
+    out raw instead of as `FalloDeEscritura`, and the hook's ERROR line lost the
+    project, path and session --exactly the silent failure the design says it
+    eliminates--. `destino` holds the best name known at each moment (the day
+    folder until the `.tmp` is reserved), so the path identifies the turn even if
+    the failure happens before the file is chosen.
     """
     directorio = carpeta_del_dia(Path(raiz_informes), proyecto, sobre["fecha"])
     destino: Path = directorio
@@ -228,16 +228,16 @@ def escribir(raiz_informes: Path, proyecto: str, sobre: dict) -> Path:
         temporal = _reservar(directorio, md.nombre_desde_markdown(sobre["respuesta_markdown"]))
         destino = temporal.with_name(temporal.name[: -len(".tmp")])
         texto = json.dumps(sobre, ensure_ascii=False, indent=2) + "\n"
-        # newline="\n": en Windows, write_text convertiria los saltos a CRLF y
-        # el archivo quedaria con dos formatos distintos segun quien lo
-        # escribiera.
+        # newline="\n": on Windows, write_text would convert the line breaks to
+        # CRLF and the file would end up with two different formats depending on
+        # who wrote it.
         temporal.write_text(texto, encoding="utf-8", newline="\n")
         os.replace(temporal, destino)
     except BaseException as error:
         if temporal is not None:
             try:
                 temporal.unlink(missing_ok=True)
-            except Exception:  # noqa: BLE001 - la causa original manda
+            except Exception:  # noqa: BLE001 - the original cause rules
                 pass
         raise FalloDeEscritura(destino, error) from error
     return destino
