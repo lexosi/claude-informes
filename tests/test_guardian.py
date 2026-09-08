@@ -296,7 +296,52 @@ def lanzar(entrada):
     )
 
 
-def test_la_lanzadera_deniega_con_la_config_real():
+def test_mecanismo_la_lanzadera_deniega_dentro_del_archivo(
+    escribir_config, informes, log, tmp_path
+):
+    """La lanzadera de verdad, en otro proceso, deniega una escritura dentro del
+    archivo. Config de FIXTURE: prueba el CABLEADO --lee la config, resuelve la
+    zona protegida, deniega-- y esta verde en cualquier runner. Su contraparte de
+    datos comprueba lo otro: que deniega sobre las rutas REALES.
+    """
+    ruta_config = escribir_config(
+        [{"nombre": "vigilado", "cwd": str(tmp_path / "vigilado")}],
+        raiz_informes=informes,
+    )
+    destino = Path(informes) / "vigilado" / "2026-08-28" / "99-falso.json"
+
+    salida = _lanzar_guardian(
+        {"tool_name": "Write", "cwd": str(tmp_path), "tool_input": {"file_path": str(destino)}},
+        ruta_config,
+        log,
+    )
+
+    assert salida.returncode == 0
+    assert deniega(salida.stdout.decode("utf-8"))
+    assert not destino.exists(), "denegar no crea nada"
+
+
+@pytest.mark.datos_reales
+def test_datos_reales_la_lanzadera_deniega_sobre_mis_rutas(exigir_fichero_de_datos):
+    """La lanzadera deniega sobre MIS rutas reales: la unica garantia que este
+    test existe para dar.
+
+    Hermeticizarlo con una config de fixture comprobaria que el guardian deniega
+    EN GENERAL --y eso ya lo hace `test_mecanismo_la_lanzadera_deniega_dentro_del
+    _archivo`-- pero dejaria de comprobar que deniega sobre las rutas REALES del
+    archivo, que es lo unico que impide que alguien escriba a mano dentro de el.
+    Por eso el par: mecanismo y datos son dos preguntas distintas. Solo corre
+    donde existe la config real; si falta, FALLA con instrucciones, nunca skip.
+    """
+    ruta_real = cfg.ruta_de_config() or cfg.ruta_config_usuario()
+    exigir_fichero_de_datos(
+        ruta_real,
+        como_crearlo=(
+            "Crea tu config real con 'python -m claude_informes init' y pon las\n"
+            "rutas reales de tus proyectos y de la raiz de informes."
+        ),
+    )
+
     real = cfg.cargar()
     destino = str(Path(real.raiz_informes) / "alfa" / "2026-08-28" / "99-falso.json")
     proceso = lanzar(json.dumps(payload(destino)))
