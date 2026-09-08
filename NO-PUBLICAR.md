@@ -1,73 +1,79 @@
-# NO PUBLICAR hasta limpiar el historial
+# DO NOT PUBLISH until the history is cleaned
 
-**Este repositorio NO debe hacerse publico tal cual.** La punta actual esta
-limpia, pero el **historial de git** contiene datos reales del autor. Hacerlo
-publico ahora los expone; quitarlos en un commit nuevo **no los borra del
-historial**, que es justo el error que este fichero existe para evitar.
+**This repository must NOT be made public as it is.** The current tip is clean,
+but the **git history** contains the author's real data. Making it public now
+exposes them; removing them in a new commit **does not erase them from the
+history**, which is exactly the mistake this file exists to prevent.
 
-Hoy el repo es **privado** en su remoto, asi que no hay fuga externa. El riesgo
-se materializa el dia que se ponga en publico. Este es el ultimo paso antes de
-publicar, no antes.
+Today the repo is **private** on its remote, so there is no external leak. The
+risk materializes the day it is made public. This is the last step before
+publishing, not before.
 
-## Que contiene el historial (categorias, no verbatim)
+## What the history contains (categories, not verbatim)
 
-Se describen por categoria a proposito: reproducir los valores aqui volveria a
-filtrarlos en la punta.
+They are described by category on purpose: reproducing the values here would leak
+them into the tip again.
 
-1. **Nombre de usuario de Windows real** — de dos maquinas distintas del autor.
-2. **Rutas absolutas reales** — letra de disco + carpeta raiz de proyectos del
-   autor, y la raiz del archivo de informes.
-3. **`config/proyectos.json` REAL commiteado** — la lista blanca de verdad, con
-   las rutas de los proyectos del autor. Es el dato mas sensible: no es una
-   fixture, es la configuracion real. Ya no existe en la punta (se quito), pero
-   sigue en el historial.
-4. **Nombres reales de otros proyectos del autor** — en docstrings, README y
-   fixtures de las versiones antiguas.
+1. **Real Windows username** — from two different machines of the author.
+2. **Real absolute paths** — drive letter + author's projects root folder, and
+   the report archive root.
+3. **REAL `config/proyectos.json` committed** — the actual allowlist, with the
+   paths of the author's projects. It is the most sensitive datum: it is not a
+   fixture, it is the real configuration. It no longer exists in the tip (it was
+   removed), but it is still in the history.
+4. **Real names of other projects of the author** — in docstrings, README and
+   fixtures of the old versions.
 
-## En que commits
+## In which commits
 
-- **Datos de la maquina antigua** (usuario, `config/proyectos.json` real, rutas
-  absolutas): los **6 commits publicados**, `811481e` .. `c3044d5`.
-- **Usuario de la maquina actual y nombres de proyecto reales**: presentes en el
-  arbol hasta `1d314bd` inclusive.
-- **Primer commit con el arbol ya limpio**: `c0fb708` (el que arreglo el guard y
-  scrubeo las fixtures). De ahi en adelante la punta esta limpia.
+- **Data from the old machine** (username, real `config/proyectos.json`, absolute
+  paths): the **6 published commits**, `811481e` .. `c3044d5`.
+- **Username of the current machine and real project names**: present in the tree
+  up to `1d314bd` inclusive.
+- **First commit with an already-clean tree**: `c0fb708` (the one that fixed the
+  guard and scrubbed the fixtures). From there on the tip is clean.
 
-En resumen: hay que reescribir **todo lo anterior a `c0fb708`**. Los hashes
-pueden desplazarse segun caigan commits nuevos; el invariante estable es *"todo
-lo previo al primer commit de arbol limpio"*.
+In short: everything **before `c0fb708`** has to be rewritten. The hashes may
+shift as new commits land; the stable invariant is *"everything prior to the first
+clean-tree commit"*.
 
-## Que hacer antes de publicar
+## What to do before publishing
 
-| Opcion | Que hace | Coste |
+| Option | What it does | Cost |
 | --- | --- | --- |
-| `git filter-repo` (o BFG) + `push --force` | Reescribe todos los commits y borra los blobs con datos reales | Cambia todos los hashes; reescribe historia; irreversible en el remoto |
-| Recrear el repo desde un arbol limpio | Historial nuevo (p. ej. un squash desde `c0fb708`) | Se pierde el historial de commits como narrativa del proceso |
+| `git filter-repo` (or BFG) + `push --force` | Rewrites every commit and deletes the blobs with real data | Changes every hash; rewrites history; irreversible on the remote |
+| Recreate the repo from a clean tree | New history (e.g. a squash from `c0fb708`) | The commit history as a narrative of the process is lost |
 
-La decision es del autor. No la tome un agente por su cuenta.
+The decision is the author's. An agent must not make it on its own.
 
-## Como comprobar que quedo limpio
+## How to check it came out clean
 
-Debe dar **cero** en todo el historial, no solo en HEAD:
+It must give **zero** across the whole history, not only at HEAD:
 
 ```sh
-# ningun identificador real, en ninguna forma, en ningun commit
+# no real identifier, in any form, in any commit
 git log -S "<usuario>"    --all --oneline
 git log -S "<raiz-real>"  --all --oneline
-git log --all -- config/proyectos.json   # no debe existir en ningun commit
+git log --all -- config/proyectos.json   # must not exist in any commit
 ```
 
-Y el guard `tests/test_publicable.py` debe pasar sobre el arbol de **cada**
-commit que sobreviva, no solo sobre la punta. Ese guard lee los identificadores
-reales de un fichero **fuera de git** (`identificadores_prohibidos.json`, junto
-a la config de usuario); si falta, **falla**, no se salta. Cubre el arbol de
-trabajo, **no** el historial: esta comprobacion y la de arriba son distintas.
+And the guard `tests/test_publicable.py` must pass on the tree of **every**
+surviving commit, not only on the tip. That guard reads the real identifiers from
+a file **outside git** (`identificadores_prohibidos.json`, next to the user
+config); if it is missing, it **fails**, it does not skip. It covers the working
+tree, **not** the history: this check and the one above are different.
 
-## Estado
+## What is not translated, and why
 
-- Repo remoto: **privado** a fecha de este fichero.
-- Punta (`HEAD`): sin identificadores reales en el arbol de trabajo. Lo verifica
-  `tests/test_publicable.py`, que ahora se escanea **tambien a si mismo** (antes
-  se auto-eximia y pasaba en verde mientras filtraba los datos del autor). Es
-  una comprobacion de punta, no de historial.
-- Historial: **sucio** — pendiente de reescritura antes de publicar.
+The commit messages before the language switch, and the internal code names, the
+JSON envelope keys and the log labels, are deliberately kept as they are. The
+reasons are in [CONTRIBUTING.md](CONTRIBUTING.md#what-is-not-translated-and-why).
+
+## Status
+
+- Remote repo: **private** as of the date of this file.
+- Tip (`HEAD`): no real identifiers in the working tree. Verified by
+  `tests/test_publicable.py`, which now scans **itself too** (it used to exempt
+  itself and pass green while it leaked the author's data). It is a tip check, not
+  a history check.
+- History: **dirty** — pending rewrite before publishing.
