@@ -107,12 +107,16 @@ markdown; there is no semantic structure at all.
 ```json
 {
   "version_esquema": 1,
+  "version_herramienta": "1.0.0",
+  "instante": "2026-08-28T13:35:17+02:00",
   "fecha": "2026-08-28",
   "hora": "13:35:17",
+  "proyecto": "alfa",
   "session_id": "a6e5a399-f600-4b6a-a258-e7f1bcae90f8",
   "cwd": "/ruta/a/proyectos/alfa",
   "git_branch": "main",
   "git_head": "ac72eff...",
+  "turno_uuid": "d9f1... (only on the backfill)",
   "respuesta_markdown": "...el texto INTEGRO, byte a byte...",
   "secciones": [{ "nivel": 2, "titulo": "Tabla", "contenido": "..." }],
   "bloques_codigo": [{ "lenguaje": "python", "codigo": "..." }],
@@ -123,12 +127,23 @@ markdown; there is no semantic structure at all.
 `secciones`, `bloques_codigo` and `casillas` are **syntactic** splits of the same
 markdown, for the convenience of whoever consumes it. The original rules.
 
-> **Schema version.** `version_esquema` is the envelope's schema version. The
-> contract for a consumer is: **a missing field OR `version_esquema == 1` means
-> v1.** The reports archived before this field existed carry no version and are
-> v1 by that rule; they are **not** rewritten, because the archive is written
-> once. An **incompatible** change to the shape bumps the number to `2`; a purely
-> additive change (like adding this very field) does not.
+> **Schema version, and the fields inside it.** `version_esquema` is the
+> envelope's schema version. The contract for a consumer is: **a missing field
+> OR `version_esquema == 1` means v1.** Reports archived before this field
+> existed carry no version and are v1 by that rule; they are **not** rewritten,
+> because the archive is written once. An **incompatible** change to the shape
+> bumps the number to `2`; a purely **additive** change does not.
+>
+> So **within v1 the set of fields can grow over time**, and a consumer must
+> treat every field as **optional**: read it if present, never assume a fixed
+> set. The fields added after v1 first shipped — `version_herramienta`,
+> `instante`, `proyecto` — are simply absent from older v1 reports (and from the
+> pre-version ones). `turno_uuid` is present **only** when the source is a
+> transcript turn (the backfill); the Stop hook's payload does not carry one, so
+> it is **omitted, not null** — absent means "this path does not provide it",
+> which is different from a null "known to have none". `instante` is the same
+> moment as `fecha`/`hora` but ISO-8601 **with the UTC offset**, so timestamps
+> are comparable across machines; `fecha`/`hora` stay local and unchanged.
 
 > **Note on field names.** The envelope keys (`fecha`, `respuesta_markdown`,
 > `secciones`...) are in Spanish on purpose: they are a data format, not text.

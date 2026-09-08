@@ -390,6 +390,34 @@ def test_the_backfill_threshold_is_configurable(transcripcion, tmp_path):
     assert len(nombres(raiz)) == 4
 
 
+def test_the_backfilled_envelope_carries_the_source_uuid_and_the_project(transcripcion, tmp_path):
+    """The backfill path DOES have the turn's uuid (from the transcript), so the
+    envelope carries `turno_uuid` --the exact key the hook path omits.
+    """
+    raiz = tmp_path / "archivo"
+    bf.reconstruir(transcripcion, raiz, "repo")
+    sobre = json.loads(sorted(raiz.rglob("*.json"))[0].read_text("utf-8"))
+    assert list(sobre) == [
+        "version_esquema",
+        "version_herramienta",
+        "instante",
+        "fecha",
+        "hora",
+        "proyecto",
+        "session_id",
+        "cwd",
+        "git_branch",
+        "git_head",
+        "turno_uuid",
+        "respuesta_markdown",
+        "secciones",
+        "bloques_codigo",
+        "casillas",
+    ]
+    assert sobre["proyecto"] == "repo"
+    assert sobre["turno_uuid"]  # present, from the transcript turn
+
+
 # --- locating the transcript ---
 
 

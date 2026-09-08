@@ -195,6 +195,7 @@ def procesar(payload: dict, configuracion: cfg.Configuracion) -> Resultado:
         cwd=cwd,
         git_branch=rama,
         git_head=head,
+        proyecto=proyecto.nombre,
     )
     try:
         destino = inf.escribir(proyecto.raiz_informes, proyecto.nombre, sobre)

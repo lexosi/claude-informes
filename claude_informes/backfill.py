@@ -94,6 +94,8 @@ def reconstruir(
             cuando=turno.get("timestamp"),
             git_branch=turno.get("git_branch"),
             git_head=head,
+            proyecto=proyecto,
+            turno_uuid=turno.get("uuid"),
         )
         dia = inf.carpeta_del_dia(raiz, proyecto, sobre["fecha"])
         existente = _ya_archivado(dia, respuesta)

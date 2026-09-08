@@ -96,8 +96,11 @@ def test_the_envelope_carries_exactly_the_agreed_schema(proyecto_vigilado, infor
     sobre = json.loads(next(Path(informes).rglob("*.json")).read_text("utf-8"))
     assert list(sobre) == [
         "version_esquema",
+        "version_herramienta",
+        "instante",
         "fecha",
         "hora",
+        "proyecto",
         "session_id",
         "cwd",
         "git_branch",
@@ -108,6 +111,9 @@ def test_the_envelope_carries_exactly_the_agreed_schema(proyecto_vigilado, infor
         "casillas",
     ]
     assert sobre["version_esquema"] == 1
+    assert sobre["proyecto"] == "vigilado"
+    assert datetime.fromisoformat(sobre["instante"]).tzinfo is not None  # carries the offset
+    assert "turno_uuid" not in sobre  # the hook path carries no source uuid
     assert sobre["session_id"] == "sesion-1"
     assert sobre["cwd"] == str(raiz)
 

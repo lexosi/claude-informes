@@ -9,6 +9,7 @@ import subprocess
 from datetime import datetime
 from pathlib import Path
 
+from . import __version__
 from . import markdown as md
 
 _PATRON_ORDINAL = re.compile(r"^(\d{2,})-")
@@ -47,7 +48,13 @@ def datos_git(cwd: str) -> tuple[str | None, str | None]:
 
 
 def _momento(cuando: str | datetime | None) -> datetime:
-    """Normalize to local time. Accepts ISO-8601 (with or without Z)."""
+    """Normalize to local time, TZ-AWARE. Accepts ISO-8601 (with or without Z).
+
+    Tz-aware on purpose: the envelope's `instante` carries the offset so a
+    consumer can compare timestamps across machines. `fecha`/`hora` are the same
+    local wall-clock as before (a tz-aware `astimezone()` does not shift it), so
+    those fields are unchanged; only a new, offset-bearing field is added.
+    """
     if isinstance(cuando, datetime):
         instante = cuando
     elif isinstance(cuando, str) and cuando.strip():
@@ -55,12 +62,11 @@ def _momento(cuando: str | datetime | None) -> datetime:
         try:
             instante = datetime.fromisoformat(texto)
         except ValueError:
-            return datetime.now()
+            return datetime.now().astimezone()
     else:
-        return datetime.now()
-    if instante.tzinfo is not None:
-        instante = instante.astimezone()
-    return instante.replace(tzinfo=None)
+        return datetime.now().astimezone()
+    # A naive datetime is assumed to be local; a tz-aware one is converted to local.
+    return instante.astimezone()
 
 
 # Envelope schema version. The consumer contract (see the README): a missing
@@ -78,22 +84,41 @@ def construir(
     cuando: str | datetime | None = None,
     git_branch: str | None = None,
     git_head: str | None = None,
+    proyecto: str | None = None,
+    turno_uuid: str | None = None,
 ) -> dict:
-    """The envelope. Its only requirement is to carry the full markdown."""
+    """The envelope. Its only requirement is to carry the full markdown.
+
+    All the added fields are optional within schema v1 (see the README's
+    contract): a consumer reads them if present and does not assume a fixed set.
+    `turno_uuid` is OMITTED, not null, when there is no source uuid --the hook's
+    Stop payload does not carry one; the backfill does. Absent means "this path
+    does not provide it", which is not the same as a null "known to have none".
+    """
     instante = _momento(cuando)
-    return {
+    sobre = {
         "version_esquema": VERSION_ESQUEMA,
+        "version_herramienta": __version__,
+        "instante": instante.isoformat(timespec="seconds"),
         "fecha": instante.strftime("%Y-%m-%d"),
         "hora": instante.strftime("%H:%M:%S"),
+        "proyecto": proyecto,
         "session_id": session_id,
         "cwd": cwd,
         "git_branch": git_branch,
         "git_head": git_head,
-        "respuesta_markdown": respuesta_markdown,
-        "secciones": md.secciones(respuesta_markdown),
-        "bloques_codigo": md.bloques_codigo(respuesta_markdown),
-        "casillas": md.casillas(respuesta_markdown),
     }
+    if turno_uuid is not None:
+        sobre["turno_uuid"] = turno_uuid
+    sobre.update(
+        {
+            "respuesta_markdown": respuesta_markdown,
+            "secciones": md.secciones(respuesta_markdown),
+            "bloques_codigo": md.bloques_codigo(respuesta_markdown),
+            "casillas": md.casillas(respuesta_markdown),
+        }
+    )
+    return sobre
 
 
 def subcarpeta(base: Path, nombre: str) -> Path:
