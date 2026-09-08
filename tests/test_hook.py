@@ -431,7 +431,7 @@ def test_if_git_blows_up_the_report_is_written_anyway(
     raiz, ruta_config = proyecto_vigilado
 
     def git_roto(*args, **kwargs):
-        raise FileNotFoundError("git no esta instalado")
+        raise FileNotFoundError("git is not installed")
 
     monkeypatch.setattr(inf.subprocess, "run", git_roto)
     ejecutar(payload(cwd=str(raiz)), ruta_config)

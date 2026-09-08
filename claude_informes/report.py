@@ -188,7 +188,7 @@ def _reservar(directorio: Path, slug: str) -> Path:
             ordinal += 1
             continue
         return temporal
-    raise OSError(f"no hay ordinal libre en {directorio}")
+    raise OSError(f"no free ordinal in {directorio}")
 
 
 class FalloDeEscritura(Exception):

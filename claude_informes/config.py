@@ -164,7 +164,7 @@ def cargar_estricto(ruta: str | os.PathLike[str] | None = None) -> Configuracion
     """
     destino = Path(ruta) if ruta is not None else ruta_de_config()
     if destino is None:
-        raise FileNotFoundError("no hay configuracion de claude-informes")
+        raise FileNotFoundError("no claude-informes configuration")
     crudo = json.loads(destino.read_text(encoding="utf-8"))
 
     entradas = crudo.get("proyectos") if isinstance(crudo, dict) else crudo

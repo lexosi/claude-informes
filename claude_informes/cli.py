@@ -80,6 +80,19 @@ def _resolver_transcript(args) -> Path | None:
     return tr.localizar(cwd=args.cwd, session_id=args.session)
 
 
+def _motivo_en_ingles(motivo: str) -> str:
+    """Render the backfill's internal `motivo` protocol value in English.
+
+    The values stay Spanish because they are protocol: the backfill compares
+    them and its tests pin them. Only the threshold value reaches the user here
+    (the others are handled by their own branch), so it is the one mapped;
+    anything unmapped falls through unchanged rather than being hidden.
+    """
+    if motivo.startswith("umbral ("):
+        return motivo.replace("umbral (", "threshold (").replace(" lineas)", " lines)")
+    return motivo
+
+
 def _ejecutar_backfill(args) -> int:
     if not (args.transcript or args.session or args.cwd):
         print("Specify --transcript, --session or --cwd.", file=sys.stderr)
@@ -134,8 +147,9 @@ def _ejecutar_backfill(args) -> int:
     for entrada in resultados:
         # The `motivo` values ("simulacion", "ya archivado", "umbral ...") stay
         # in Spanish on purpose: they are the backfill's internal protocol, not
-        # display text. They are compared here, so translating them would break
-        # the comparison; only the surrounding message is shown to the user.
+        # display text --they are compared here and pinned by the backfill's
+        # tests. They are mapped to English only at the moment of showing them,
+        # like any internal code presented to a user (see _motivo_en_ingles).
         if entrada["escrito"]:
             escritos += 1
             print(f"  + {Path(entrada['ruta']).name}")
@@ -144,7 +158,7 @@ def _ejecutar_backfill(args) -> int:
         elif entrada["motivo"] == "ya archivado":
             print(f"  = already archived: {Path(entrada['ruta']).name}")
         else:
-            print(f"  - skipped: {entrada['motivo']}")
+            print(f"  - skipped: {_motivo_en_ingles(entrada['motivo'])}")
     print(f"{escritos} report(s) written of {len(resultados)} turn(s).")
     return 0
 

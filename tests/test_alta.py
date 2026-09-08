@@ -131,7 +131,7 @@ def test_the_new_command_warns_about_a_duplicate(tmp_path, escribir_config, caps
     codigo = cli.main(["nuevo", "x", "--en", str(tmp_path / "p"), "--config", str(ruta_config)])
 
     assert codigo == 3
-    assert "ya hay un proyecto" in capsys.readouterr().err
+    assert "already in the config" in capsys.readouterr().err
 
 
 # --- the log remembers what was not archived ---

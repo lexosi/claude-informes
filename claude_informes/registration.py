@@ -35,7 +35,7 @@ def registrar(
     """
     limpio = md.slug_llano(nombre)
     if not limpio:
-        raise ValueError(f"nombre de proyecto inservible: {nombre!r}")
+        raise ValueError(f"unusable project name: {nombre!r}")
 
     destino = Path(ruta_config)
     try:
@@ -43,17 +43,17 @@ def registrar(
     except FileNotFoundError:
         crudo = {"proyectos": []}
     if not isinstance(crudo, dict) or not isinstance(crudo.get("proyectos"), list):
-        raise ValueError(f"la config no tiene la forma esperada: {destino}")
+        raise ValueError(f"the config does not have the expected shape: {destino}")
 
     carpeta = Path(raiz_proyectos) / limpio
     for entrada in crudo["proyectos"]:
         if not isinstance(entrada, dict):
             continue
         if entrada.get("nombre") == limpio:
-            raise YaExiste(f"ya hay un proyecto llamado {limpio!r} en la config")
+            raise YaExiste(f"a project named {limpio!r} is already in the config")
         declarado = entrada.get("cwd")
         if isinstance(declarado, str) and cfg.normalizar(declarado) == cfg.normalizar(carpeta):
-            raise YaExiste(f"{carpeta} ya esta registrado como {entrada.get('nombre')!r}")
+            raise YaExiste(f"{carpeta} is already registered as {entrada.get('nombre')!r}")
 
     nueva = {
         "nombre": limpio,
