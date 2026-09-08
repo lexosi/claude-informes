@@ -1,3 +1,37 @@
+"""Infraestructura compartida de los tests.
+
+Pares mecanismo / datos
+-----------------------
+Algunas comprobaciones se parten en DOS tests porque responden a dos preguntas
+distintas, y se reconocen por el prefijo del nombre:
+
+- ``test_mecanismo_<que>``  -- prueba que la LOGICA funciona. Usa datos de
+  fixture, no toca nada de la maquina, y esta VERDE en cualquier runner (CI
+  incluida).
+- ``test_datos_reales_<que>`` -- prueba que los DATOS reales de esta maquina
+  cumplen (p. ej. que el repo no filtra los identificadores del autor, o que el
+  guardian deniega sobre las rutas reales). Usa un fichero fuera de git y solo
+  corre donde existe; si falta, FALLA con instrucciones, nunca hace skip. Lleva
+  SIEMPRE el marcador ``@pytest.mark.datos_reales`` (lo vigila
+  ``tests/test_convencion.py``: un test de datos sin marcar es justo la
+  excepcion que abre el agujero).
+
+Como se corre cada grupo
+------------------------
+- CI, cualquier runner:   ``pytest -m "not datos_reales"``  (solo mecanismo).
+- Pre-push / local:       ``pytest``                         (la suite ENTERA).
+
+IMPORTANTE: ``-m "not datos_reales"`` NO es cobertura completa. Deja fuera, a
+proposito, todo lo que depende de datos de la maquina. La comprobacion de que
+tus datos reales cumplen la da la suite ENTERA, que es la que corre el pre-push
+antes de publicar. Leer el comando de CI como "esto es todo lo que se prueba"
+seria tomar una parte por el conjunto.
+
+El prefijo agrupa por naturaleza al ordenar la salida (todo el mecanismo junto,
+todos los datos juntos) y hace que un ``test_datos_reales_`` sin su marcador
+cante a la vista.
+"""
+
 import json
 import pathlib
 import sys
@@ -7,6 +41,27 @@ from pathlib import Path
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+
+@pytest.fixture
+def exigir_fichero_de_datos():
+    """La condicion 'existe el fichero de datos reales', en UN solo sitio.
+
+    Devuelve una funcion `(ruta, *, como_crearlo) -> texto` que lee el fichero
+    o hace `pytest.fail` con la ruta exacta y como crearlo. NUNCA skip: un test
+    de datos que se salta en silencio es un guardian ciego, y de esos el
+    proyecto ya lleva tres. La usan todos los pares mecanismo/datos, para que
+    ninguno vuelva a copiar-pegar la logica de "existe o no".
+    """
+
+    def _exigir(ruta: Path, *, como_crearlo: str) -> str:
+        if not ruta.exists():
+            pytest.fail(
+                f"Falta el fichero de datos reales de la maquina:\n    {ruta}\n\n{como_crearlo}"
+            )
+        return ruta.read_text(encoding="utf-8")
+
+    return _exigir
 
 
 def pytest_configure(config):

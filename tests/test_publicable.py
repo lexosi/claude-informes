@@ -58,6 +58,25 @@ evitar-- sino en un fichero FUERA de git, junto a la config de usuario
 (``identificadores_prohibidos.json``, al lado de ``proyectos.json``). Si falta,
 el test FALLA con instrucciones, nunca se salta: un skip verde es un guardian
 ciego, y de esos ya llevamos tres.
+
+Por que DOS tests (mecanismo y datos) y no uno
+----------------------------------------------
+La comprobacion se parte en un ``test_mecanismo_*`` (verde en cualquier runner,
+con identificadores ficticios) y un ``test_datos_reales_*`` (marcado
+``datos_reales``, solo donde existe el fichero). La convencion general esta en
+la cabecera de ``tests/conftest.py``; aqui quedan escritas las tres razones de
+elegir esta separacion antes que excluir el test en CI o meter los datos en un
+secret:
+
+1. Es la misma separacion que el proyecto ya usa en todas partes: la LOGICA
+   vive en el repo, los DATOS de la maquina viven fuera. El guard era el ultimo
+   sitio donde faltaba aplicarla.
+2. Excluir el test en CI romperia la regla de arriba: seria la cuarta iteracion
+   del mismo fallo --un gate con una excepcion-- cometida a proposito tres dias
+   despues de escribirla.
+3. Meter los identificadores en un secret de GitHub devuelve a GitHub
+   exactamente lo que sacamos de GitHub. Un secret cifrado sigue siendo el
+   nombre y los proyectos del autor en infraestructura ajena.
 """
 
 import json
@@ -117,25 +136,23 @@ def _ruta_lista() -> Path:
     return cfg.dir_config_usuario() / NOMBRE_LISTA
 
 
-def _mensaje_sin_lista() -> str:
-    return (
-        f"No hay lista de identificadores prohibidos en:\n    {_ruta_lista()}\n\n"
-        "Sin ella este guard no puede afirmar que el repo no filtra datos reales,\n"
-        "y un push publicaria justo lo que deberia cazar. Por eso FALLA en vez de\n"
-        "saltarse: un skip verde es un guardian ciego.\n\n"
-        "Crea el fichero (fuera de git, al lado de tu proyectos.json) asi:\n"
-        '    {"identificadores": ["tu-usuario", "tu-proyecto", "e:\\\\tu\\\\raiz"]}\n'
-    )
+_COMO_CREAR = (
+    "Sin ella este guard no puede afirmar que el repo no filtra datos reales,\n"
+    "y un push publicaria justo lo que deberia cazar.\n\n"
+    "Crea el fichero (fuera de git, al lado de tu proyectos.json) asi:\n"
+    '    {"identificadores": ["tu-usuario", "tu-proyecto", "e:\\\\tu\\\\raiz"]}'
+)
 
 
-def _cargar_reales_canon() -> list[str]:
-    """Los identificadores reales, canonizados. Falla con instrucciones si faltan."""
+def _cargar_reales_canon(exigir_fichero_de_datos) -> list[str]:
+    """Los identificadores reales, canonizados. La existencia del fichero la
+    resuelve el helper compartido `exigir_fichero_de_datos` (falla con
+    instrucciones si no esta); aqui solo se valida y canoniza el contenido.
+    """
     ruta = _ruta_lista()
-    if not ruta.exists():
-        pytest.fail(_mensaje_sin_lista())
+    crudo = exigir_fichero_de_datos(ruta, como_crearlo=_COMO_CREAR)
     try:
-        datos = json.loads(ruta.read_text(encoding="utf-8"))
-        ids = datos["identificadores"]
+        ids = json.loads(crudo)["identificadores"]
     except Exception as error:  # noqa: BLE001
         pytest.fail(f"lista de identificadores ilegible ({ruta}): {error}")
     if not isinstance(ids, list) or not ids or not all(
@@ -160,7 +177,7 @@ def _ficheros_a_escanear():
 # --- el guard caza lo que antes se escapaba (identificadores FICTICIOS) ---
 
 
-def test_el_guard_caza_las_nueve_formas_de_evasion():
+def test_mecanismo_caza_las_nueve_formas_de_evasion():
     """Cada caso esconde un identificador de una forma que el patron de
     subcadena literal dejaba pasar.
 
@@ -184,7 +201,7 @@ def test_el_guard_caza_las_nueve_formas_de_evasion():
         assert _contiene(texto, reales), f"el guard no caza la forma: {nombre}"
 
 
-def test_una_ruta_ficticia_no_se_marca():
+def test_mecanismo_una_ruta_ficticia_no_se_marca():
     """Las rutas y nombres ficticios no deben dar falso positivo."""
     reales = [_canon("usuariofalso"), _canon("proyectofalso")]
     ficticios = [
@@ -199,15 +216,16 @@ def test_una_ruta_ficticia_no_se_marca():
 # --- el ejemplo ---
 
 
-def test_el_ejemplo_es_json_valido_y_tiene_forma():
+def test_mecanismo_el_ejemplo_es_json_valido_y_tiene_forma():
     datos = json.loads(cfg.ruta_de_ejemplo().read_text(encoding="utf-8"))
     assert isinstance(datos, dict)
     assert isinstance(datos.get("proyectos"), list) and datos["proyectos"], "debe traer proyectos de muestra"
     assert "raiz_informes" in datos
 
 
-def test_el_ejemplo_no_lleva_ningun_identificador_real():
-    reales = _cargar_reales_canon()
+@pytest.mark.datos_reales
+def test_datos_reales_el_ejemplo_no_lleva_identificador(exigir_fichero_de_datos):
+    reales = _cargar_reales_canon(exigir_fichero_de_datos)
     texto = cfg.ruta_de_ejemplo().read_text(encoding="utf-8")
     assert not _contiene(texto, reales), "el ejemplo contiene un identificador real"
 
@@ -215,7 +233,8 @@ def test_el_ejemplo_no_lleva_ningun_identificador_real():
 # --- todo el repo, este fichero incluido ---
 
 
-def test_el_repo_no_contiene_ningun_identificador_real():
+@pytest.mark.datos_reales
+def test_datos_reales_el_repo_no_contiene_identificador(exigir_fichero_de_datos):
     """Escanea TODOS los ficheros de texto de la punta, este incluido.
 
     Un fichero que no se puede leer como utf-8 se REPORTA como hueco (o es texto
@@ -223,7 +242,7 @@ def test_el_repo_no_contiene_ningun_identificador_real():
     medias en silencio. Antes se leia con errors='ignore', que es un pase
     disfrazado de lectura.
     """
-    reales = _cargar_reales_canon()
+    reales = _cargar_reales_canon(exigir_fichero_de_datos)
     ofensores = []
     ilegibles = []
     for ruta in _ficheros_a_escanear():

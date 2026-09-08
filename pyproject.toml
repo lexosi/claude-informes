@@ -15,3 +15,6 @@ packages = ["claude_informes"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
+markers = [
+    "datos_reales: el test usa datos reales de la maquina (fuera de git) y solo corre donde existen; si faltan, FALLA con instrucciones, nunca skip. CI corre 'pytest -m \"not datos_reales\"'; el pre-push corre la suite entera. Ver la cabecera de tests/conftest.py.",
+]
