@@ -12,7 +12,7 @@ author's portfolio, read by reviewers who do not read Spanish.
 
 ## Language of the code and docs
 
-Prose is being translated to English (README, INSTALACION, NO-PUBLICAR,
+Prose is being translated to English (README, INSTALACION,
 docstrings, comments, and user-facing messages). If you see a mix during that
 work, it is in progress, not neglect. Two things are deliberately **not**
 translated, and this is the reason, so the mix is read as a decision:

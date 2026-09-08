@@ -72,8 +72,9 @@ technique a fix might use to hide the identifier.
 Scope (honest): TIP, not history
 ---------------------------------
 This gate walks the WORKING TREE. `.git/` is left out on purpose: cleaning the
-HISTORY is a separate problem (see NO-PUBLICAR.md) and this test does NOT cover
-it. Reading a green here as "the whole repo is clean" would be, again, taking an
+HISTORY was a separate problem (done 2026-09-08; see
+`docs/decisions/2026-09-08-history-rewrite.md`) and this test does NOT cover it.
+Reading a green here as "the whole repo is clean" would be, again, taking an
 exception for full coverage.
 
 Where the private identifiers live

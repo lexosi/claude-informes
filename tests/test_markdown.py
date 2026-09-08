@@ -185,7 +185,7 @@ def test_trimming_a_word_longer_than_the_cap_cuts_it_hard():
 
 
 def test_the_plain_slug_does_not_discard_words():
-    assert md.slug_llano("Mi Repo de la Empresa") == "mi-repo-de-la-empresa"
+    assert md.slug_llano("My Repo of the Company") == "my-repo-of-the-company"
 
 
 # --- syntactic chunking ---

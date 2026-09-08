@@ -74,14 +74,14 @@ def test_the_mapping_does_not_depend_on_the_directory_name_but_on_the_cwd(
     """The folder name may not resemble the slug: the cwd rules."""
     configuracion = cfg.cargar(
         escribir_config(
-            [{"nombre": "informes-del-curro", "cwd": "C:\\proyectos\\beta"}],
+            [{"nombre": "work-reports", "cwd": "C:\\proyectos\\beta"}],
             raiz_informes=informes,
         )
     )
     ruta = "C:\\p\\C--proyectos-beta\\abc.jsonl"
 
     proyecto = hk.proyecto_del_transcript(ruta, configuracion)
-    assert proyecto is not None and proyecto.nombre == "informes-del-curro"
+    assert proyecto is not None and proyecto.nombre == "work-reports"
 
 
 def test_a_sibling_slug_is_not_mistaken_for_a_subdirectory(

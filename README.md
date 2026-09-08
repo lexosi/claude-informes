@@ -2,10 +2,6 @@
 
 [![tests](https://github.com/lexosi/claude-informes/actions/workflows/tests.yml/badge.svg)](https://github.com/lexosi/claude-informes/actions/workflows/tests.yml)
 
-> ⛔ **DO NOT PUBLISH yet.** The git history contains the author's real data;
-> the tip is clean but the past is not. Before making this repo public, read and
-> resolve [NO-PUBLICAR.md](NO-PUBLICAR.md).
-
 Captures the response of every Claude Code turn and saves it as JSON. Zero token
 cost: it is written by a `Stop` hook, which is an external process, not a call to
 the model.
