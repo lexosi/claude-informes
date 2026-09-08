@@ -153,11 +153,11 @@ def _cargar_reales_canon(exigir_fichero_de_datos) -> list[str]:
     try:
         ids = json.loads(crudo)["identificadores"]
     except Exception as error:  # noqa: BLE001
-        pytest.fail(f"lista de identificadores ilegible ({ruta}): {error}")
+        pytest.fail(f"unreadable identifier list ({ruta}): {error}")
     if not isinstance(ids, list) or not ids or not all(
         isinstance(x, str) and x.strip() for x in ids
     ):
-        pytest.fail(f"la lista debe ser una lista no vacia de cadenas: {ruta}")
+        pytest.fail(f"the list must be a non-empty list of strings: {ruta}")
     return [_canon(x) for x in ids]
 
 
@@ -197,7 +197,7 @@ def test_mechanism_catches_the_nine_evasion_forms():
         "concatenada": '"usuario" + "falso"',
     }
     for nombre, texto in casos.items():
-        assert _contiene(texto, reales), f"el guard no caza la forma: {nombre}"
+        assert _contiene(texto, reales), f"the guard does not catch the form: {nombre}"
 
 
 def test_mechanism_a_fictitious_path_is_not_flagged():
@@ -209,7 +209,7 @@ def test_mechanism_a_fictitious_path_is_not_flagged():
         "beta y alfa son proyectos de muestra",
     ]
     for texto in ficticios:
-        assert not _contiene(texto, reales), f"falso positivo en: {texto!r}"
+        assert not _contiene(texto, reales), f"false positive on: {texto!r}"
 
 
 # --- the example ---
@@ -218,7 +218,7 @@ def test_mechanism_a_fictitious_path_is_not_flagged():
 def test_mechanism_the_example_is_valid_json_with_the_right_shape():
     datos = json.loads(cfg.ruta_de_ejemplo().read_text(encoding="utf-8"))
     assert isinstance(datos, dict)
-    assert isinstance(datos.get("proyectos"), list) and datos["proyectos"], "debe traer proyectos de muestra"
+    assert isinstance(datos.get("proyectos"), list) and datos["proyectos"], "it must bring sample projects"
     assert "raiz_informes" in datos
 
 
@@ -226,7 +226,7 @@ def test_mechanism_the_example_is_valid_json_with_the_right_shape():
 def test_real_data_the_example_carries_no_identifier(exigir_fichero_de_datos):
     reales = _cargar_reales_canon(exigir_fichero_de_datos)
     texto = cfg.ruta_de_ejemplo().read_text(encoding="utf-8")
-    assert not _contiene(texto, reales), "el ejemplo contiene un identificador real"
+    assert not _contiene(texto, reales), "the example contains a real identifier"
 
 
 # --- the whole repo, this file included ---
@@ -257,8 +257,8 @@ def test_real_data_the_repo_contains_no_identifier(exigir_fichero_de_datos):
             # reprint the real datum we are trying to keep out.
             ofensores.append(os.path.relpath(ruta, RAIZ))
     assert not ilegibles, (
-        "ficheros que el guard no pudo leer como utf-8; un fichero ilegible es un "
-        "hueco, no un pase: arregla su encoding, o si es binario mete su extension "
-        "en BINARIOS:\n" + "\n".join(sorted(ilegibles))
+        "files the guard could not read as utf-8; an unreadable file is a hole, "
+        "not a pass: fix its encoding, or if it is binary put its extension in "
+        "BINARIOS:\n" + "\n".join(sorted(ilegibles))
     )
-    assert not ofensores, "identificadores reales en el repo:\n" + "\n".join(sorted(ofensores))
+    assert not ofensores, "real identifiers in the repo:\n" + "\n".join(sorted(ofensores))

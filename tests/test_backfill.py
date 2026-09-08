@@ -284,7 +284,7 @@ def test_a_second_pass_is_idempotent(transcripcion, tmp_path):
     bf.reconstruir(transcripcion, raiz, "repo")
     segunda = bf.reconstruir(transcripcion, raiz, "repo")
 
-    assert len(nombres(raiz)) == 3, "la segunda pasada no anade ficheros"
+    assert len(nombres(raiz)) == 3, "the second pass adds no files"
     assert all(not r["escrito"] for r in segunda)
     ya = [r for r in segunda if r["motivo"] == "ya archivado"]
     assert len(ya) == 3
@@ -300,8 +300,8 @@ def test_fills_a_gap_without_duplicating_what_is_already_there(transcripcion, tm
 
     dia = raiz / "repo" / HOY
     markdowns = [json.loads(p.read_text("utf-8"))["respuesta_markdown"] for p in dia.glob("*.json")]
-    assert sorted(markdowns) == sorted([LARGO_A, LARGO_B, LARGO_C]), "cada turno aparece una sola vez"
-    assert markdowns.count(LARGO_B) == 1, "el hueco se rellena, no se duplica"
+    assert sorted(markdowns) == sorted([LARGO_A, LARGO_B, LARGO_C]), "each turn appears exactly once"
+    assert markdowns.count(LARGO_B) == 1, "the gap is filled, not duplicated"
 
 
 def test_the_backfill_records_in_the_log_and_ultimo_finds_it(transcripcion, tmp_path):
@@ -358,7 +358,7 @@ def test_the_simulation_predicts_the_real_ordinals(transcripcion, tmp_path):
         if r["motivo"] == "simulacion"
     ]
     assert simulados == [SLUG_A, SLUG_B, SLUG_C]
-    assert not raiz.exists(), "seguir siendo un dry-run: cero escrituras"
+    assert not raiz.exists(), "still a dry-run: zero writes"
 
 
 def test_the_simulation_continues_the_ordinal_of_what_is_already_there(transcripcion, tmp_path):

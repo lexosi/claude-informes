@@ -246,7 +246,7 @@ def test_if_the_log_fails_it_exits_0_and_stays_silent(proyecto_vigilado, informe
     assert codigo == 0
     assert capturado.out == "" and capturado.err == ""
     assert not log.exists()
-    assert len(list(Path(informes).rglob("*.json"))) == 1, "el informe si se escribio"
+    assert len(list(Path(informes).rglob("*.json"))) == 1, "the report was indeed written"
 
 
 def test_if_both_the_log_and_the_report_fail_it_still_exits_0(proyecto_vigilado, log, monkeypatch, capsys):
@@ -308,10 +308,10 @@ def test_last_reports_when_the_file_is_gone_without_alarming(
     codigo = cli.main(["ultimo", "--config", str(ruta_config)])
 
     capturado = capsys.readouterr()
-    assert codigo == 0, "la ausencia del fichero es informacion, no error"
-    assert capturado.err == "", "no es una alarma: nada por stderr"
+    assert codigo == 0, "the file's absence is information, not an error"
+    assert capturado.err == "", "not an alarm: nothing on stderr"
     assert "no longer where the log recorded it" in capturado.out
-    assert "renamed or deleted within" in capturado.out, "distingue: su carpeta sigue"
+    assert "renamed or deleted within" in capturado.out, "it distinguishes: its folder is still there"
     assert "miente" not in capturado.out
 
 
@@ -353,7 +353,7 @@ def test_last_picks_the_most_recent_one_of_that_project(
     salida = capsys.readouterr().out
 
     assert "project  : uno" in salida
-    assert "02-" in salida, "el segundo de 'uno', no el de 'dos'"
+    assert "02-" in salida, "the second of 'uno', not the one of 'dos'"
 
 
 def test_last_ignores_the_lines_that_are_not_writes(

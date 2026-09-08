@@ -71,8 +71,8 @@ def test_the_no_config_message_says_how_to_create_it_and_is_not_a_traceback(tmp_
 
     mensaje = cfg.mensaje_sin_config()
     assert isinstance(mensaje, str) and mensaje.strip()
-    assert "init" in mensaje, "tiene que decir el comando que la crea"
-    assert str(destino) in mensaje, "tiene que decir donde va"
+    assert "init" in mensaje, "it must name the command that creates it"
+    assert str(destino) in mensaje, "it must say where it goes"
     assert "Traceback" not in mensaje
 
 
@@ -127,5 +127,5 @@ def test_init_does_not_overwrite_an_existing_config(tmp_path, monkeypatch, capsy
     codigo = cli.main(["init"])
 
     assert codigo == 0
-    assert destino.read_text(encoding="utf-8") == antes, "no pisa lo que ya hay"
+    assert destino.read_text(encoding="utf-8") == antes, "it does not overwrite what is already there"
     assert "already exists" in capsys.readouterr().out

@@ -142,7 +142,7 @@ def test_the_message_says_why_and_what_to_do_instead(archivo):
 
     assert "report archive" in motivo
     assert "Stop hook" in motivo
-    assert "ultimo" in motivo, "tiene que decir que hacer en su lugar"
+    assert "ultimo" in motivo, "it must say what to do instead"
     assert "--proyecto alfa" in motivo
 
 
@@ -193,7 +193,7 @@ def test_a_missing_config_allows_and_records_it(tmp_path, log):
         payload(tmp_path / "informes-claude" / "x.json"), tmp_path / "no-existe.json"
     )
 
-    assert codigo == 0 and salida == "", "sin config no se puede afirmar nada: permite"
+    assert codigo == 0 and salida == "", "with no config nothing can be asserted: it permits"
     (anotacion,) = reg.leer(log)
     assert anotacion.resultado == reg.PERMITIDO_POR_ERROR
     assert "FileNotFoundError" in anotacion.detalle
@@ -247,7 +247,7 @@ def test_if_the_log_fails_the_denial_still_comes_out(archivo, monkeypatch):
     codigo, salida = ejecutar(payload(comun / "alfa" / "x.json"), ruta_config)
 
     assert codigo == 0
-    assert deniega(salida), "el log es secundario; la decision no depende de el"
+    assert deniega(salida), "the log is secondary; the decision does not depend on it"
 
 
 def test_it_never_returns_a_nonzero_exit_code(archivo, tmp_path):
@@ -318,7 +318,7 @@ def test_mechanism_the_launcher_denies_inside_the_archive(
 
     assert salida.returncode == 0
     assert deniega(salida.stdout.decode("utf-8"))
-    assert not destino.exists(), "denegar no crea nada"
+    assert not destino.exists(), "denying creates nothing"
 
 
 @pytest.mark.real_data
@@ -348,7 +348,7 @@ def test_real_data_the_launcher_denies_over_my_real_paths(exigir_fichero_de_dato
 
     assert proceso.returncode == 0
     assert deniega(proceso.stdout)
-    assert not Path(destino).exists(), "denegar no crea nada"
+    assert not Path(destino).exists(), "denying creates nothing"
 
 
 def test_the_launcher_allows_a_normal_write():
@@ -460,5 +460,5 @@ def test_faced_with_invalid_json_it_keeps_failing_open(escribir_config, informes
     )
 
     assert salida.returncode == 0
-    assert salida.stdout == b"", "sin salida = sin decision = la herramienta sigue"
+    assert salida.stdout == b"", "no output = no decision = the tool goes on"
     assert reg.leer(log)[-1].resultado == reg.PERMITIDO_POR_ERROR

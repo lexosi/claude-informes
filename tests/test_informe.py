@@ -263,7 +263,7 @@ def test_the_launcher_archives_with_the_tools_own_cwd(
     assert proceso.returncode == 0
     escritos = sorted(Path(informes).rglob("*.json"))
     assert [p.name for p in escritos] == ["01-uno-dos-tres-cuatro-cinco.json"]
-    assert not (RAIZ / "informes").exists(), "el destino viejo no debe resucitar"
+    assert not (RAIZ / "informes").exists(), "the old destination must not come back to life"
 
 
 def test_the_launcher_exits_0_with_empty_stdin():
@@ -285,7 +285,7 @@ def test_the_json_does_not_exist_until_it_has_content(tmp_path, monkeypatch):
     monkeypatch.setattr(inf.json, "dumps", espiar)
     destino = inf.escribir(tmp_path, "repo", sobre(cuando="2026-08-28T10:00:00Z"))
 
-    assert vistos == [[f"01-{SLUG}.json.tmp"]], "el .json no puede existir antes de tener contenido"
+    assert vistos == [[f"01-{SLUG}.json.tmp"]], "the .json cannot exist before it has content"
     assert destino.name == f"01-{SLUG}.json"
     assert [p.name for p in dia(tmp_path).iterdir()] == [f"01-{SLUG}.json"]
 
@@ -361,7 +361,7 @@ def test_the_race_does_not_reuse_an_already_published_ordinal(tmp_path, monkeypa
 
         assert errores == []
         nombres = sorted(p.name for p in dia(raiz).iterdir())
-        assert len(nombres) == N, f"ronda {ronda}: {len(nombres)} de {N} informes; uno machacado"
+        assert len(nombres) == N, f"round {ronda}: {len(nombres)} of {N} reports; one clobbered"
 
 
 def test_a_failure_creating_the_folder_is_a_write_failure(tmp_path):

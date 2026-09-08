@@ -91,7 +91,7 @@ def vigilado(tmp_path, informes, escribir_config):
 
 def el_unico_informe(informes):
     escritos = sorted(Path(informes).rglob("*.json"))
-    assert len(escritos) == 1, f"se esperaba un informe y hay {len(escritos)}: {escritos}"
+    assert len(escritos) == 1, f"expected one report and there are {len(escritos)}: {escritos}"
     return escritos[0]
 
 

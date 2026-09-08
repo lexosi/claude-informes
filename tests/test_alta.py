@@ -73,7 +73,7 @@ def test_new_preserves_the_projects_that_were_already_there(tmp_path, escribir_c
 
     configuracion = cfg.cargar(ruta_config)
     assert sorted(p.nombre for p in configuracion.proyectos) == ["alfa", "otro"]
-    assert configuracion.raiz_informes == Path(informes), "la raiz global no se toca"
+    assert configuracion.raiz_informes == Path(informes), "the global root is not touched"
 
 
 def test_new_normalizes_the_name(tmp_path, escribir_config):
@@ -195,8 +195,8 @@ def test_pending_counts_the_unarchived_turns(
     assert "3 turn(s) unarchived" in salida
     assert "claude-informes" in salida
     assert str(transcripcion) in salida
-    assert "nuevo claude-informes" in salida, "dice como registrarlo"
-    assert "backfill" in salida, "y como recuperar lo perdido"
+    assert "nuevo claude-informes" in salida, "it says how to register it"
+    assert "backfill" in salida, "and how to recover what was lost"
 
 
 def test_pending_says_nothing_when_there_is_nothing(escribir_config, informes, capsys):

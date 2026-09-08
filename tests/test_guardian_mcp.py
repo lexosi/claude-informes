@@ -139,7 +139,7 @@ def test_an_mcp_write_outside_the_archive_is_allowed(archivo, log):
     ]:
         codigo, salida = ejecutar(mcp("mcp__x__write_file", {"path": ruta}), ruta_config)
         assert codigo == 0 and salida == "", ruta
-    assert reg.leer(log) == [], "una escritura legitima no ensucia el log"
+    assert reg.leer(log) == [], "a legitimate write does not dirty the log"
 
 
 def test_an_mcp_read_inside_the_archive_is_allowed(archivo, log):
@@ -194,7 +194,7 @@ def test_an_unknown_verb_is_treated_as_a_read(archivo, log):
 
     codigo, salida = ejecutar(datos, ruta_config)
 
-    assert codigo == 0 and salida == "", "no se reconoce como escritura: pasa"
+    assert codigo == 0 and salida == "", "not recognized as a write: it passes"
     assert reg.leer(log) == []
 
 

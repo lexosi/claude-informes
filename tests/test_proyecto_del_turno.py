@@ -148,7 +148,7 @@ def test_a_turn_from_an_unwatched_session_is_not_archived_even_when_the_cwd_is_w
     datos = turno(vigilado, transcript_de(tmp_path / "proyectos"))
     assert ejecutar(datos, ruta_config) == 0
 
-    assert not Path(informes).exists(), "la sesion manda sobre el cwd"
+    assert not Path(informes).exists(), "the session rules over the cwd"
     (anotacion,) = reg.leer(log)
     assert anotacion.resultado == reg.OMITIDO_SESION
     assert "proyecto no registrado" in anotacion.detalle
@@ -184,7 +184,7 @@ def test_without_a_transcript_path_it_falls_back_to_the_cwd_and_is_logged(
 
     ejecutar(turno(raiz, ""), ruta_config)
 
-    assert len(escritos(informes, "alfa")) == 1, "se archiva igual"
+    assert len(escritos(informes, "alfa")) == 1, "it is archived all the same"
     aviso, escrito = reg.leer(log)
     assert aviso.resultado == reg.PROYECTO_POR_CWD
     assert "sin transcript_path" in aviso.detalle

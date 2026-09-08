@@ -70,7 +70,7 @@ def test_the_file_on_disk_is_valid_utf8(proyecto_vigilado, informes):
 
     crudo = next(Path(informes).rglob("*.json")).read_bytes()
     crudo.decode("utf-8")  # blows up if it isn't
-    assert not crudo.startswith(b"\xef\xbb\xbf"), "sin BOM al principio del fichero"
+    assert not crudo.startswith(b"\xef\xbb\xbf"), "no BOM at the start of the file"
 
 
 def test_the_chunking_does_not_alter_the_original_markdown(proyecto_vigilado, informes):
@@ -113,5 +113,5 @@ def test_the_file_on_disk_uses_lf_line_breaks(proyecto_vigilado, informes):
     _escribir_y_releer(MUESTRAS["crlf"], raiz, ruta_config, informes)
 
     crudo = next(Path(informes).rglob("*.json")).read_bytes()
-    assert b"\r\n" not in crudo, "el JSON no debe llevar CRLF estructurales"
-    assert rb"\r\n" in crudo, "los CRLF del markdown van escapados, no crudos"
+    assert b"\r\n" not in crudo, "the JSON must not carry structural CRLF"
+    assert rb"\r\n" in crudo, "the markdown CRLFs go escaped, not raw"

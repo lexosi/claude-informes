@@ -177,8 +177,8 @@ def test_trimming_a_word_longer_than_the_cap_cuts_it_hard():
     """
     resultado = md.recortar("x" * 300)
 
-    assert len(resultado) <= md.TOPE, "el tope es duro: nunca se excede"
-    assert len(resultado) == md.TOPE, "una palabra de 300 se corta justo al tope"
+    assert len(resultado) <= md.TOPE, "the cap is hard: it is never exceeded"
+    assert len(resultado) == md.TOPE, "a 300-char word is cut exactly at the cap"
 
 
 # --- plain slug, for proper names ---
