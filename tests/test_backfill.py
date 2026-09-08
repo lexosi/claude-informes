@@ -315,6 +315,14 @@ def test_the_backfill_records_in_the_log_and_ultimo_finds_it(transcripcion, tmp_
     assert all(a.proyecto == "repo" for a in escritos)
     assert [Path(a.detalle).name for a in escritos] == [SLUG_A, SLUG_B, SLUG_C]
 
+    # The point of the log line: `ultimo` finds what the backfill wrote. This
+    # closes the loop of the fix -- the backfill records PRECISELY so `ultimo`
+    # can see it -- so it is asserted end to end, not just that a line exists.
+    ultimo = reg.ultimo_escrito(reg.leer(log), "repo")
+    assert ultimo is not None
+    assert ultimo.ruta.name == SLUG_C
+    assert ultimo.ruta.is_file()
+
 
 def test_the_simulation_does_not_record_in_the_log(transcripcion, tmp_path):
     raiz = tmp_path / "archivo"
