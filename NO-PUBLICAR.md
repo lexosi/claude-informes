@@ -58,10 +58,16 @@ git log --all -- config/proyectos.json   # no debe existir en ningun commit
 ```
 
 Y el guard `tests/test_publicable.py` debe pasar sobre el arbol de **cada**
-commit que sobreviva, no solo sobre la punta.
+commit que sobreviva, no solo sobre la punta. Ese guard lee los identificadores
+reales de un fichero **fuera de git** (`identificadores_prohibidos.json`, junto
+a la config de usuario); si falta, **falla**, no se salta. Cubre el arbol de
+trabajo, **no** el historial: esta comprobacion y la de arriba son distintas.
 
 ## Estado
 
 - Repo remoto: **privado** a fecha de este fichero.
-- Punta (`HEAD`): limpia — lo verifica `tests/test_publicable.py`.
+- Punta (`HEAD`): sin identificadores reales en el arbol de trabajo. Lo verifica
+  `tests/test_publicable.py`, que ahora se escanea **tambien a si mismo** (antes
+  se auto-eximia y pasaba en verde mientras filtraba los datos del autor). Es
+  una comprobacion de punta, no de historial.
 - Historial: **sucio** — pendiente de reescritura antes de publicar.
