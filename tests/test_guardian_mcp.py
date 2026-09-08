@@ -135,7 +135,7 @@ def test_an_mcp_write_outside_the_archive_is_allowed(archivo, log):
     for ruta in [
         "C:\\proyectos\\alfa\\README.md",
         "C:\\proyectos\\beta\\cv.md",
-        "C:\\Users\\ejemplo\\Documents\\notas.txt",
+        "C:\\Documentos\\ejemplo\\notas.txt",
     ]:
         codigo, salida = ejecutar(mcp("mcp__x__write_file", {"path": ruta}), ruta_config)
         assert codigo == 0 and salida == "", ruta

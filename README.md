@@ -180,8 +180,8 @@ already exists. Afterwards you edit it by hand and put in the real paths.
 ### Shape of the file
 
 Adding a project means adding an entry; the code knows no specific path. On
-Windows paths use `\` (doubled in JSON: `"C:\\Users\\..."`); on macOS and Linux,
-`/`.
+Windows paths use `\` (doubled in JSON: `"C:\\proyectos\\..."`); on macOS and
+Linux, `/`.
 
 ```json
 {

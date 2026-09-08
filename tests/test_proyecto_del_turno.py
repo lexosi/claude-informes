@@ -62,7 +62,7 @@ def test_the_directory_slug_maps_to_the_name_declared_in_the_config(
             raiz_informes=informes,
         )
     )
-    ruta = "C:\\Users\\x\\.claude\\projects\\C--proyectos-alfa\\abc.jsonl"
+    ruta = "C:\\p\\C--proyectos-alfa\\abc.jsonl"
 
     proyecto = hk.proyecto_del_transcript(ruta, configuracion)
     assert proyecto is not None and proyecto.nombre == "alfa"
