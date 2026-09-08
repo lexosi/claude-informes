@@ -7,8 +7,8 @@ import pytest
 
 from claude_informes import backfill as bf
 from claude_informes import cli
-from claude_informes import informe as inf
-from claude_informes import registro as reg
+from claude_informes import report as inf
+from claude_informes import journal as reg
 from claude_informes import transcript as tr
 
 LARGO_A = "# Primer turno del barrido\n\nuno\ndos\ntres\ncuatro"

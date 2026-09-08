@@ -10,11 +10,11 @@ from pathlib import Path
 
 import pytest
 
-from claude_informes import alta
+from claude_informes import registration
 from claude_informes import cli
 from claude_informes import config as cfg
 from claude_informes import hook as hk
-from claude_informes import registro as reg
+from claude_informes import journal as reg
 from claude_informes import transcript as tr
 
 RESPUESTA = "# Informe de la prueba diaria\n\nlinea 1\nlinea 2\nlinea 3\nlinea 4\n"
@@ -45,7 +45,7 @@ def test_new_creates_the_folder_and_registers_it(tmp_path, escribir_config, info
     ruta_config = escribir_config([], raiz_informes=informes)
     donde = tmp_path / "proyectos"
 
-    carpeta, destino = alta.registrar("mi-proyecto", donde, ruta_config)
+    carpeta, destino = registration.registrar("mi-proyecto", donde, ruta_config)
 
     assert carpeta == donde / "mi-proyecto" and carpeta.is_dir()
     configuracion = cfg.cargar(destino)
@@ -56,7 +56,7 @@ def test_new_creates_the_folder_and_registers_it(tmp_path, escribir_config, info
 def test_what_new_registers_is_recognized_by_the_hook(tmp_path, escribir_config, informes):
     """The test that matters: register and have the turn archived."""
     ruta_config = escribir_config([], raiz_informes=informes)
-    carpeta, _ = alta.registrar("recien-nacido", tmp_path / "proyectos", ruta_config)
+    carpeta, _ = registration.registrar("recien-nacido", tmp_path / "proyectos", ruta_config)
 
     ejecutar(turno(carpeta, transcript_de(carpeta)), ruta_config)
 
@@ -69,7 +69,7 @@ def test_new_preserves_the_projects_that_were_already_there(tmp_path, escribir_c
         [{"nombre": "alfa", "cwd": "C:\\proyectos\\alfa"}],
         raiz_informes=informes,
     )
-    alta.registrar("otro", tmp_path / "p", ruta_config)
+    registration.registrar("otro", tmp_path / "p", ruta_config)
 
     configuracion = cfg.cargar(ruta_config)
     assert sorted(p.nombre for p in configuracion.proyectos) == ["alfa", "otro"]
@@ -78,24 +78,24 @@ def test_new_preserves_the_projects_that_were_already_there(tmp_path, escribir_c
 
 def test_new_normalizes_the_name(tmp_path, escribir_config):
     ruta_config = escribir_config([])
-    carpeta, _ = alta.registrar("Mi Proyecto Nuevo", tmp_path / "p", ruta_config)
+    carpeta, _ = registration.registrar("Mi Proyecto Nuevo", tmp_path / "p", ruta_config)
     assert carpeta.name == "mi-proyecto-nuevo"
 
 
 def test_new_does_not_overwrite_an_already_registered_project(tmp_path, escribir_config):
     ruta_config = escribir_config([])
-    alta.registrar("uno", tmp_path / "p", ruta_config)
+    registration.registrar("uno", tmp_path / "p", ruta_config)
 
-    with pytest.raises(alta.YaExiste):
-        alta.registrar("uno", tmp_path / "p", ruta_config)
+    with pytest.raises(registration.YaExiste):
+        registration.registrar("uno", tmp_path / "p", ruta_config)
 
 
 def test_new_detects_the_same_folder_under_a_different_name(tmp_path, escribir_config):
     ruta_config = escribir_config(
         [{"nombre": "ya-estaba", "cwd": str(tmp_path / "p" / "repe")}]
     )
-    with pytest.raises(alta.YaExiste):
-        alta.registrar("repe", tmp_path / "p", ruta_config)
+    with pytest.raises(registration.YaExiste):
+        registration.registrar("repe", tmp_path / "p", ruta_config)
 
 
 def test_new_reuses_a_folder_that_already_exists(tmp_path, escribir_config):
@@ -103,14 +103,14 @@ def test_new_reuses_a_folder_that_already_exists(tmp_path, escribir_config):
     (tmp_path / "p" / "existente").mkdir(parents=True)
     (tmp_path / "p" / "existente" / "README.md").write_text("hola", encoding="utf-8")
 
-    carpeta, _ = alta.registrar("existente", tmp_path / "p", ruta_config)
+    carpeta, _ = registration.registrar("existente", tmp_path / "p", ruta_config)
 
     assert (carpeta / "README.md").read_text(encoding="utf-8") == "hola"
 
 
 def test_new_rejects_an_unusable_name(tmp_path, escribir_config):
     with pytest.raises(ValueError):
-        alta.registrar("???", tmp_path / "p", escribir_config([]))
+        registration.registrar("???", tmp_path / "p", escribir_config([]))
 
 
 def test_the_new_command_says_where_to_open_the_cli(tmp_path, escribir_config, capsys):

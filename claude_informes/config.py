@@ -13,7 +13,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from . import markdown as md
-from . import registro as reg
+from . import journal as reg
 
 VAR_ENTORNO = "CLAUDE_INFORMES_CONFIG"
 VAR_LOG = "CLAUDE_INFORMES_LOG"

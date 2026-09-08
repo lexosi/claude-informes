@@ -6,13 +6,13 @@ import argparse
 import sys
 from pathlib import Path
 
-from . import alta
+from . import registration
 from . import backfill as bf
 from . import config as cfg
-from . import flujos
+from . import streams
 from . import hook as hk
 from . import markdown as md
-from . import registro as reg
+from . import journal as reg
 from . import transcript as tr
 
 
@@ -217,14 +217,14 @@ def _ejecutar_nuevo(args) -> int:
     )
     donde = Path(args.en) if args.en else cfg.raiz_de_la_herramienta().parent
     try:
-        carpeta, destino = alta.registrar(
+        carpeta, destino = registration.registrar(
             args.nombre,
             donde,
             ruta_config,
             umbral_lineas=args.umbral,
             raiz_informes=args.raiz_informes,
         )
-    except alta.YaExiste as choque:
+    except registration.YaExiste as choque:
         print(f"Not registered: {choque}", file=sys.stderr)
         return 3
     except Exception as error:  # noqa: BLE001
@@ -273,7 +273,7 @@ def _ejecutar_pendientes(args) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
-    flujos.salida_en_utf8(sys.stdout, sys.stderr)
+    streams.salida_en_utf8(sys.stdout, sys.stderr)
     argumentos = list(sys.argv[1:] if argv is None else argv)
     # The hook must never fail, not even from an angry argparse.
     if argumentos and argumentos[0] == "hook":

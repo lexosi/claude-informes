@@ -6,9 +6,9 @@ import json
 import os
 from pathlib import Path
 
-from . import informe as inf
+from . import report as inf
 from . import markdown as md
-from . import registro as reg
+from . import journal as reg
 from . import transcript as tr
 
 

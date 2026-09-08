@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 
-from claude_informes import informe as inf
+from claude_informes import report as inf
 
 RAIZ = Path(__file__).resolve().parent.parent
 MARKDOWN = "# Informe de la prueba diaria\n\nuno\ndos\ntres"

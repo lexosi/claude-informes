@@ -8,7 +8,7 @@ heuristic and only serves to deny better. Allowing stays guaranteed.
 import pytest
 
 from claude_informes import guardian as gd
-from claude_informes import registro as reg
+from claude_informes import journal as reg
 
 from test_guardian import archivo, deniega, ejecutar, razon  # noqa: F401
 

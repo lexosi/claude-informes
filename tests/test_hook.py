@@ -9,8 +9,8 @@ import pytest
 
 from claude_informes import config as cfg
 from claude_informes import hook as hk
-from claude_informes import informe as inf
-from claude_informes import registro as reg
+from claude_informes import report as inf
+from claude_informes import journal as reg
 from claude_informes import transcript as tr
 
 RESPUESTA = "# Informe de la prueba diaria\n\nlinea 1\nlinea 2\nlinea 3\nlinea 4\n"

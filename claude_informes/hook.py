@@ -15,10 +15,10 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from . import config as cfg
-from . import flujos
-from . import informe as inf
+from . import streams
+from . import report as inf
 from . import markdown as md
-from . import registro as reg
+from . import journal as reg
 from . import transcript as tr
 
 
@@ -187,7 +187,7 @@ def main(entrada=None, ruta_config: str | os.PathLike[str] | None = None) -> int
     configuracion = None
     try:
         flujo = entrada if entrada is not None else sys.stdin
-        payload = flujos.leer_payload(flujo)
+        payload = streams.leer_payload(flujo)
         configuracion = cfg.cargar(ruta_config)
         resultado = procesar(payload, configuracion)
     except Exception as error:  # noqa: BLE001 - by design: nothing can escape

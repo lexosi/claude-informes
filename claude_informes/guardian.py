@@ -21,8 +21,8 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from . import config as cfg
-from . import flujos
-from . import registro as reg
+from . import streams
+from . import journal as reg
 
 # Tools whose destination path is structured data with no ambiguity. `Bash` is
 # left out on purpose: guessing paths inside a shell line gives false positives,
@@ -245,11 +245,11 @@ def main(entrada=None, salida=None, ruta_config: str | os.PathLike[str] | None =
     anotacion = None
     try:
         flujo = entrada if entrada is not None else sys.stdin
-        payload = flujos.leer_payload(flujo)
+        payload = streams.leer_payload(flujo)
         configuracion = cfg.cargar_estricto(ruta_config)
         hallazgo = revisar(payload, configuracion)
         if hallazgo is not None:
-            flujos.escribir(flujo_salida, denegar(hallazgo))
+            streams.escribir(flujo_salida, denegar(hallazgo))
             anotacion = (
                 configuracion.ruta_log,
                 reg.DENEGADO,

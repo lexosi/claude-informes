@@ -11,7 +11,7 @@ import pytest
 
 from claude_informes import config as cfg
 from claude_informes import guardian as gd
-from claude_informes import registro as reg
+from claude_informes import journal as reg
 
 RAIZ = Path(__file__).resolve().parent.parent
 
