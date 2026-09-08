@@ -2,12 +2,35 @@
 
 from __future__ import annotations
 
+import json
 import os
 from pathlib import Path
 
 from . import informe as inf
 from . import markdown as md
+from . import registro as reg
 from . import transcript as tr
+
+
+def _ya_archivado(dia: Path, respuesta_markdown: str) -> Path | None:
+    """El informe de este turno ya esta en la carpeta del dia, o None.
+
+    La identidad de un turno es su markdown integro: dos turnos distintos no
+    comparten texto byte a byte. Comparar por el markdown hace que reejecutar
+    un backfill rellene lo que falte sin duplicar lo que ya esta --y que un
+    turno ya escrito por el hook Stop no se archive por segunda vez--. Un
+    fichero ilegible no cuenta como coincidencia: ante la duda, se reescribe.
+    """
+    if not dia.is_dir():
+        return None
+    for fichero in sorted(dia.glob("*.json")):
+        try:
+            sobre = json.loads(fichero.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        if isinstance(sobre, dict) and sobre.get("respuesta_markdown") == respuesta_markdown:
+            return fichero
+    return None
 
 
 def _nombre_simulado(dia: Path, sobre: dict, simulados_por_dia: dict[Path, int]) -> Path:
@@ -33,8 +56,16 @@ def reconstruir(
     umbral: int = 5,
     limite: int | None = None,
     simular: bool = False,
+    ruta_log: str | os.PathLike[str] | None = None,
 ) -> list[dict]:
-    """Un fichero por turno. Devuelve una entrada por turno considerado."""
+    """Un fichero por turno. Devuelve una entrada por turno considerado.
+
+    Es idempotente: un turno cuyo informe ya esta en la carpeta del dia se
+    salta (`motivo == "ya archivado"`), asi que reejecutar rellena huecos sin
+    duplicar. Con `ruta_log`, cada informe escrito deja una linea ESCRITO en el
+    log, igual que el hook Stop: sin ella, `ultimo` seria ciego a lo que
+    reconstruye el backfill.
+    """
     raiz = Path(raiz_informes)
     resultado: list[dict] = []
     simulados_por_dia: dict[Path, int] = {}
@@ -64,8 +95,14 @@ def reconstruir(
             git_branch=turno.get("git_branch"),
             git_head=head,
         )
+        dia = inf.carpeta_del_dia(raiz, proyecto, sobre["fecha"])
+        existente = _ya_archivado(dia, respuesta)
+        if existente is not None:
+            resultado.append(
+                {"escrito": False, "motivo": "ya archivado", "ruta": existente, "turno": turno}
+            )
+            continue
         if simular:
-            dia = inf.carpeta_del_dia(raiz, proyecto, sobre["fecha"])
             resultado.append(
                 {
                     "escrito": False,
@@ -76,6 +113,11 @@ def reconstruir(
             )
             continue
         destino = inf.escribir(raiz, proyecto, sobre)
+        if ruta_log is not None:
+            try:
+                reg.anotar(ruta_log, reg.ESCRITO, proyecto, str(destino))
+            except Exception:  # noqa: BLE001 - el log no puede tumbar un backfill ya escrito
+                pass
         resultado.append(
             {"escrito": True, "motivo": None, "ruta": destino, "turno": turno}
         )

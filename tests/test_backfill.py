@@ -1,12 +1,14 @@
 """Backfill: reconstruir informes de turnos pasados desde un transcript."""
 
 import json
+from pathlib import Path
 
 import pytest
 
 from claude_informes import backfill as bf
 from claude_informes import cli
 from claude_informes import informe as inf
+from claude_informes import registro as reg
 from claude_informes import transcript as tr
 
 LARGO_A = "# Primer turno del barrido\n\nuno\ndos\ntres\ncuatro"
@@ -222,13 +224,49 @@ def test_dos_proyectos_distintos_no_se_mezclan(transcripcion, tmp_path):
     assert nombres(raiz, "uno") == nombres(raiz, "dos") == [SLUG_A, SLUG_B, SLUG_C]
 
 
-def test_dos_pasadas_no_pisan_los_informes_anteriores(transcripcion, tmp_path):
+def test_una_segunda_pasada_es_idempotente(transcripcion, tmp_path):
+    """Reejecutar el mismo backfill no duplica: cada turno ya archivado se salta."""
     raiz = tmp_path / "archivo"
     bf.reconstruir(transcripcion, raiz, "repo")
+    segunda = bf.reconstruir(transcripcion, raiz, "repo")
+
+    assert len(nombres(raiz)) == 3, "la segunda pasada no anade ficheros"
+    assert all(not r["escrito"] for r in segunda)
+    ya = [r for r in segunda if r["motivo"] == "ya archivado"]
+    assert len(ya) == 3
+
+
+def test_rellena_un_hueco_sin_duplicar_lo_que_ya_esta(transcripcion, tmp_path):
+    """Si falta un informe, se reescribe; los presentes no se duplican."""
+    raiz = tmp_path / "archivo"
+    bf.reconstruir(transcripcion, raiz, "repo")
+    (raiz / "repo" / HOY / SLUG_B).unlink()  # se pierde el segundo turno
+
     bf.reconstruir(transcripcion, raiz, "repo")
 
-    assert len(nombres(raiz)) == 6
-    assert "04-primer-turno-barrido.json" in nombres(raiz)
+    dia = raiz / "repo" / HOY
+    markdowns = [json.loads(p.read_text("utf-8"))["respuesta_markdown"] for p in dia.glob("*.json")]
+    assert sorted(markdowns) == sorted([LARGO_A, LARGO_B, LARGO_C]), "cada turno aparece una sola vez"
+    assert markdowns.count(LARGO_B) == 1, "el hueco se rellena, no se duplica"
+
+
+def test_el_backfill_anota_en_el_log_y_ultimo_lo_encuentra(transcripcion, tmp_path):
+    """Sin linea de log, `ultimo` es ciego a lo backfilleado. Con ella, lo ve."""
+    raiz = tmp_path / "archivo"
+    log = tmp_path / "hook.log"
+    bf.reconstruir(transcripcion, raiz, "repo", ruta_log=log)
+
+    escritos = [a for a in reg.leer(log) if a.resultado == reg.ESCRITO]
+    assert len(escritos) == 3
+    assert all(a.proyecto == "repo" for a in escritos)
+    assert [Path(a.detalle).name for a in escritos] == [SLUG_A, SLUG_B, SLUG_C]
+
+
+def test_la_simulacion_no_anota_en_el_log(transcripcion, tmp_path):
+    raiz = tmp_path / "archivo"
+    log = tmp_path / "hook.log"
+    bf.reconstruir(transcripcion, raiz, "repo", ruta_log=log, simular=True)
+    assert not log.exists()
 
 
 def test_limite_coge_los_ultimos_turnos(transcripcion, tmp_path):
@@ -262,9 +300,20 @@ def test_la_simulacion_predice_los_ordinales_reales(transcripcion, tmp_path):
 
 
 def test_la_simulacion_continua_el_ordinal_de_lo_que_ya_hay(transcripcion, tmp_path):
-    """Si el dia ya tiene ficheros, la simulacion sigue por donde toca."""
+    """Si el dia ya tiene otros ficheros, la simulacion sigue por donde toca.
+
+    Se siembra el dia con tres informes AJENOS (otro contenido): la simulacion
+    de los tres turnos del transcript, que no coinciden con ninguno, continua en
+    04, 05, 06. (Reejecutar el MISMO transcript daria 'ya archivado', no ordinal
+    nuevo: eso lo cubre test_una_segunda_pasada_es_idempotente.)
+    """
     raiz = tmp_path / "archivo"
-    bf.reconstruir(transcripcion, raiz, "repo")  # escribe 01, 02, 03 de verdad
+    dia = raiz / "repo" / HOY
+    dia.mkdir(parents=True)
+    for ordinal in ("01", "02", "03"):
+        (dia / f"{ordinal}-ajeno.json").write_text(
+            json.dumps({"respuesta_markdown": f"ajeno {ordinal}"}), encoding="utf-8"
+        )
     simulados = [
         r["ruta"].name
         for r in bf.reconstruir(transcripcion, raiz, "repo", simular=True)

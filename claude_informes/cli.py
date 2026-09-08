@@ -122,7 +122,13 @@ def _ejecutar_backfill(args) -> int:
     print(f"transcript: {ruta}")
     print(f"salida    : {raiz / nombre}")
     resultados = bf.reconstruir(
-        ruta, raiz, nombre, umbral=umbral, limite=args.limite, simular=args.dry_run
+        ruta,
+        raiz,
+        nombre,
+        umbral=umbral,
+        limite=args.limite,
+        simular=args.dry_run,
+        ruta_log=configuracion.ruta_log,
     )
     escritos = 0
     for entrada in resultados:
@@ -131,6 +137,8 @@ def _ejecutar_backfill(args) -> int:
             print(f"  + {Path(entrada['ruta']).name}")
         elif entrada["motivo"] == "simulacion":
             print(f"  ~ {Path(entrada['ruta']).name} (simulacion)")
+        elif entrada["motivo"] == "ya archivado":
+            print(f"  = ya archivado: {Path(entrada['ruta']).name}")
         else:
             print(f"  - omitido: {entrada['motivo']}")
     print(f"{escritos} informe(s) escrito(s) de {len(resultados)} turno(s).")
