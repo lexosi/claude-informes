@@ -454,3 +454,7 @@ python -m venv .venv
 .venv/Scripts/python -m pip install pytest
 .venv/Scripts/python -m pytest
 ```
+
+## License
+
+[MIT](LICENSE) © 2026 lexosi.
