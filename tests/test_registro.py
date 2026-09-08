@@ -43,12 +43,12 @@ def ejecutar(datos, ruta_config, texto_crudo=None):
 
 def test_la_linea_lleva_marca_proyecto_resultado_y_detalle():
     linea = reg.formatear(
-        reg.ESCRITO, "loopward", "C:\\informes-claude\\x.json", datetime(2026, 8, 28, 16, 5, 9)
+        reg.ESCRITO, "alfa", "C:\\informes-claude\\x.json", datetime(2026, 8, 28, 16, 5, 9)
     )
     campos = [t.strip() for t in linea.split(" | ")]
     assert campos == [
         "2026-08-28T16:05:09",
-        "loopward",
+        "alfa",
         "escrito",
         "C:\\informes-claude\\x.json",
     ]
@@ -123,12 +123,12 @@ def test_un_turno_corto_se_anota_como_omitido_por_umbral(proyecto_vigilado, log)
 
 def test_un_cwd_ajeno_se_anota_como_omitido_por_cwd(proyecto_vigilado, tmp_path, log):
     _, ruta_config = proyecto_vigilado
-    ejecutar(payload(cwd=str(tmp_path / "project-b")), ruta_config)
+    ejecutar(payload(cwd=str(tmp_path / "beta")), ruta_config)
 
     (anotacion,) = reg.leer(log)
     assert anotacion.resultado == reg.OMITIDO_SESION
     assert anotacion.proyecto == reg.SIN_PROYECTO
-    assert "project-b" in anotacion.detalle
+    assert "beta" in anotacion.detalle
 
 
 def test_el_cwd_de_la_herramienta_se_anota_como_escrito(
@@ -373,7 +373,7 @@ def test_ultimo_sin_informes_de_ese_proyecto_lo_dice(
     raiz, ruta_config = escribir_config_con_proyecto(escribir_config, informes, tmp_path)
     ejecutar(payload(cwd=str(raiz)), ruta_config)
 
-    codigo = cli.main(["ultimo", "--proyecto", "project-b", "--config", str(ruta_config)])
+    codigo = cli.main(["ultimo", "--proyecto", "beta", "--config", str(ruta_config)])
 
     assert codigo == 2
-    assert "project-b" in capsys.readouterr().err
+    assert "beta" in capsys.readouterr().err

@@ -41,9 +41,9 @@ def proyecto_del_transcript(
 
     El mapeo es explicito y comprobable: se compara el nombre del directorio
     con el slug que produce el `cwd` declarado de cada proyecto. No se intenta
-    deshacer el slug, que es una operacion ambigua (`e--example-projects-loopward-audit`
-    tanto podria ser un subdirectorio de `loopward` como el proyecto hermano
-    `loopward-audit`). Sin coincidencia exacta, no hay mapeo.
+    deshacer el slug, que es una operacion ambigua (`e--proyectos-alfa-audit`
+    tanto podria ser un subdirectorio de `alfa` como el proyecto hermano
+    `alfa-audit`). Sin coincidencia exacta, no hay mapeo.
     """
     carpeta = os.path.normcase(Path(ruta_transcript).parent.name)
     for proyecto in configuracion.proyectos:

@@ -13,7 +13,7 @@ from claude_informes import registro as reg
 from test_guardian import archivo, deniega, ejecutar, razon  # noqa: F401
 
 
-def mcp(herramienta, entrada, cwd="C:\\example-projects\\loopward"):
+def mcp(herramienta, entrada, cwd="C:\\proyectos\\alfa"):
     return {
         "session_id": "s",
         "cwd": cwd,
@@ -72,14 +72,14 @@ def test_una_escritura_mcp_dentro_del_archivo_se_deniega(archivo):
     comun, _, ruta_config = archivo
     datos = mcp(
         "mcp__informes-claude__write_file",
-        {"path": str(comun / "loopward" / "2026-08-28" / "99-a-mano.json"), "content": "{}"},
+        {"path": str(comun / "alfa" / "2026-08-28" / "99-a-mano.json"), "content": "{}"},
     )
 
     codigo, salida = ejecutar(datos, ruta_config)
 
     assert codigo == 0
     assert deniega(salida)
-    assert "--proyecto loopward" in razon(salida)
+    assert "--proyecto alfa" in razon(salida)
 
 
 @pytest.mark.parametrize(
@@ -87,7 +87,7 @@ def test_una_escritura_mcp_dentro_del_archivo_se_deniega(archivo):
 )
 def test_se_prueban_los_nombres_de_campo_habituales(campo, archivo):
     comun, _, ruta_config = archivo
-    datos = mcp("mcp__x__write_file", {campo: str(comun / "loopward" / "x.json")})
+    datos = mcp("mcp__x__write_file", {campo: str(comun / "alfa" / "x.json")})
 
     assert deniega(ejecutar(datos, ruta_config)[1]), campo
 
@@ -96,7 +96,7 @@ def test_una_lista_de_rutas_se_revisa_entera(archivo):
     comun, _, ruta_config = archivo
     datos = mcp(
         "mcp__x__delete_files",
-        {"paths": ["C:\\example-projects\\loopward\\README.md", str(comun / "x.json")]},
+        {"paths": ["C:\\proyectos\\alfa\\README.md", str(comun / "x.json")]},
     )
 
     assert deniega(ejecutar(datos, ruta_config)[1])
@@ -104,11 +104,11 @@ def test_una_lista_de_rutas_se_revisa_entera(archivo):
 
 def test_una_ruta_relativa_de_un_mcp_tambien_se_resuelve(archivo, tmp_path):
     comun, _, ruta_config = archivo
-    desde = tmp_path / "repos" / "loopward"
+    desde = tmp_path / "repos" / "alfa"
     desde.mkdir(parents=True)
     datos = mcp(
         "mcp__x__write_file",
-        {"path": f"..\\..\\{comun.name}\\loopward\\x.json"},
+        {"path": f"..\\..\\{comun.name}\\alfa\\x.json"},
         cwd=str(desde),
     )
 
@@ -117,7 +117,7 @@ def test_una_ruta_relativa_de_un_mcp_tambien_se_resuelve(archivo, tmp_path):
 
 def test_una_escritura_mcp_a_una_raiz_por_proyecto_se_deniega(archivo):
     _, cofre, ruta_config = archivo
-    datos = mcp("mcp__x__write_file", {"path": str(cofre / "project-b" / "x.json")})
+    datos = mcp("mcp__x__write_file", {"path": str(cofre / "beta" / "x.json")})
 
     assert deniega(ejecutar(datos, ruta_config)[1])
 
@@ -133,9 +133,9 @@ def test_una_escritura_mcp_al_log_se_deniega(archivo, log):
 def test_una_escritura_mcp_fuera_del_archivo_se_permite(archivo, log):
     _, _, ruta_config = archivo
     for ruta in [
-        "C:\\example-projects\\loopward\\README.md",
-        "C:\\example-projects\\project-b\\cv.md",
-        "C:\\Users\\user\\Documents\\notas.txt",
+        "C:\\proyectos\\alfa\\README.md",
+        "C:\\proyectos\\beta\\cv.md",
+        "C:\\Users\\ejemplo\\Documents\\notas.txt",
     ]:
         codigo, salida = ejecutar(mcp("mcp__x__write_file", {"path": ruta}), ruta_config)
         assert codigo == 0 and salida == "", ruta
@@ -151,7 +151,7 @@ def test_una_lectura_mcp_dentro_del_archivo_se_permite(archivo, log):
         "mcp__informes-claude__list_directory",
         "mcp__informes-claude__directory_tree",
     ]:
-        datos = mcp(herramienta, {"path": str(comun / "loopward")})
+        datos = mcp(herramienta, {"path": str(comun / "alfa")})
         codigo, salida = ejecutar(datos, ruta_config)
         assert codigo == 0 and salida == "", herramienta
     assert reg.leer(log) == []

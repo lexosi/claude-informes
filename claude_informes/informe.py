@@ -91,7 +91,7 @@ def construir(
 def subcarpeta(base: Path, nombre: str) -> Path:
     """Reutiliza la carpeta que ya exista. Nunca una variante ni un sufijo.
 
-    En Windows `Loopward` y `loopward` son la misma carpeta; se devuelve la
+    En Windows `Alfa` y `alfa` son la misma carpeta; se devuelve la
     que ya esta en disco para no acabar con dos historicos distintos.
     """
     buscado = os.path.normcase(nombre)

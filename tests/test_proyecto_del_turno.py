@@ -55,17 +55,17 @@ def escritos(informes, proyecto, fecha=None):
 def test_el_slug_del_directorio_se_mapea_al_nombre_de_la_config(
     escribir_config, informes, tmp_path
 ):
-    """`e--example-projects-loopward` -> `loopward`, via el cwd declarado."""
+    """`e--proyectos-alfa` -> `alfa`, via el cwd declarado."""
     configuracion = cfg.cargar(
         escribir_config(
-            [{"nombre": "loopward", "cwd": "C:\\example-projects\\loopward"}],
+            [{"nombre": "alfa", "cwd": "C:\\proyectos\\alfa"}],
             raiz_informes=informes,
         )
     )
-    ruta = "C:\\Users\\x\\.claude\\projects\\C--example-projects-loopward\\abc.jsonl"
+    ruta = "C:\\Users\\x\\.claude\\projects\\C--proyectos-alfa\\abc.jsonl"
 
     proyecto = hk.proyecto_del_transcript(ruta, configuracion)
-    assert proyecto is not None and proyecto.nombre == "loopward"
+    assert proyecto is not None and proyecto.nombre == "alfa"
 
 
 def test_el_mapeo_no_depende_del_nombre_del_directorio_sino_del_cwd(
@@ -74,11 +74,11 @@ def test_el_mapeo_no_depende_del_nombre_del_directorio_sino_del_cwd(
     """El nombre de carpeta puede no parecerse al slug: manda el cwd."""
     configuracion = cfg.cargar(
         escribir_config(
-            [{"nombre": "informes-del-curro", "cwd": "C:\\example-projects\\project-b"}],
+            [{"nombre": "informes-del-curro", "cwd": "C:\\proyectos\\beta"}],
             raiz_informes=informes,
         )
     )
-    ruta = "C:\\p\\C--example-projects-project-b\\abc.jsonl"
+    ruta = "C:\\p\\C--proyectos-beta\\abc.jsonl"
 
     proyecto = hk.proyecto_del_transcript(ruta, configuracion)
     assert proyecto is not None and proyecto.nombre == "informes-del-curro"
@@ -87,15 +87,15 @@ def test_el_mapeo_no_depende_del_nombre_del_directorio_sino_del_cwd(
 def test_un_slug_de_un_hermano_no_se_confunde_con_un_subdirectorio(
     escribir_config, informes
 ):
-    """`loopward-audit` es otro proyecto, no `loopward/audit`. Sin exactitud,
+    """`alfa-audit` es otro proyecto, no `alfa/audit`. Sin exactitud,
     no hay mapeo: el slug es ambiguo y no se intenta deshacer."""
     configuracion = cfg.cargar(
         escribir_config(
-            [{"nombre": "loopward", "cwd": "C:\\example-projects\\loopward"}],
+            [{"nombre": "alfa", "cwd": "C:\\proyectos\\alfa"}],
             raiz_informes=informes,
         )
     )
-    ruta = "C:\\p\\C--example-projects-loopward-audit\\abc.jsonl"
+    ruta = "C:\\p\\C--proyectos-alfa-audit\\abc.jsonl"
 
     assert hk.proyecto_del_transcript(ruta, configuracion) is None
 
@@ -103,11 +103,11 @@ def test_un_slug_de_un_hermano_no_se_confunde_con_un_subdirectorio(
 def test_un_proyecto_desactivado_no_se_mapea(escribir_config, informes):
     configuracion = cfg.cargar(
         escribir_config(
-            [{"nombre": "loopward", "cwd": "C:\\example-projects\\loopward", "activo": False}],
+            [{"nombre": "alfa", "cwd": "C:\\proyectos\\alfa", "activo": False}],
             raiz_informes=informes,
         )
     )
-    ruta = "C:\\p\\C--example-projects-loopward\\abc.jsonl"
+    ruta = "C:\\p\\C--proyectos-alfa\\abc.jsonl"
 
     assert hk.proyecto_del_transcript(ruta, configuracion) is None
 
@@ -119,10 +119,10 @@ def test_dos_turnos_con_cwd_distinto_van_al_mismo_proyecto(
     escribir_config, informes, tmp_path, log
 ):
     """El caso real: entre turno y turno, la shell se movio."""
-    raiz = tmp_path / "loopward"
+    raiz = tmp_path / "alfa"
     raiz.mkdir()
     ruta_config = escribir_config(
-        [{"nombre": "loopward", "cwd": str(raiz)}], raiz_informes=informes
+        [{"nombre": "alfa", "cwd": str(raiz)}], raiz_informes=informes
     )
     transcript = transcript_de(raiz)
 
@@ -130,22 +130,22 @@ def test_dos_turnos_con_cwd_distinto_van_al_mismo_proyecto(
     ejecutar(turno(raiz / "subdir" / "hondo", transcript, RESPUESTA + "B"), ruta_config)
     ejecutar(turno("C:\\otro\\sitio\\del\\todo", transcript, RESPUESTA + "C"), ruta_config)
 
-    assert len(escritos(informes, "loopward")) == 3
-    assert [p.name for p in Path(informes).iterdir()] == ["loopward"]
+    assert len(escritos(informes, "alfa")) == 3
+    assert [p.name for p in Path(informes).iterdir()] == ["alfa"]
     assert all(a.resultado == reg.ESCRITO for a in reg.leer(log))
 
 
 def test_un_turno_de_una_sesion_no_vigilada_no_se_archiva_aunque_el_cwd_lo_este(
     escribir_config, informes, tmp_path, log
 ):
-    """La direccion peligrosa: la shell dentro de loopward, la sesion no."""
-    vigilado = tmp_path / "loopward"
+    """La direccion peligrosa: la shell dentro de alfa, la sesion no."""
+    vigilado = tmp_path / "alfa"
     vigilado.mkdir()
     ruta_config = escribir_config(
-        [{"nombre": "loopward", "cwd": str(vigilado)}], raiz_informes=informes
+        [{"nombre": "alfa", "cwd": str(vigilado)}], raiz_informes=informes
     )
 
-    datos = turno(vigilado, transcript_de(tmp_path / "example-projects"))
+    datos = turno(vigilado, transcript_de(tmp_path / "proyectos"))
     assert ejecutar(datos, ruta_config) == 0
 
     assert not Path(informes).exists(), "la sesion manda sobre el cwd"
@@ -157,17 +157,17 @@ def test_un_turno_de_una_sesion_no_vigilada_no_se_archiva_aunque_el_cwd_lo_este(
 def test_un_turno_de_una_sesion_vigilada_no_se_pierde_por_un_cd(
     escribir_config, informes, tmp_path
 ):
-    """La otra direccion: la sesion en loopward, la shell fuera."""
-    vigilado = tmp_path / "loopward"
+    """La otra direccion: la sesion en alfa, la shell fuera."""
+    vigilado = tmp_path / "alfa"
     vigilado.mkdir()
     ruta_config = escribir_config(
-        [{"nombre": "loopward", "cwd": str(vigilado)}], raiz_informes=informes
+        [{"nombre": "alfa", "cwd": str(vigilado)}], raiz_informes=informes
     )
 
     datos = turno("C:\\donde\\sea", transcript_de(vigilado))
     ejecutar(datos, ruta_config)
 
-    assert len(escritos(informes, "loopward")) == 1
+    assert len(escritos(informes, "alfa")) == 1
 
 
 # --- camino degradado: cae al cwd, pero se ve ---
@@ -176,15 +176,15 @@ def test_un_turno_de_una_sesion_vigilada_no_se_pierde_por_un_cd(
 def test_sin_transcript_path_se_cae_al_cwd_y_se_anota(
     escribir_config, informes, tmp_path, log
 ):
-    raiz = tmp_path / "loopward"
+    raiz = tmp_path / "alfa"
     raiz.mkdir()
     ruta_config = escribir_config(
-        [{"nombre": "loopward", "cwd": str(raiz)}], raiz_informes=informes
+        [{"nombre": "alfa", "cwd": str(raiz)}], raiz_informes=informes
     )
 
     ejecutar(turno(raiz, ""), ruta_config)
 
-    assert len(escritos(informes, "loopward")) == 1, "se archiva igual"
+    assert len(escritos(informes, "alfa")) == 1, "se archiva igual"
     aviso, escrito = reg.leer(log)
     assert aviso.resultado == reg.PROYECTO_POR_CWD
     assert "sin transcript_path" in aviso.detalle
@@ -200,10 +200,10 @@ def test_un_slug_que_no_mapea_no_archiva_y_se_anota(
     Caer al cwd aqui reabriria el agujero, porque una shell dentro de un
     proyecto vigilado volveria a archivar turnos de otra sesion.
     """
-    raiz = tmp_path / "loopward"
+    raiz = tmp_path / "alfa"
     raiz.mkdir()
     ruta_config = escribir_config(
-        [{"nombre": "loopward", "cwd": str(raiz)}], raiz_informes=informes
+        [{"nombre": "alfa", "cwd": str(raiz)}], raiz_informes=informes
     )
 
     ejecutar(turno(raiz, "C:\\p\\slug-de-otra-cosa\\abc.jsonl"), ruta_config)
@@ -219,7 +219,7 @@ def test_el_aviso_solo_aparece_cuando_el_camino_degradado_archiva(
 ):
     """Si el cwd tampoco vale, no hay nada que avisar: una sola linea."""
     ruta_config = escribir_config(
-        [{"nombre": "loopward", "cwd": str(tmp_path / "loopward")}],
+        [{"nombre": "alfa", "cwd": str(tmp_path / "alfa")}],
         raiz_informes=informes,
     )
 
@@ -230,10 +230,10 @@ def test_el_aviso_solo_aparece_cuando_el_camino_degradado_archiva(
 
 
 def test_un_transcript_path_ilegible_no_revienta(escribir_config, informes, tmp_path):
-    raiz = tmp_path / "loopward"
+    raiz = tmp_path / "alfa"
     raiz.mkdir()
     ruta_config = escribir_config(
-        [{"nombre": "loopward", "cwd": str(raiz)}], raiz_informes=informes
+        [{"nombre": "alfa", "cwd": str(raiz)}], raiz_informes=informes
     )
 
     for basura in [None, 42, [], "   "]:

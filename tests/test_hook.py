@@ -159,15 +159,15 @@ def test_dos_proyectos_distintos_van_a_carpetas_distintas(
 def test_el_nombre_de_la_carpeta_sale_de_la_config_no_del_directorio(
     escribir_config, informes, tmp_path
 ):
-    raiz = tmp_path / "loopward-renombrado-ayer"
+    raiz = tmp_path / "alfa-renombrado-ayer"
     raiz.mkdir()
     ruta_config = escribir_config(
-        [{"nombre": "loopward", "cwd": str(raiz)}], raiz_informes=informes
+        [{"nombre": "alfa", "cwd": str(raiz)}], raiz_informes=informes
     )
     ejecutar(payload(cwd=str(raiz)), ruta_config)
 
-    assert (Path(informes) / "loopward").is_dir()
-    assert not (Path(informes) / "loopward-renombrado-ayer").exists()
+    assert (Path(informes) / "alfa").is_dir()
+    assert not (Path(informes) / "alfa-renombrado-ayer").exists()
 
 
 def test_se_crean_los_dos_niveles_de_directorio(proyecto_vigilado, informes):
@@ -182,8 +182,8 @@ def test_una_sesion_abierta_en_un_subdirectorio_escribe_en_la_misma_carpeta(
 ):
     """El slug de un subdirectorio es ambiguo, pero el transcript no lo es.
 
-    `e--example-projects-loopward-audit` tanto podria ser `loopward/audit` como
-    el proyecto hermano `loopward-audit`, asi que el slug no basta. El primer
+    `e--proyectos-alfa-audit` tanto podria ser `alfa/audit` como
+    el proyecto hermano `alfa-audit`, asi que el slug no basta. El primer
     registro del transcript lleva el cwd de arranque y zanja la duda.
     """
     raiz, ruta_config = proyecto_vigilado
@@ -256,7 +256,7 @@ def test_el_umbral_es_el_de_la_config_del_proyecto(escribir_config, informes, tm
 
 def test_un_cwd_fuera_de_la_lista_no_escribe_nada(proyecto_vigilado, informes, tmp_path):
     _, ruta_config = proyecto_vigilado
-    ajeno = tmp_path / "project-b"
+    ajeno = tmp_path / "beta"
     ajeno.mkdir()
 
     assert ejecutar(payload(cwd=str(ajeno)), ruta_config) == 0

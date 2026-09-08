@@ -96,10 +96,10 @@ def test_el_nombre_sale_de_la_config_no_del_directorio(escribir_config, tmp_path
     """Un rename del directorio no debe partir el historico."""
     configuracion = cfg.cargar(
         escribir_config(
-            [{"nombre": "loopward", "cwd": str(tmp_path / "loopward-renombrado")}]
+            [{"nombre": "alfa", "cwd": str(tmp_path / "alfa-renombrado")}]
         )
     )
-    assert configuracion.proyectos[0].nombre == "loopward"
+    assert configuracion.proyectos[0].nombre == "alfa"
 
 
 def test_sin_nombre_se_usa_el_del_directorio(escribir_config, tmp_path):
@@ -166,7 +166,7 @@ def test_la_raiz_del_proyecto_anula_la_global(escribir_config, tmp_path):
     suya = tmp_path / "aparte"
     configuracion = cfg.cargar(
         escribir_config(
-            [{"nombre": "project-b", "cwd": str(tmp_path / "co"), "raiz_informes": suya}],
+            [{"nombre": "beta", "cwd": str(tmp_path / "co"), "raiz_informes": suya}],
             raiz_informes=tmp_path / "comun",
         )
     )
@@ -177,7 +177,7 @@ def test_la_raiz_del_proyecto_anula_la_global(escribir_config, tmp_path):
 def test_sin_raiz_propia_el_proyecto_hereda_la_global(escribir_config, tmp_path):
     comun = tmp_path / "comun"
     configuracion = cfg.cargar(
-        escribir_config([{"nombre": "loopward", "cwd": str(tmp_path / "lw")}], raiz_informes=comun)
+        escribir_config([{"nombre": "alfa", "cwd": str(tmp_path / "lw")}], raiz_informes=comun)
     )
     assert configuracion.proyectos[0].raiz_informes == comun
 

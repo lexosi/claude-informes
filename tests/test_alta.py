@@ -43,7 +43,7 @@ def transcript_de(raiz):
 
 def test_nuevo_crea_la_carpeta_y_la_registra(tmp_path, escribir_config, informes):
     ruta_config = escribir_config([], raiz_informes=informes)
-    donde = tmp_path / "example-projects"
+    donde = tmp_path / "proyectos"
 
     carpeta, destino = alta.registrar("mi-proyecto", donde, ruta_config)
 
@@ -56,7 +56,7 @@ def test_nuevo_crea_la_carpeta_y_la_registra(tmp_path, escribir_config, informes
 def test_lo_que_registra_nuevo_lo_reconoce_el_hook(tmp_path, escribir_config, informes):
     """La prueba que importa: registrar y que el turno se archive."""
     ruta_config = escribir_config([], raiz_informes=informes)
-    carpeta, _ = alta.registrar("recien-nacido", tmp_path / "example-projects", ruta_config)
+    carpeta, _ = alta.registrar("recien-nacido", tmp_path / "proyectos", ruta_config)
 
     ejecutar(turno(carpeta, transcript_de(carpeta)), ruta_config)
 
@@ -66,13 +66,13 @@ def test_lo_que_registra_nuevo_lo_reconoce_el_hook(tmp_path, escribir_config, in
 
 def test_nuevo_conserva_los_proyectos_que_ya_habia(tmp_path, escribir_config, informes):
     ruta_config = escribir_config(
-        [{"nombre": "loopward", "cwd": "C:\\example-projects\\loopward"}],
+        [{"nombre": "alfa", "cwd": "C:\\proyectos\\alfa"}],
         raiz_informes=informes,
     )
     alta.registrar("otro", tmp_path / "p", ruta_config)
 
     configuracion = cfg.cargar(ruta_config)
-    assert sorted(p.nombre for p in configuracion.proyectos) == ["loopward", "otro"]
+    assert sorted(p.nombre for p in configuracion.proyectos) == ["alfa", "otro"]
     assert configuracion.raiz_informes == Path(informes), "la raiz global no se toca"
 
 
@@ -141,7 +141,7 @@ def test_la_omision_lleva_transcript_y_el_nombre_que_tendria(
     escribir_config, informes, tmp_path, log
 ):
     ruta_config = escribir_config(
-        [{"nombre": "loopward", "cwd": str(tmp_path / "loopward")}],
+        [{"nombre": "alfa", "cwd": str(tmp_path / "alfa")}],
         raiz_informes=informes,
     )
     sin_registrar = tmp_path / "claude-informes"
@@ -161,15 +161,15 @@ def test_la_omision_lleva_transcript_y_el_nombre_que_tendria(
 
 
 def test_el_nombre_que_tendria_sale_del_arranque_no_del_cwd(tmp_path):
-    transcripcion = "C:\\p\\C--example-projects-claude-informes\\s.jsonl"
-    assert hk.nombre_que_tendria(transcripcion, "C:\\example-projects\\claude-informes") == (
+    transcripcion = "C:\\p\\C--proyectos-claude-informes\\s.jsonl"
+    assert hk.nombre_que_tendria(transcripcion, "C:\\proyectos\\claude-informes") == (
         "claude-informes"
     )
 
 
 def test_sin_arranque_legible_el_nombre_sale_del_slug(tmp_path):
-    transcripcion = "C:\\p\\C--example-projects-loopward\\s.jsonl"
-    assert hk.nombre_que_tendria(transcripcion, None) == "loopward"
+    transcripcion = "C:\\p\\C--proyectos-alfa\\s.jsonl"
+    assert hk.nombre_que_tendria(transcripcion, None) == "alfa"
 
 
 # --- `pendientes` ---

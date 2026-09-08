@@ -49,7 +49,7 @@ en la raiz que declara `raiz_informes` (por ejemplo `~/informes-claude`):
 
 ```
 <raiz_informes>/
-└── loopward/
+└── alfa/
     └── 2026-08-28/
         ├── 01-readme-extracto-gate-e-infraestructura-informes.json
         ├── 02-investigacion-transcript-hooks-pipeline-informes.json
@@ -99,7 +99,7 @@ integro; no hay estructura semantica ninguna.
   "fecha": "2026-08-28",
   "hora": "13:35:17",
   "session_id": "a6e5a399-f600-4b6a-a258-e7f1bcae90f8",
-  "cwd": "/ruta/a/proyectos/loopward",
+  "cwd": "/ruta/a/proyectos/alfa",
   "git_branch": "main",
   "git_head": "ac72eff...",
   "respuesta_markdown": "...el texto INTEGRO, byte a byte...",
@@ -166,14 +166,14 @@ en macOS y Linux, `/`.
   "raiz_informes": "/ruta/absoluta/fuera/de/git/informes-claude",
   "proyectos": [
     {
-      "nombre": "loopward",
-      "cwd": "/ruta/absoluta/a/loopward",
+      "nombre": "alfa",
+      "cwd": "/ruta/absoluta/a/alfa",
       "activo": true,
       "umbral_lineas": 5
     },
     {
-      "nombre": "project-b",
-      "cwd": "/ruta/absoluta/a/project-b",
+      "nombre": "beta",
+      "cwd": "/ruta/absoluta/a/beta",
       "raiz_informes": "/ruta/absoluta/fuera/de/git/informes-privado"
     }
   ]
@@ -223,11 +223,11 @@ Salir en silencio evita romper sesiones, pero convertiria cualquier fallo en
 algo invisible. Por eso **cada turno deja una linea**, pase lo que pase:
 
 ```
-2026-08-28T16:50:38 | loopward  | escrito         | <raiz_informes>/loopward/2026-08-28/08-....json
-2026-08-28T16:50:38 | loopward  | omitido-umbral  | 2 lineas, umbral 5
-2026-08-28T16:50:38 | -         | omitido-cwd     | cwd fuera de la lista: '/ruta/a/project-b'
+2026-08-28T16:50:38 | alfa  | escrito         | <raiz_informes>/alfa/2026-08-28/08-....json
+2026-08-28T16:50:38 | alfa  | omitido-umbral  | 2 lineas, umbral 5
+2026-08-28T16:50:38 | -         | omitido-cwd     | cwd fuera de la lista: '/ruta/a/beta'
 2026-08-28T16:50:38 | -         | omitido-sesion  | proyecto no registrado; nombre=...; arranque=...
-2026-08-28T16:50:38 | loopward  | ERROR           | UnicodeEncodeError: ...; ruta=.../14-....json; sesion=abc123
+2026-08-28T16:50:38 | alfa  | ERROR           | UnicodeEncodeError: ...; ruta=.../14-....json; sesion=abc123
 ```
 
 `marca | proyecto | resultado | ruta o motivo`, solo se anade, y en LF. Hay dos
@@ -255,13 +255,13 @@ Es un log unico para todos los proyectos. Lleva nombres de proyecto y rutas
 El log dice donde quedo el informe; el disco dice si es verdad. Manda el disco.
 
 ```sh
-python -m claude_informes ultimo --proyecto loopward
+python -m claude_informes ultimo --proyecto alfa
 ```
 
 ```
-proyecto : loopward
+proyecto : alfa
 informe  : 08-prueba-humo-hook.json
-ruta     : <raiz_informes>/loopward/2026-08-28/08-prueba-humo-hook.json
+ruta     : <raiz_informes>/alfa/2026-08-28/08-prueba-humo-hook.json
 anotado  : 2026-08-28T16:50:38
 estado   : existe en disco, 453 bytes
 ```
@@ -308,13 +308,13 @@ tener guardian: rompe sesiones ajenas por un fallo suyo.
 El mensaje dice por que y que hacer en su lugar:
 
 ```
-claude-informes: <raiz_informes>/loopward/2026-08-28/99-x.json esta dentro
+claude-informes: <raiz_informes>/alfa/2026-08-28/99-x.json esta dentro
 del archivo de informes (archivo: <raiz_informes>).
 Los informes los escribe el hook Stop al terminar el turno; no se escriben ni
 se editan a mano.
 Para saber cual fue el ultimo y comprobar que existe de verdad:
     cd <ruta a claude-informes>
-    .venv/Scripts/python -m claude_informes ultimo --proyecto loopward
+    .venv/Scripts/python -m claude_informes ultimo --proyecto alfa
 ```
 
 ### Servidores MCP
@@ -354,8 +354,8 @@ El `transcript_path` identifica la sesion y no se mueve:
 
 1. Se compara el directorio del transcript con el slug que produce el `cwd`
    declarado de cada proyecto. El mapeo es explicito y comprobable; no se
-   intenta deshacer el slug, que es ambiguo (`--proyectos-loopward-audit`
-   tanto podria ser `loopward/audit` como el proyecto hermano `loopward-audit`).
+   intenta deshacer el slug, que es ambiguo (`--proyectos-alfa-audit`
+   tanto podria ser `alfa/audit` como el proyecto hermano `alfa-audit`).
 2. Si no hay coincidencia exacta, se lee el **primer registro** del transcript,
    que lleva el `cwd` de arranque sin ambiguedad. Eso resuelve las sesiones
    abiertas en un subdirectorio.
@@ -389,11 +389,11 @@ vacio.
 
 ```sh
 # Toda la sesion mas reciente de un proyecto, a su carpeta del archivo
-python -m claude_informes backfill --cwd "/ruta/a/loopward"
+python -m claude_informes backfill --cwd "/ruta/a/alfa"
 
 # Una sesion concreta, a otro archivo distinto
 python -m claude_informes backfill --session a6e5a399-... \
-    --salida /tmp/archivo --proyecto loopward
+    --salida /tmp/archivo --proyecto alfa
 
 # Un transcript en disco, sin escribir nada
 python -m claude_informes backfill --transcript ruta/sesion.jsonl --dry-run

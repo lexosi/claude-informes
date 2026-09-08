@@ -16,7 +16,7 @@ from claude_informes import registro as reg
 RAIZ = Path(__file__).resolve().parent.parent
 
 
-def payload(ruta, herramienta="Write", cwd="C:\\example-projects\\loopward", **extras):
+def payload(ruta, herramienta="Write", cwd="C:\\proyectos\\alfa", **extras):
     datos = {
         "session_id": "s",
         "cwd": cwd,
@@ -55,10 +55,10 @@ def archivo(tmp_path, escribir_config, log):
     cofre = tmp_path / "informes-claude-privado"
     ruta_config = escribir_config(
         [
-            {"nombre": "loopward", "cwd": "C:\\example-projects\\loopward"},
+            {"nombre": "alfa", "cwd": "C:\\proyectos\\alfa"},
             {
-                "nombre": "project-b",
-                "cwd": "C:\\example-projects\\project-b",
+                "nombre": "beta",
+                "cwd": "C:\\proyectos\\beta",
                 "raiz_informes": cofre,
             },
         ],
@@ -72,7 +72,7 @@ def archivo(tmp_path, escribir_config, log):
 
 def test_una_escritura_bajo_la_raiz_global_se_deniega(archivo):
     comun, _, ruta_config = archivo
-    codigo, salida = ejecutar(payload(comun / "loopward" / "2026-08-28" / "09-x.json"), ruta_config)
+    codigo, salida = ejecutar(payload(comun / "alfa" / "2026-08-28" / "09-x.json"), ruta_config)
 
     assert codigo == 0
     assert deniega(salida)
@@ -81,11 +81,11 @@ def test_una_escritura_bajo_la_raiz_global_se_deniega(archivo):
 def test_una_escritura_bajo_una_raiz_por_proyecto_se_deniega(archivo):
     """La raiz del proyecto no es la global y tambien esta protegida."""
     _, cofre, ruta_config = archivo
-    codigo, salida = ejecutar(payload(cofre / "project-b" / "2026-08-28" / "01-x.json"), ruta_config)
+    codigo, salida = ejecutar(payload(cofre / "beta" / "2026-08-28" / "01-x.json"), ruta_config)
 
     assert codigo == 0
     assert deniega(salida)
-    assert "project-b" in razon(salida)
+    assert "beta" in razon(salida)
 
 
 def test_una_escritura_al_fichero_de_log_se_deniega(archivo, log):
@@ -99,9 +99,9 @@ def test_una_escritura_al_fichero_de_log_se_deniega(archivo, log):
 def test_una_ruta_relativa_con_dos_puntos_se_resuelve_y_se_deniega(archivo, tmp_path):
     """`..\\..\\informes-claude\\x.json` cae dentro igual."""
     comun, _, ruta_config = archivo
-    desde = tmp_path / "repos" / "loopward"
+    desde = tmp_path / "repos" / "alfa"
     desde.mkdir(parents=True)
-    relativa = Path("..") / ".." / comun.name / "loopward" / "x.json"
+    relativa = Path("..") / ".." / comun.name / "alfa" / "x.json"
 
     codigo, salida = ejecutar(payload(relativa, cwd=str(desde)), ruta_config)
 
@@ -129,8 +129,8 @@ def test_una_edicion_multiple_se_revisa_entrada_por_entrada(archivo):
     datos = payload(comun / "x.json", herramienta="MultiEdit")
     datos["tool_input"] = {
         "edits": [
-            {"file_path": "C:\\example-projects\\loopward\\README.md"},
-            {"file_path": str(comun / "loopward" / "x.json")},
+            {"file_path": "C:\\proyectos\\alfa\\README.md"},
+            {"file_path": str(comun / "alfa" / "x.json")},
         ]
     }
     assert deniega(ejecutar(datos, ruta_config)[1])
@@ -138,12 +138,12 @@ def test_una_edicion_multiple_se_revisa_entrada_por_entrada(archivo):
 
 def test_el_mensaje_dice_por_que_y_que_hacer(archivo):
     comun, _, ruta_config = archivo
-    motivo = razon(ejecutar(payload(comun / "loopward" / "x.json"), ruta_config)[1])
+    motivo = razon(ejecutar(payload(comun / "alfa" / "x.json"), ruta_config)[1])
 
     assert "archivo de informes" in motivo
     assert "hook Stop" in motivo
     assert "ultimo" in motivo, "tiene que decir que hacer en su lugar"
-    assert "--proyecto loopward" in motivo
+    assert "--proyecto alfa" in motivo
 
 
 # --- lo que NO se puede denegar ---
@@ -152,10 +152,10 @@ def test_el_mensaje_dice_por_que_y_que_hacer(archivo):
 def test_una_escritura_normal_en_un_repo_se_permite(archivo):
     _, _, ruta_config = archivo
     for ruta in [
-        "C:\\example-projects\\loopward\\README.md",
-        "C:\\example-projects\\loopward\\loopward\\cli.py",
-        "C:\\example-projects\\project-b\\cv.md",
-        "C:\\example-projects\\claude-informes\\claude_informes\\hook.py",
+        "C:\\proyectos\\alfa\\README.md",
+        "C:\\proyectos\\alfa\\alfa\\cli.py",
+        "C:\\proyectos\\beta\\cv.md",
+        "C:\\proyectos\\claude-informes\\claude_informes\\hook.py",
     ]:
         codigo, salida = ejecutar(payload(ruta), ruta_config)
         assert codigo == 0 and salida == "", ruta
@@ -244,7 +244,7 @@ def test_si_falla_el_log_la_denegacion_sigue_saliendo(archivo, monkeypatch):
         raise PermissionError("el log es de solo lectura")
 
     monkeypatch.setattr(reg, "anotar", anotar_roto)
-    codigo, salida = ejecutar(payload(comun / "loopward" / "x.json"), ruta_config)
+    codigo, salida = ejecutar(payload(comun / "alfa" / "x.json"), ruta_config)
 
     assert codigo == 0
     assert deniega(salida), "el log es secundario; la decision no depende de el"
@@ -266,11 +266,11 @@ def test_nunca_devuelve_un_codigo_distinto_de_cero(archivo, tmp_path):
 
 def test_la_denegacion_queda_en_el_log(archivo, log):
     comun, _, ruta_config = archivo
-    ejecutar(payload(comun / "loopward" / "2026-08-28" / "09-x.json"), ruta_config)
+    ejecutar(payload(comun / "alfa" / "2026-08-28" / "09-x.json"), ruta_config)
 
     (anotacion,) = reg.leer(log)
     assert anotacion.resultado == reg.DENEGADO
-    assert anotacion.proyecto == "loopward"
+    assert anotacion.proyecto == "alfa"
     assert "Write ->" in anotacion.detalle
     assert "09-x.json" in anotacion.detalle
 
@@ -278,7 +278,7 @@ def test_la_denegacion_queda_en_el_log(archivo, log):
 def test_una_escritura_permitida_no_ensucia_el_log(archivo, log):
     """Una linea por tool call llenaria el log de ruido."""
     _, _, ruta_config = archivo
-    ejecutar(payload("C:\\example-projects\\loopward\\README.md"), ruta_config)
+    ejecutar(payload("C:\\proyectos\\alfa\\README.md"), ruta_config)
 
     assert reg.leer(log) == []
 
@@ -298,7 +298,7 @@ def lanzar(entrada):
 
 def test_la_lanzadera_deniega_con_la_config_real():
     real = cfg.cargar()
-    destino = str(Path(real.raiz_informes) / "loopward" / "2026-08-28" / "99-falso.json")
+    destino = str(Path(real.raiz_informes) / "alfa" / "2026-08-28" / "99-falso.json")
     proceso = lanzar(json.dumps(payload(destino)))
 
     assert proceso.returncode == 0
@@ -307,7 +307,7 @@ def test_la_lanzadera_deniega_con_la_config_real():
 
 
 def test_la_lanzadera_permite_una_escritura_normal():
-    proceso = lanzar(json.dumps(payload("C:\\example-projects\\loopward\\README.md")))
+    proceso = lanzar(json.dumps(payload("C:\\proyectos\\alfa\\README.md")))
 
     assert proceso.returncode == 0
     assert proceso.stdout == ""
@@ -327,14 +327,14 @@ def test_una_raiz_propia_anidada_en_la_global_gana_a_la_global(
     comun = tmp_path / "archivo"
     dentro = comun / "privado"
     ruta_config = escribir_config(
-        [{"nombre": "project-b", "cwd": "C:\\example-projects\\project-b", "raiz_informes": dentro}],
+        [{"nombre": "beta", "cwd": "C:\\proyectos\\beta", "raiz_informes": dentro}],
         raiz_informes=comun,
     )
 
-    codigo, salida = ejecutar(payload(dentro / "project-b" / "x.json"), ruta_config)
+    codigo, salida = ejecutar(payload(dentro / "beta" / "x.json"), ruta_config)
 
     assert codigo == 0 and deniega(salida)
-    assert reg.leer(log)[0].proyecto == "project-b"
+    assert reg.leer(log)[0].proyecto == "beta"
 
 
 def test_una_carpeta_desconocida_bajo_la_raiz_se_deniega_sin_proyecto(archivo, log):
