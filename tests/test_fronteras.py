@@ -105,7 +105,7 @@ def markdown_de(ruta):
         pytest.param(MAYUSCULAS, SLUG_MAYUSCULAS, id="mayusculas"),
     ],
 )
-def test_los_acentos_castellanos_llegan_intactos_al_disco(
+def test_the_castilian_accents_arrive_intact_on_disk(
     markdown, slug, vigilado, informes
 ):
     raiz, ruta_config = vigilado
@@ -119,7 +119,7 @@ def test_los_acentos_castellanos_llegan_intactos_al_disco(
     assert destino.stat().st_size > 0
 
 
-def test_un_caracter_fuera_de_cp1252_no_mata_el_informe(vigilado, informes):
+def test_a_character_outside_cp1252_does_not_kill_the_report(vigilado, informes):
     """El ❌ U+274C lleva el byte 0x9D, uno de los cinco huecos de cp1252."""
     raiz, ruta_config = vigilado
 
@@ -132,7 +132,7 @@ def test_un_caracter_fuera_de_cp1252_no_mata_el_informe(vigilado, informes):
     assert "❌" in markdown_de(destino)
 
 
-def test_ningun_surrogate_suelto_sobrevive_al_sobre(vigilado, informes):
+def test_no_lone_surrogate_survives_the_envelope(vigilado, informes):
     """Lo que revienta al escribir es el surrogate, no el caracter."""
     raiz, ruta_config = vigilado
 
@@ -144,7 +144,7 @@ def test_ningun_surrogate_suelto_sobrevive_al_sobre(vigilado, informes):
     assert not any(0xD800 <= ord(c) <= 0xDFFF for c in texto)
 
 
-def test_tras_un_turno_correcto_no_queda_ni_un_tmp_ni_un_fichero_a_cero(
+def test_after_a_correct_turn_neither_a_tmp_nor_a_zero_byte_file_remains(
     vigilado, informes
 ):
     """Los tres informes a cero de produccion son esto, sin la asercion."""

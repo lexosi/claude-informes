@@ -41,7 +41,7 @@ def ejecutar(datos, ruta_config, texto_crudo=None):
 # --- formato ---
 
 
-def test_la_linea_lleva_marca_proyecto_resultado_y_detalle():
+def test_the_line_carries_timestamp_project_result_and_detail():
     linea = reg.formatear(
         reg.ESCRITO, "alfa", "C:\\informes-claude\\x.json", datetime(2026, 8, 28, 16, 5, 9)
     )
@@ -54,14 +54,14 @@ def test_la_linea_lleva_marca_proyecto_resultado_y_detalle():
     ]
 
 
-def test_el_detalle_nunca_parte_la_linea():
+def test_the_detail_never_splits_the_line_into_two():
     """Un motivo con saltos de linea no puede convertirse en dos anotaciones."""
     linea = reg.formatear(reg.ERROR, "x", "algo\nen dos\nlineas")
     assert "\n" not in linea
     assert reg.leer_linea(linea).detalle == "algo en dos lineas"
 
 
-def test_el_log_es_append_only(tmp_path):
+def test_the_log_is_append_only(tmp_path):
     ruta = tmp_path / "hook.log"
     reg.anotar(ruta, reg.ESCRITO, "uno", "a.json")
     reg.anotar(ruta, reg.OMITIDO_UMBRAL, "dos", "3 lineas")
@@ -69,7 +69,7 @@ def test_el_log_es_append_only(tmp_path):
     assert [a.proyecto for a in reg.leer(ruta)] == ["uno", "dos"]
 
 
-def test_el_log_se_escribe_en_lf(tmp_path):
+def test_the_log_is_written_with_lf_line_endings(tmp_path):
     ruta = tmp_path / "hook.log"
     reg.anotar(ruta, reg.ESCRITO, "uno", "a.json")
     reg.anotar(ruta, reg.ESCRITO, "uno", "b.json")
@@ -77,7 +77,7 @@ def test_el_log_se_escribe_en_lf(tmp_path):
     assert b"\r\n" not in ruta.read_bytes()
 
 
-def test_las_lineas_ilegibles_se_ignoran_una_a_una(tmp_path):
+def test_unreadable_lines_are_ignored_one_by_one(tmp_path):
     ruta = tmp_path / "hook.log"
     reg.anotar(ruta, reg.ESCRITO, "uno", "a.json")
     with open(ruta, "a", encoding="utf-8", newline="\n") as f:
@@ -87,11 +87,11 @@ def test_las_lineas_ilegibles_se_ignoran_una_a_una(tmp_path):
     assert [a.proyecto for a in reg.leer(ruta)] == ["uno", "dos"]
 
 
-def test_un_log_inexistente_se_lee_como_vacio(tmp_path):
+def test_a_nonexistent_log_is_read_as_empty(tmp_path):
     assert reg.leer(tmp_path / "no-existe.log") == []
 
 
-def test_la_ruta_por_defecto_es_hermana_del_archivo_no_hija():
+def test_the_default_path_is_a_sibling_of_the_archive_not_a_child():
     ruta = reg.ruta_por_defecto("C:\\informes-claude")
     assert ruta == Path("C:\\informes-claude.log")
     assert "informes-claude" not in ruta.parent.name
@@ -100,7 +100,7 @@ def test_la_ruta_por_defecto_es_hermana_del_archivo_no_hija():
 # --- los cinco resultados ---
 
 
-def test_un_turno_escrito_se_anota_con_su_ruta(proyecto_vigilado, informes, log):
+def test_a_written_turn_is_logged_with_its_path(proyecto_vigilado, informes, log):
     raiz, ruta_config = proyecto_vigilado
     ejecutar(payload(cwd=str(raiz)), ruta_config)
 
@@ -111,7 +111,7 @@ def test_un_turno_escrito_se_anota_con_su_ruta(proyecto_vigilado, informes, log)
     assert anotacion.ruta == next(Path(informes).rglob("*.json"))
 
 
-def test_un_turno_corto_se_anota_como_omitido_por_umbral(proyecto_vigilado, log):
+def test_a_short_turn_is_logged_as_skipped_by_threshold(proyecto_vigilado, log):
     raiz, ruta_config = proyecto_vigilado
     ejecutar(payload(cwd=str(raiz), last_assistant_message=CORTA), ruta_config)
 
@@ -121,7 +121,7 @@ def test_un_turno_corto_se_anota_como_omitido_por_umbral(proyecto_vigilado, log)
     assert "3 lineas" in anotacion.detalle and "umbral 5" in anotacion.detalle
 
 
-def test_un_cwd_ajeno_se_anota_como_omitido_por_cwd(proyecto_vigilado, tmp_path, log):
+def test_a_foreign_cwd_is_logged_as_skipped_by_cwd(proyecto_vigilado, tmp_path, log):
     _, ruta_config = proyecto_vigilado
     ejecutar(payload(cwd=str(tmp_path / "beta")), ruta_config)
 
@@ -131,7 +131,7 @@ def test_un_cwd_ajeno_se_anota_como_omitido_por_cwd(proyecto_vigilado, tmp_path,
     assert "beta" in anotacion.detalle
 
 
-def test_el_cwd_de_la_herramienta_se_anota_como_escrito(
+def test_the_tools_own_cwd_is_logged_as_written(
     escribir_config, informes, log
 ):
     """Retirada la guardia, un turno sobre la herramienta es un turno normal."""
@@ -147,7 +147,7 @@ def test_el_cwd_de_la_herramienta_se_anota_como_escrito(
     assert anotacion.ruta.is_file()
 
 
-def test_un_payload_roto_se_anota_como_error(proyecto_vigilado, log):
+def test_a_broken_payload_is_logged_as_error(proyecto_vigilado, log):
     _, ruta_config = proyecto_vigilado
     ejecutar(None, ruta_config, texto_crudo="{esto no es json")
 
@@ -156,7 +156,7 @@ def test_un_payload_roto_se_anota_como_error(proyecto_vigilado, log):
     assert "JSONDecodeError" in anotacion.detalle
 
 
-def test_los_cinco_resultados_caben_en_el_mismo_log(
+def test_the_five_results_all_fit_in_the_same_log(
     escribir_config, informes, tmp_path, log, monkeypatch
 ):
     """Un log, un turno por linea, los cinco casos distinguibles."""
@@ -181,7 +181,7 @@ def test_los_cinco_resultados_caben_en_el_mismo_log(
     ]
 
 
-def test_una_reentrada_tambien_deja_linea(proyecto_vigilado, log):
+def test_a_hook_reentry_also_leaves_a_line(proyecto_vigilado, log):
     raiz, ruta_config = proyecto_vigilado
     ejecutar(payload(cwd=str(raiz), stop_hook_active=True), ruta_config)
 
@@ -189,7 +189,7 @@ def test_una_reentrada_tambien_deja_linea(proyecto_vigilado, log):
     assert anotacion.resultado == reg.OMITIDO_REENTRADA
 
 
-def test_cada_turno_deja_exactamente_una_linea(proyecto_vigilado, log):
+def test_each_turn_leaves_exactly_one_line(proyecto_vigilado, log):
     """Una linea por turno. La segunda solo aparece en el camino degradado."""
     raiz, ruta_config = proyecto_vigilado
     for i in range(4):
@@ -201,7 +201,7 @@ def test_cada_turno_deja_exactamente_una_linea(proyecto_vigilado, log):
 # --- lo que no puede pasar ---
 
 
-def test_si_falla_la_escritura_del_informe_sale_0_y_queda_anotado(
+def test_if_writing_the_report_fails_it_exits_0_and_stays_logged(
     proyecto_vigilado, informes, log, monkeypatch
 ):
     """El fallo es invisible en consola, pero no en el log."""
@@ -220,7 +220,7 @@ def test_si_falla_la_escritura_del_informe_sale_0_y_queda_anotado(
     assert "no queda espacio en el disco" in anotacion.detalle
 
 
-def test_si_falla_el_log_sale_0_y_sin_ruido(proyecto_vigilado, informes, log, capsys):
+def test_if_the_log_fails_it_exits_0_and_stays_silent(proyecto_vigilado, informes, log, capsys):
     raiz, ruta_config = proyecto_vigilado
 
     def anotar_roto(*args, **kwargs):
@@ -240,7 +240,7 @@ def test_si_falla_el_log_sale_0_y_sin_ruido(proyecto_vigilado, informes, log, ca
     assert len(list(Path(informes).rglob("*.json"))) == 1, "el informe si se escribio"
 
 
-def test_si_falla_el_log_y_ademas_el_informe_sale_0(proyecto_vigilado, log, monkeypatch, capsys):
+def test_if_both_the_log_and_the_report_fail_it_still_exits_0(proyecto_vigilado, log, monkeypatch, capsys):
     raiz, ruta_config = proyecto_vigilado
     monkeypatch.setattr(Path, "mkdir", lambda *a, **k: (_ for _ in ()).throw(OSError("nada")))
 
@@ -248,7 +248,7 @@ def test_si_falla_el_log_y_ademas_el_informe_sale_0(proyecto_vigilado, log, monk
     assert capsys.readouterr().out == ""
 
 
-def test_el_log_nunca_se_escribe_en_stdout(proyecto_vigilado, capsys):
+def test_the_log_is_never_written_to_stdout(proyecto_vigilado, capsys):
     raiz, ruta_config = proyecto_vigilado
     ejecutar(payload(cwd=str(raiz)), ruta_config)
 
@@ -267,7 +267,7 @@ def escribir_config_con_proyecto(escribir_config, informes, tmp_path, nombre="vi
     )
 
 
-def test_ultimo_da_el_fichero_real_verificado_en_disco(
+def test_last_gives_the_real_file_verified_on_disk(
     escribir_config, informes, tmp_path, capsys
 ):
     raiz, ruta_config = escribir_config_con_proyecto(escribir_config, informes, tmp_path)
@@ -283,7 +283,7 @@ def test_ultimo_da_el_fichero_real_verificado_en_disco(
     assert "still on disk" in salida
 
 
-def test_ultimo_informa_si_el_fichero_ya_no_esta_sin_alarmar(
+def test_last_reports_when_the_file_is_gone_without_alarming(
     escribir_config, informes, tmp_path, capsys
 ):
     """El log registra un hecho pasado, no un indice de ficheros vivos.
@@ -306,7 +306,7 @@ def test_ultimo_informa_si_el_fichero_ya_no_esta_sin_alarmar(
     assert "miente" not in capturado.out
 
 
-def test_ultimo_distingue_cuando_la_carpeta_entera_desaparece(
+def test_last_distinguishes_when_the_whole_folder_disappears(
     escribir_config, informes, tmp_path, capsys
 ):
     """La otra rama: no solo falta el fichero, falta su carpeta del dia."""
@@ -325,7 +325,7 @@ def test_ultimo_distingue_cuando_la_carpeta_entera_desaparece(
     assert "was moved or relocated" in salida
 
 
-def test_ultimo_coge_el_mas_reciente_de_ese_proyecto(
+def test_last_picks_the_most_recent_one_of_that_project(
     escribir_config, informes, tmp_path, capsys
 ):
     uno = tmp_path / "uno"
@@ -347,7 +347,7 @@ def test_ultimo_coge_el_mas_reciente_de_ese_proyecto(
     assert "02-" in salida, "el segundo de 'uno', no el de 'dos'"
 
 
-def test_ultimo_ignora_las_lineas_que_no_son_escrituras(
+def test_last_ignores_the_lines_that_are_not_writes(
     escribir_config, informes, tmp_path, capsys
 ):
     raiz, ruta_config = escribir_config_con_proyecto(escribir_config, informes, tmp_path)
@@ -359,7 +359,7 @@ def test_ultimo_ignora_las_lineas_que_no_son_escrituras(
     assert "01-" in capsys.readouterr().out
 
 
-def test_ultimo_sin_log_lo_dice(escribir_config, tmp_path, capsys):
+def test_last_says_so_when_there_is_no_log(escribir_config, tmp_path, capsys):
     ruta_config = escribir_config([{"nombre": "x", "cwd": str(tmp_path)}])
     codigo = cli.main(["ultimo", "--config", str(ruta_config)])
 
@@ -367,7 +367,7 @@ def test_ultimo_sin_log_lo_dice(escribir_config, tmp_path, capsys):
     assert "empty or does not exist" in capsys.readouterr().err
 
 
-def test_ultimo_sin_informes_de_ese_proyecto_lo_dice(
+def test_last_says_so_when_that_project_has_no_reports(
     escribir_config, informes, tmp_path, capsys
 ):
     raiz, ruta_config = escribir_config_con_proyecto(escribir_config, informes, tmp_path)

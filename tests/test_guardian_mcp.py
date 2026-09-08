@@ -35,7 +35,7 @@ def mcp(herramienta, entrada, cwd="C:\\proyectos\\alfa"):
         "mcp__informes-claude__create_directory",
     ],
 )
-def test_se_miran_las_herramientas_mcp_que_dicen_escribir(herramienta):
+def test_mcp_tools_whose_names_say_write_are_inspected(herramienta):
     assert gd.campos_a_mirar(herramienta) is gd.CAMPOS_MCP
 
 
@@ -50,17 +50,17 @@ def test_se_miran_las_herramientas_mcp_que_dicen_escribir(herramienta):
         "mcp__informes-claude__get_file_info",
     ],
 )
-def test_no_se_miran_las_de_solo_lectura(herramienta):
+def test_the_read_only_ones_are_not_inspected(herramienta):
     assert gd.campos_a_mirar(herramienta) is None
 
 
-def test_el_verbo_sale_del_nombre_de_la_herramienta_no_del_servidor():
+def test_the_verb_comes_from_the_tool_name_not_the_server():
     """`mcp__write-tools__read_file` lee, aunque el servidor se llame write."""
     assert gd.campos_a_mirar("mcp__write-tools__read_file") is None
     assert gd.campos_a_mirar("mcp__lectura__write_file") is gd.CAMPOS_MCP
 
 
-def test_un_verbo_no_se_reconoce_como_subcadena():
+def test_a_verb_is_not_recognized_as_a_substring():
     """`get_output` contiene 'put' y no por eso es una escritura."""
     assert gd.campos_a_mirar("mcp__x__get_output") is None
 
@@ -68,7 +68,7 @@ def test_un_verbo_no_se_reconoce_como_subcadena():
 # --- lo que hay que denegar ---
 
 
-def test_una_escritura_mcp_dentro_del_archivo_se_deniega(archivo):
+def test_an_mcp_write_inside_the_archive_is_denied(archivo):
     comun, _, ruta_config = archivo
     datos = mcp(
         "mcp__informes-claude__write_file",
@@ -85,14 +85,14 @@ def test_una_escritura_mcp_dentro_del_archivo_se_deniega(archivo):
 @pytest.mark.parametrize(
     "campo", ["path", "file_path", "filename", "destination", "target", "dest"]
 )
-def test_se_prueban_los_nombres_de_campo_habituales(campo, archivo):
+def test_the_usual_path_field_names_are_tried(campo, archivo):
     comun, _, ruta_config = archivo
     datos = mcp("mcp__x__write_file", {campo: str(comun / "alfa" / "x.json")})
 
     assert deniega(ejecutar(datos, ruta_config)[1]), campo
 
 
-def test_una_lista_de_rutas_se_revisa_entera(archivo):
+def test_a_list_of_paths_is_reviewed_in_full(archivo):
     comun, _, ruta_config = archivo
     datos = mcp(
         "mcp__x__delete_files",
@@ -102,7 +102,7 @@ def test_una_lista_de_rutas_se_revisa_entera(archivo):
     assert deniega(ejecutar(datos, ruta_config)[1])
 
 
-def test_una_ruta_relativa_de_un_mcp_tambien_se_resuelve(archivo, tmp_path):
+def test_a_relative_path_from_an_mcp_is_also_resolved(archivo, tmp_path):
     comun, _, ruta_config = archivo
     desde = tmp_path / "repos" / "alfa"
     desde.mkdir(parents=True)
@@ -115,14 +115,14 @@ def test_una_ruta_relativa_de_un_mcp_tambien_se_resuelve(archivo, tmp_path):
     assert deniega(ejecutar(datos, ruta_config)[1])
 
 
-def test_una_escritura_mcp_a_una_raiz_por_proyecto_se_deniega(archivo):
+def test_an_mcp_write_to_a_per_project_root_is_denied(archivo):
     _, cofre, ruta_config = archivo
     datos = mcp("mcp__x__write_file", {"path": str(cofre / "beta" / "x.json")})
 
     assert deniega(ejecutar(datos, ruta_config)[1])
 
 
-def test_una_escritura_mcp_al_log_se_deniega(archivo, log):
+def test_an_mcp_write_to_the_log_is_denied(archivo, log):
     _, _, ruta_config = archivo
     assert deniega(ejecutar(mcp("mcp__x__write_file", {"path": str(log)}), ruta_config)[1])
 
@@ -130,7 +130,7 @@ def test_una_escritura_mcp_al_log_se_deniega(archivo, log):
 # --- lo que NO se puede denegar ---
 
 
-def test_una_escritura_mcp_fuera_del_archivo_se_permite(archivo, log):
+def test_an_mcp_write_outside_the_archive_is_allowed(archivo, log):
     _, _, ruta_config = archivo
     for ruta in [
         "C:\\proyectos\\alfa\\README.md",
@@ -142,7 +142,7 @@ def test_una_escritura_mcp_fuera_del_archivo_se_permite(archivo, log):
     assert reg.leer(log) == [], "una escritura legitima no ensucia el log"
 
 
-def test_una_lectura_mcp_dentro_del_archivo_se_permite(archivo, log):
+def test_an_mcp_read_inside_the_archive_is_allowed(archivo, log):
     """Leer los informes es legitimo: solo se impide escribirlos."""
     comun, _, ruta_config = archivo
     for herramienta in [
@@ -157,7 +157,7 @@ def test_una_lectura_mcp_dentro_del_archivo_se_permite(archivo, log):
     assert reg.leer(log) == []
 
 
-def test_una_herramienta_mcp_sin_ruta_se_permite_y_se_anota(archivo, log):
+def test_an_mcp_tool_without_a_path_is_allowed_and_logged(archivo, log):
     """El punto ciego se permite, pero no en silencio."""
     _, _, ruta_config = archivo
     datos = mcp("mcp__x__write_blob", {"contenido": "algo", "id": 42})
@@ -171,7 +171,7 @@ def test_una_herramienta_mcp_sin_ruta_se_permite_y_se_anota(archivo, log):
     assert "sin ruta reconocible" in anotacion.detalle
 
 
-def test_una_herramienta_mcp_con_tool_input_vacio_se_permite_y_se_anota(archivo, log):
+def test_an_mcp_tool_with_empty_tool_input_is_allowed_and_logged(archivo, log):
     _, _, ruta_config = archivo
     codigo, salida = ejecutar(mcp("mcp__x__save_note", {}), ruta_config)
 
@@ -179,7 +179,7 @@ def test_una_herramienta_mcp_con_tool_input_vacio_se_permite_y_se_anota(archivo,
     assert reg.leer(log)[0].resultado == reg.PERMITIDO_SIN_RUTA
 
 
-def test_una_lectura_mcp_sin_ruta_no_ensucia_el_log(archivo, log):
+def test_an_mcp_read_without_a_path_does_not_dirty_the_log(archivo, log):
     """Solo se anota el punto ciego de las que dicen escribir."""
     _, _, ruta_config = archivo
     ejecutar(mcp("mcp__claude_ai_Gmail__search_threads", {"q": "hola"}), ruta_config)
@@ -187,7 +187,7 @@ def test_una_lectura_mcp_sin_ruta_no_ensucia_el_log(archivo, log):
     assert reg.leer(log) == []
 
 
-def test_un_verbo_desconocido_se_trata_como_lectura(archivo, log):
+def test_an_unknown_verb_is_treated_as_a_read(archivo, log):
     """Fallar abierto manda: lo que no se reconoce, pasa."""
     comun, _, ruta_config = archivo
     datos = mcp("mcp__x__persistir_cosa", {"path": str(comun / "x.json")})
@@ -198,7 +198,7 @@ def test_un_verbo_desconocido_se_trata_como_lectura(archivo, log):
     assert reg.leer(log) == []
 
 
-def test_una_ruta_mcp_ilegible_no_revienta(archivo):
+def test_an_unreadable_mcp_path_does_not_blow_up(archivo):
     _, _, ruta_config = archivo
     for entrada in [{"path": 42}, {"path": None}, {"path": ["a", 1, None]}, {"paths": "no soy lista"}]:
         codigo, salida = ejecutar(mcp("mcp__x__write_file", entrada), ruta_config)

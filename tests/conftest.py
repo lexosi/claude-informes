@@ -1,35 +1,33 @@
-"""Infraestructura compartida de los tests.
+"""Shared test infrastructure.
 
-Pares mecanismo / datos
------------------------
-Algunas comprobaciones se parten en DOS tests porque responden a dos preguntas
-distintas, y se reconocen por el prefijo del nombre:
+Mechanism / real-data pairs
+---------------------------
+Some checks are split into TWO tests because they answer two different
+questions, and they are recognized by the name prefix:
 
-- ``test_mecanismo_<que>``  -- prueba que la LOGICA funciona. Usa datos de
-  fixture, no toca nada de la maquina, y esta VERDE en cualquier runner (CI
-  incluida).
-- ``test_datos_reales_<que>`` -- prueba que los DATOS reales de esta maquina
-  cumplen (p. ej. que el repo no filtra los identificadores del autor, o que el
-  guardian deniega sobre las rutas reales). Usa un fichero fuera de git y solo
-  corre donde existe; si falta, FALLA con instrucciones, nunca hace skip. Lleva
-  SIEMPRE el marcador ``@pytest.mark.datos_reales`` (lo vigila
-  ``tests/test_convencion.py``: un test de datos sin marcar es justo la
-  excepcion que abre el agujero).
+- ``test_mechanism_<what>``  -- checks that the LOGIC works. Uses fixture data,
+  touches nothing on the machine, and is GREEN on any runner (CI included).
+- ``test_real_data_<what>`` -- checks that the real DATA of this machine holds
+  (e.g. that the repo does not leak the author's identifiers, or that the
+  guardian denies on the real paths). It uses a file outside git and only runs
+  where it exists; if it is missing, it FAILS with instructions, it never skips.
+  It ALWAYS carries the ``@pytest.mark.real_data`` marker (``tests/test_convencion.py``
+  watches it: an unmarked data test is exactly the exception that opens the hole).
 
-Como se corre cada grupo
-------------------------
-- CI, cualquier runner:   ``pytest -m "not datos_reales"``  (solo mecanismo).
-- Pre-push / local:       ``pytest``                         (la suite ENTERA).
+How to run each group
+---------------------
+- CI, any runner:      ``pytest -m "not real_data"``  (mechanism only).
+- Pre-push / local:    ``pytest``                      (the WHOLE suite).
 
-IMPORTANTE: ``-m "not datos_reales"`` NO es cobertura completa. Deja fuera, a
-proposito, todo lo que depende de datos de la maquina. La comprobacion de que
-tus datos reales cumplen la da la suite ENTERA, que es la que corre el pre-push
-antes de publicar. Leer el comando de CI como "esto es todo lo que se prueba"
-seria tomar una parte por el conjunto.
+IMPORTANT: ``-m "not real_data"`` is NOT full coverage. It leaves out, on
+purpose, everything that depends on machine data. The check that your real data
+holds is given by the WHOLE suite, which is the one the pre-push runs before
+publishing. Reading the CI command as "this is all that is tested" would be
+taking a part for the whole.
 
-El prefijo agrupa por naturaleza al ordenar la salida (todo el mecanismo junto,
-todos los datos juntos) y hace que un ``test_datos_reales_`` sin su marcador
-cante a la vista.
+The prefix groups by nature when the output is sorted (all the mechanism
+together, all the data together) and makes a ``test_real_data_`` without its
+marker stand out at a glance.
 """
 
 import json
@@ -45,19 +43,19 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 @pytest.fixture
 def exigir_fichero_de_datos():
-    """La condicion 'existe el fichero de datos reales', en UN solo sitio.
+    """The condition 'the real-data file exists', in ONE single place.
 
-    Devuelve una funcion `(ruta, *, como_crearlo) -> texto` que lee el fichero
-    o hace `pytest.fail` con la ruta exacta y como crearlo. NUNCA skip: un test
-    de datos que se salta en silencio es un guardian ciego, y de esos el
-    proyecto ya lleva tres. La usan todos los pares mecanismo/datos, para que
-    ninguno vuelva a copiar-pegar la logica de "existe o no".
+    Returns a function `(ruta, *, como_crearlo) -> text` that reads the file or
+    does `pytest.fail` with the exact path and how to create it. NEVER skip: a
+    data test that skips silently is a blind guardian, and the project already
+    has three of those. All the mechanism/real-data pairs use it, so none of
+    them copy-pastes the "exists or not" logic again.
     """
 
     def _exigir(ruta: Path, *, como_crearlo: str) -> str:
         if not ruta.exists():
             pytest.fail(
-                f"Falta el fichero de datos reales de la maquina:\n    {ruta}\n\n{como_crearlo}"
+                f"Missing real-data file for this machine:\n    {ruta}\n\n{como_crearlo}"
             )
         return ruta.read_text(encoding="utf-8")
 
@@ -65,10 +63,10 @@ def exigir_fichero_de_datos():
 
 
 def pytest_configure(config):
-    """Los directorios temporales van FUERA de claude-informes.
+    """The temporary directories go OUTSIDE claude-informes.
 
-    La guardia impide escribir informes con el cwd dentro de la herramienta,
-    asi que un tmp_path bajo el propio proyecto falsearia media suite.
+    The guardian prevents writing reports with the cwd inside the tool, so a
+    tmp_path under the project itself would falsify half the suite.
     """
     if not config.option.basetemp:
         config.option.basetemp = Path(tempfile.gettempdir()) / "claude-informes-tests"
@@ -76,7 +74,7 @@ def pytest_configure(config):
 
 @pytest.fixture(autouse=True)
 def log(tmp_path, monkeypatch):
-    """El log de cada test, aislado. Ningun test toca el log real."""
+    """Each test's log, isolated. No test touches the real log."""
     ruta = tmp_path / "hook.log"
     monkeypatch.setenv("CLAUDE_INFORMES_LOG", str(ruta))
     return ruta
@@ -84,7 +82,7 @@ def log(tmp_path, monkeypatch):
 
 @pytest.fixture
 def escribir_config(tmp_path):
-    """Devuelve una funcion que deja un fichero de config y da su ruta."""
+    """Returns a function that writes a config file and gives its path."""
 
     def _escribir(entradas, raiz_informes=None):
         ruta = tmp_path / "proyectos.json"
@@ -102,16 +100,16 @@ def escribir_config(tmp_path):
 
 @pytest.fixture
 def informes(tmp_path):
-    """La raiz de informes de la herramienta, fuera de los proyectos."""
+    """The tool's report root, outside the projects."""
     return tmp_path / "archivo"
 
 
 @pytest.fixture
 def proyecto_vigilado(tmp_path, informes, escribir_config):
-    """Un proyecto en la lista blanca, con su directorio y su config.
+    """A project on the allowlist, with its directory and its config.
 
-    Devuelve (raiz del proyecto, ruta de la config). Los informes NO van
-    dentro del proyecto: van a la raiz comun.
+    Returns (project root, config path). The reports do NOT go inside the
+    project: they go to the common root.
     """
     raiz = tmp_path / "vigilado"
     raiz.mkdir()

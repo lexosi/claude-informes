@@ -16,5 +16,5 @@ packages = ["claude_informes"]
 testpaths = ["tests"]
 addopts = "-q"
 markers = [
-    "datos_reales: el test usa datos reales de la maquina (fuera de git) y solo corre donde existen; si faltan, FALLA con instrucciones, nunca skip. CI corre 'pytest -m \"not datos_reales\"'; el pre-push corre la suite entera. Ver la cabecera de tests/conftest.py.",
+    "real_data: the test uses real data from the machine (outside git) and only runs where it exists; if it is missing, it FAILS with instructions, never skips. CI runs 'pytest -m \"not real_data\"'; the pre-push runs the whole suite. See the header of tests/conftest.py.",
 ]

@@ -41,7 +41,7 @@ def transcript_de(raiz):
 # --- `nuevo`: los tres pasos en uno ---
 
 
-def test_nuevo_crea_la_carpeta_y_la_registra(tmp_path, escribir_config, informes):
+def test_new_creates_the_folder_and_registers_it(tmp_path, escribir_config, informes):
     ruta_config = escribir_config([], raiz_informes=informes)
     donde = tmp_path / "proyectos"
 
@@ -53,7 +53,7 @@ def test_nuevo_crea_la_carpeta_y_la_registra(tmp_path, escribir_config, informes
     assert configuracion.proyectos[0].raiz == str(carpeta)
 
 
-def test_lo_que_registra_nuevo_lo_reconoce_el_hook(tmp_path, escribir_config, informes):
+def test_what_new_registers_is_recognized_by_the_hook(tmp_path, escribir_config, informes):
     """La prueba que importa: registrar y que el turno se archive."""
     ruta_config = escribir_config([], raiz_informes=informes)
     carpeta, _ = alta.registrar("recien-nacido", tmp_path / "proyectos", ruta_config)
@@ -64,7 +64,7 @@ def test_lo_que_registra_nuevo_lo_reconoce_el_hook(tmp_path, escribir_config, in
     assert len(list(dia.glob("*.json"))) == 1
 
 
-def test_nuevo_conserva_los_proyectos_que_ya_habia(tmp_path, escribir_config, informes):
+def test_new_preserves_the_projects_that_were_already_there(tmp_path, escribir_config, informes):
     ruta_config = escribir_config(
         [{"nombre": "alfa", "cwd": "C:\\proyectos\\alfa"}],
         raiz_informes=informes,
@@ -76,13 +76,13 @@ def test_nuevo_conserva_los_proyectos_que_ya_habia(tmp_path, escribir_config, in
     assert configuracion.raiz_informes == Path(informes), "la raiz global no se toca"
 
 
-def test_nuevo_normaliza_el_nombre(tmp_path, escribir_config):
+def test_new_normalizes_the_name(tmp_path, escribir_config):
     ruta_config = escribir_config([])
     carpeta, _ = alta.registrar("Mi Proyecto Nuevo", tmp_path / "p", ruta_config)
     assert carpeta.name == "mi-proyecto-nuevo"
 
 
-def test_nuevo_no_pisa_un_proyecto_ya_registrado(tmp_path, escribir_config):
+def test_new_does_not_overwrite_an_already_registered_project(tmp_path, escribir_config):
     ruta_config = escribir_config([])
     alta.registrar("uno", tmp_path / "p", ruta_config)
 
@@ -90,7 +90,7 @@ def test_nuevo_no_pisa_un_proyecto_ya_registrado(tmp_path, escribir_config):
         alta.registrar("uno", tmp_path / "p", ruta_config)
 
 
-def test_nuevo_detecta_la_misma_carpeta_con_otro_nombre(tmp_path, escribir_config):
+def test_new_detects_the_same_folder_under_a_different_name(tmp_path, escribir_config):
     ruta_config = escribir_config(
         [{"nombre": "ya-estaba", "cwd": str(tmp_path / "p" / "repe")}]
     )
@@ -98,7 +98,7 @@ def test_nuevo_detecta_la_misma_carpeta_con_otro_nombre(tmp_path, escribir_confi
         alta.registrar("repe", tmp_path / "p", ruta_config)
 
 
-def test_nuevo_reutiliza_una_carpeta_que_ya_existe(tmp_path, escribir_config):
+def test_new_reuses_a_folder_that_already_exists(tmp_path, escribir_config):
     ruta_config = escribir_config([])
     (tmp_path / "p" / "existente").mkdir(parents=True)
     (tmp_path / "p" / "existente" / "README.md").write_text("hola", encoding="utf-8")
@@ -108,12 +108,12 @@ def test_nuevo_reutiliza_una_carpeta_que_ya_existe(tmp_path, escribir_config):
     assert (carpeta / "README.md").read_text(encoding="utf-8") == "hola"
 
 
-def test_nuevo_rechaza_un_nombre_inservible(tmp_path, escribir_config):
+def test_new_rejects_an_unusable_name(tmp_path, escribir_config):
     with pytest.raises(ValueError):
         alta.registrar("???", tmp_path / "p", escribir_config([]))
 
 
-def test_la_orden_nuevo_dice_donde_abrir_el_cli(tmp_path, escribir_config, capsys):
+def test_the_new_command_says_where_to_open_the_cli(tmp_path, escribir_config, capsys):
     ruta_config = escribir_config([])
     codigo = cli.main(
         ["nuevo", "un-proyecto", "--en", str(tmp_path / "p"), "--config", str(ruta_config)]
@@ -125,7 +125,7 @@ def test_la_orden_nuevo_dice_donde_abrir_el_cli(tmp_path, escribir_config, capsy
     assert str(tmp_path / "p" / "un-proyecto") in salida
 
 
-def test_la_orden_nuevo_avisa_de_un_duplicado(tmp_path, escribir_config, capsys):
+def test_the_new_command_warns_about_a_duplicate(tmp_path, escribir_config, capsys):
     ruta_config = escribir_config([])
     cli.main(["nuevo", "x", "--en", str(tmp_path / "p"), "--config", str(ruta_config)])
     codigo = cli.main(["nuevo", "x", "--en", str(tmp_path / "p"), "--config", str(ruta_config)])
@@ -137,7 +137,7 @@ def test_la_orden_nuevo_avisa_de_un_duplicado(tmp_path, escribir_config, capsys)
 # --- el log recuerda lo que no se archivo ---
 
 
-def test_la_omision_lleva_transcript_y_el_nombre_que_tendria(
+def test_the_skip_carries_the_transcript_and_the_name_it_would_have(
     escribir_config, informes, tmp_path, log
 ):
     ruta_config = escribir_config(
@@ -160,14 +160,14 @@ def test_la_omision_lleva_transcript_y_el_nombre_que_tendria(
     assert f"arranque={sin_registrar}" in anotacion.detalle
 
 
-def test_el_nombre_que_tendria_sale_del_arranque_no_del_cwd(tmp_path):
+def test_the_name_it_would_have_comes_from_the_startup_not_the_cwd(tmp_path):
     transcripcion = "C:\\p\\C--proyectos-claude-informes\\s.jsonl"
     assert hk.nombre_que_tendria(transcripcion, "C:\\proyectos\\claude-informes") == (
         "claude-informes"
     )
 
 
-def test_sin_arranque_legible_el_nombre_sale_del_slug(tmp_path):
+def test_without_a_readable_startup_the_name_comes_from_the_slug(tmp_path):
     transcripcion = "C:\\p\\C--proyectos-alfa\\s.jsonl"
     assert hk.nombre_que_tendria(transcripcion, None) == "alfa"
 
@@ -175,7 +175,7 @@ def test_sin_arranque_legible_el_nombre_sale_del_slug(tmp_path):
 # --- `pendientes` ---
 
 
-def test_pendientes_cuenta_los_turnos_no_archivados(
+def test_pending_counts_the_unarchived_turns(
     escribir_config, informes, tmp_path, log, capsys
 ):
     ruta_config = escribir_config([], raiz_informes=informes)
@@ -199,7 +199,7 @@ def test_pendientes_cuenta_los_turnos_no_archivados(
     assert "backfill" in salida, "y como recuperar lo perdido"
 
 
-def test_pendientes_no_dice_nada_si_no_hay_nada(escribir_config, informes, capsys):
+def test_pending_says_nothing_when_there_is_nothing(escribir_config, informes, capsys):
     ruta_config = escribir_config([], raiz_informes=informes)
     codigo = cli.main(["pendientes", "--config", str(ruta_config)])
 
@@ -207,7 +207,7 @@ def test_pendientes_no_dice_nada_si_no_hay_nada(escribir_config, informes, capsy
     assert "No unarchived turns" in capsys.readouterr().out
 
 
-def test_pendientes_ignora_las_demas_omisiones(
+def test_pending_ignores_the_other_kinds_of_skips(
     proyecto_vigilado, informes, log, capsys
 ):
     raiz, ruta_config = proyecto_vigilado

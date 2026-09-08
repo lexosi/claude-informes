@@ -61,9 +61,9 @@ ciego, y de esos ya llevamos tres.
 
 Por que DOS tests (mecanismo y datos) y no uno
 ----------------------------------------------
-La comprobacion se parte en un ``test_mecanismo_*`` (verde en cualquier runner,
-con identificadores ficticios) y un ``test_datos_reales_*`` (marcado
-``datos_reales``, solo donde existe el fichero). La convencion general esta en
+La comprobacion se parte en un ``test_mechanism_*`` (verde en cualquier runner,
+con identificadores ficticios) y un ``test_real_data_*`` (marcado
+``real_data``, solo donde existe el fichero). La convencion general esta en
 la cabecera de ``tests/conftest.py``; aqui quedan escritas las tres razones de
 elegir esta separacion antes que excluir el test en CI o meter los datos en un
 secret:
@@ -137,10 +137,10 @@ def _ruta_lista() -> Path:
 
 
 _COMO_CREAR = (
-    "Sin ella este guard no puede afirmar que el repo no filtra datos reales,\n"
-    "y un push publicaria justo lo que deberia cazar.\n\n"
-    "Crea el fichero (fuera de git, al lado de tu proyectos.json) asi:\n"
-    '    {"identificadores": ["tu-usuario", "tu-proyecto", "e:\\\\tu\\\\raiz"]}'
+    "Without it this guard cannot assert that the repo does not leak real data,\n"
+    "and a push would publish exactly what it should catch.\n\n"
+    "Create the file (outside git, next to your proyectos.json) like this:\n"
+    '    {"identificadores": ["your-user", "your-project", "e:\\\\your\\\\root"]}'
 )
 
 
@@ -177,7 +177,7 @@ def _ficheros_a_escanear():
 # --- el guard caza lo que antes se escapaba (identificadores FICTICIOS) ---
 
 
-def test_mecanismo_caza_las_nueve_formas_de_evasion():
+def test_mechanism_catches_the_nine_evasion_forms():
     """Cada caso esconde un identificador de una forma que el patron de
     subcadena literal dejaba pasar.
 
@@ -201,7 +201,7 @@ def test_mecanismo_caza_las_nueve_formas_de_evasion():
         assert _contiene(texto, reales), f"el guard no caza la forma: {nombre}"
 
 
-def test_mecanismo_una_ruta_ficticia_no_se_marca():
+def test_mechanism_a_fictitious_path_is_not_flagged():
     """Las rutas y nombres ficticios no deben dar falso positivo."""
     reales = [_canon("usuariofalso"), _canon("proyectofalso")]
     ficticios = [
@@ -216,15 +216,15 @@ def test_mecanismo_una_ruta_ficticia_no_se_marca():
 # --- el ejemplo ---
 
 
-def test_mecanismo_el_ejemplo_es_json_valido_y_tiene_forma():
+def test_mechanism_the_example_is_valid_json_with_the_right_shape():
     datos = json.loads(cfg.ruta_de_ejemplo().read_text(encoding="utf-8"))
     assert isinstance(datos, dict)
     assert isinstance(datos.get("proyectos"), list) and datos["proyectos"], "debe traer proyectos de muestra"
     assert "raiz_informes" in datos
 
 
-@pytest.mark.datos_reales
-def test_datos_reales_el_ejemplo_no_lleva_identificador(exigir_fichero_de_datos):
+@pytest.mark.real_data
+def test_real_data_the_example_carries_no_identifier(exigir_fichero_de_datos):
     reales = _cargar_reales_canon(exigir_fichero_de_datos)
     texto = cfg.ruta_de_ejemplo().read_text(encoding="utf-8")
     assert not _contiene(texto, reales), "el ejemplo contiene un identificador real"
@@ -233,8 +233,8 @@ def test_datos_reales_el_ejemplo_no_lleva_identificador(exigir_fichero_de_datos)
 # --- todo el repo, este fichero incluido ---
 
 
-@pytest.mark.datos_reales
-def test_datos_reales_el_repo_no_contiene_identificador(exigir_fichero_de_datos):
+@pytest.mark.real_data
+def test_real_data_the_repo_contains_no_identifier(exigir_fichero_de_datos):
     """Escanea TODOS los ficheros de texto de la punta, este incluido.
 
     Un fichero que no se puede leer como utf-8 se REPORTA como hueco (o es texto

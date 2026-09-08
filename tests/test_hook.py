@@ -54,13 +54,13 @@ def escritos(informes, proyecto="vigilado", fecha=None):
 # --- camino normal ---
 
 
-def test_escribe_un_informe_cuando_todo_encaja(proyecto_vigilado, informes):
+def test_writes_a_report_when_everything_fits(proyecto_vigilado, informes):
     raiz, ruta_config = proyecto_vigilado
     assert ejecutar(payload(cwd=str(raiz)), ruta_config) == 0
     assert escritos(informes) == [f"01-{SLUG}.json"]
 
 
-def test_la_ruta_es_proyecto_dia_fichero(proyecto_vigilado, informes):
+def test_the_path_is_project_then_day_then_file(proyecto_vigilado, informes):
     raiz, ruta_config = proyecto_vigilado
     ejecutar(payload(cwd=str(raiz)), ruta_config)
 
@@ -70,7 +70,7 @@ def test_la_ruta_es_proyecto_dia_fichero(proyecto_vigilado, informes):
     assert destino.parent.parent.parent == Path(informes)
 
 
-def test_el_nombre_no_lleva_fecha_ni_prefijo_de_proyecto(proyecto_vigilado, informes):
+def test_the_file_name_carries_neither_date_nor_project_prefix(proyecto_vigilado, informes):
     """La ruta ya aporta proyecto y dia; el nombre no los repite."""
     raiz, ruta_config = proyecto_vigilado
     ejecutar(payload(cwd=str(raiz)), ruta_config)
@@ -81,7 +81,7 @@ def test_el_nombre_no_lleva_fecha_ni_prefijo_de_proyecto(proyecto_vigilado, info
     assert "vigilado" not in nombre
 
 
-def test_los_informes_no_van_dentro_del_proyecto(proyecto_vigilado, informes):
+def test_the_reports_do_not_go_inside_the_project(proyecto_vigilado, informes):
     raiz, ruta_config = proyecto_vigilado
     ejecutar(payload(cwd=str(raiz)), ruta_config)
 
@@ -89,7 +89,7 @@ def test_los_informes_no_van_dentro_del_proyecto(proyecto_vigilado, informes):
     assert list(raiz.rglob("*.json")) == []
 
 
-def test_el_sobre_lleva_exactamente_el_esquema_acordado(proyecto_vigilado, informes):
+def test_the_envelope_carries_exactly_the_agreed_schema(proyecto_vigilado, informes):
     raiz, ruta_config = proyecto_vigilado
     ejecutar(payload(cwd=str(raiz)), ruta_config)
 
@@ -110,7 +110,7 @@ def test_el_sobre_lleva_exactamente_el_esquema_acordado(proyecto_vigilado, infor
     assert sobre["cwd"] == str(raiz)
 
 
-def test_un_json_por_turno_nunca_se_acumulan(proyecto_vigilado, informes):
+def test_one_json_per_turn_they_never_pile_up(proyecto_vigilado, informes):
     raiz, ruta_config = proyecto_vigilado
     ejecutar(payload(cwd=str(raiz)), ruta_config)
     ejecutar(payload(cwd=str(raiz), last_assistant_message=RESPUESTA + "\nmas"), ruta_config)
@@ -118,7 +118,7 @@ def test_un_json_por_turno_nunca_se_acumulan(proyecto_vigilado, informes):
     assert escritos(informes) == [f"01-{SLUG}.json", f"02-{SLUG}.json"]
 
 
-def test_dos_respuestas_con_el_mismo_slug_el_mismo_dia_no_se_pisan(
+def test_two_responses_with_the_same_slug_on_the_same_day_do_not_overwrite_each_other(
     proyecto_vigilado, informes
 ):
     raiz, ruta_config = proyecto_vigilado
@@ -134,7 +134,7 @@ def test_dos_respuestas_con_el_mismo_slug_el_mismo_dia_no_se_pisan(
     assert contenidos == [RESPUESTA + "\nA", RESPUESTA + "\nB"]
 
 
-def test_dos_proyectos_distintos_van_a_carpetas_distintas(
+def test_two_different_projects_go_to_different_folders(
     escribir_config, informes, tmp_path
 ):
     uno = tmp_path / "uno"
@@ -156,7 +156,7 @@ def test_dos_proyectos_distintos_van_a_carpetas_distintas(
     assert escritos(informes, "proyecto-dos") == [f"01-{SLUG}.json"]
 
 
-def test_el_nombre_de_la_carpeta_sale_de_la_config_no_del_directorio(
+def test_the_folder_name_comes_from_the_config_not_from_the_directory(
     escribir_config, informes, tmp_path
 ):
     raiz = tmp_path / "alfa-renombrado-ayer"
@@ -170,14 +170,14 @@ def test_el_nombre_de_la_carpeta_sale_de_la_config_no_del_directorio(
     assert not (Path(informes) / "alfa-renombrado-ayer").exists()
 
 
-def test_se_crean_los_dos_niveles_de_directorio(proyecto_vigilado, informes):
+def test_both_directory_levels_are_created(proyecto_vigilado, informes):
     raiz, ruta_config = proyecto_vigilado
     assert not Path(informes).exists()
     ejecutar(payload(cwd=str(raiz)), ruta_config)
     assert (Path(informes) / "vigilado" / hoy()).is_dir()
 
 
-def test_una_sesion_abierta_en_un_subdirectorio_escribe_en_la_misma_carpeta(
+def test_a_session_opened_in_a_subdirectory_writes_into_the_same_folder(
     proyecto_vigilado, informes, tmp_path
 ):
     """El slug de un subdirectorio es ambiguo, pero el transcript no lo es.
@@ -201,7 +201,7 @@ def test_una_sesion_abierta_en_un_subdirectorio_escribe_en_la_misma_carpeta(
     assert escritos(informes) == [f"01-{SLUG}.json"]
 
 
-def test_una_sesion_de_un_subdirectorio_sin_transcript_legible_no_se_archiva(
+def test_a_subdirectory_session_without_a_readable_transcript_is_not_archived(
     proyecto_vigilado, informes, tmp_path, log
 ):
     """Sin poder leer el arranque, el slug ambiguo no se fuerza."""
@@ -216,7 +216,7 @@ def test_una_sesion_de_un_subdirectorio_sin_transcript_legible_no_se_archiva(
     assert reg.leer(log)[0].resultado == reg.OMITIDO_SESION
 
 
-def test_background_tasks_no_impide_escribir(proyecto_vigilado, informes):
+def test_background_tasks_does_not_prevent_writing(proyecto_vigilado, informes):
     raiz, ruta_config = proyecto_vigilado
     datos = payload(cwd=str(raiz), background_tasks=[{"id": "bash_1", "status": "running"}])
     assert ejecutar(datos, ruta_config) == 0
@@ -226,21 +226,21 @@ def test_background_tasks_no_impide_escribir(proyecto_vigilado, informes):
 # --- umbral ---
 
 
-def test_por_debajo_del_umbral_no_escribe_nada(proyecto_vigilado, informes):
+def test_below_the_threshold_it_writes_nothing(proyecto_vigilado, informes):
     raiz, ruta_config = proyecto_vigilado
     corta = "1\n2\n3\n4\n5"
     assert ejecutar(payload(cwd=str(raiz), last_assistant_message=corta), ruta_config) == 0
     assert not Path(informes).exists()
 
 
-def test_justo_por_encima_del_umbral_si_escribe(proyecto_vigilado, informes):
+def test_just_above_the_threshold_it_does_write(proyecto_vigilado, informes):
     raiz, ruta_config = proyecto_vigilado
     justa = "1\n2\n3\n4\n5\n6"
     ejecutar(payload(cwd=str(raiz), last_assistant_message=justa), ruta_config)
     assert len(escritos(informes)) == 1
 
 
-def test_el_umbral_es_el_de_la_config_del_proyecto(escribir_config, informes, tmp_path):
+def test_the_threshold_is_the_one_from_the_project_config(escribir_config, informes, tmp_path):
     raiz = tmp_path / "exigente"
     raiz.mkdir()
     ruta_config = escribir_config(
@@ -254,7 +254,7 @@ def test_el_umbral_es_el_de_la_config_del_proyecto(escribir_config, informes, tm
 # --- lista blanca: LO IMPORTANTE ---
 
 
-def test_un_cwd_fuera_de_la_lista_no_escribe_nada(proyecto_vigilado, informes, tmp_path):
+def test_a_cwd_outside_the_whitelist_writes_nothing(proyecto_vigilado, informes, tmp_path):
     _, ruta_config = proyecto_vigilado
     ajeno = tmp_path / "beta"
     ajeno.mkdir()
@@ -264,7 +264,7 @@ def test_un_cwd_fuera_de_la_lista_no_escribe_nada(proyecto_vigilado, informes, t
     assert not Path(informes).exists()
 
 
-def test_el_cwd_de_la_propia_herramienta_ya_si_escribe(
+def test_the_tools_own_cwd_now_does_write(
     escribir_config, informes, tmp_path
 ):
     """El archivo vive fuera de la herramienta: no hay nada que proteger.
@@ -283,7 +283,7 @@ def test_el_cwd_de_la_propia_herramienta_ya_si_escribe(
     assert escritos(informes, "claude-informes") == [f"01-{SLUG}.json"]
 
 
-def test_la_herramienta_bajo_un_proyecto_vigilado_se_archiva_con_el(
+def test_the_tool_under_a_watched_project_is_archived_together_with_it(
     escribir_config, informes
 ):
     propia = cfg.raiz_de_la_herramienta()
@@ -299,7 +299,7 @@ def test_la_herramienta_bajo_un_proyecto_vigilado_se_archiva_con_el(
     assert escritos(informes, "todo") == [f"01-{SLUG}.json"]
 
 
-def test_un_proyecto_desactivado_no_escribe_nada(escribir_config, informes, tmp_path):
+def test_a_deactivated_project_writes_nothing(escribir_config, informes, tmp_path):
     raiz = tmp_path / "pausado"
     raiz.mkdir()
     ruta_config = escribir_config(
@@ -310,7 +310,7 @@ def test_un_proyecto_desactivado_no_escribe_nada(escribir_config, informes, tmp_
     assert not Path(informes).exists()
 
 
-def test_sin_config_no_escribe_en_ningun_sitio(informes, tmp_path):
+def test_without_a_config_it_writes_nowhere(informes, tmp_path):
     raiz = tmp_path / "cualquiera"
     raiz.mkdir()
 
@@ -319,7 +319,7 @@ def test_sin_config_no_escribe_en_ningun_sitio(informes, tmp_path):
     assert not Path(informes).exists()
 
 
-def test_stop_hook_active_sale_sin_escribir(proyecto_vigilado, informes):
+def test_stop_hook_active_exits_without_writing(proyecto_vigilado, informes):
     raiz, ruta_config = proyecto_vigilado
     assert ejecutar(payload(cwd=str(raiz), stop_hook_active=True), ruta_config) == 0
     assert not Path(informes).exists()
@@ -343,7 +343,7 @@ BASURA = [
 
 
 @pytest.mark.parametrize("crudo", BASURA)
-def test_un_payload_corrupto_sale_0_y_no_escribe_nada(
+def test_a_corrupt_payload_exits_0_and_writes_nothing(
     crudo, proyecto_vigilado, informes, tmp_path, log
 ):
     _, ruta_config = proyecto_vigilado
@@ -356,7 +356,7 @@ def test_un_payload_corrupto_sale_0_y_no_escribe_nada(
 
 
 @pytest.mark.parametrize("crudo", BASURA)
-def test_un_payload_corrupto_deja_rastro_en_el_log(crudo, proyecto_vigilado, log):
+def test_a_corrupt_payload_leaves_a_trace_in_the_log(crudo, proyecto_vigilado, log):
     """Silencio en la consola no puede significar silencio en el log."""
     _, ruta_config = proyecto_vigilado
     ejecutar(None, ruta_config, texto_crudo=crudo)
@@ -366,7 +366,7 @@ def test_un_payload_corrupto_deja_rastro_en_el_log(crudo, proyecto_vigilado, log
     assert anotaciones[0].resultado in {reg.ERROR, reg.OMITIDO_CWD}
 
 
-def test_un_payload_con_cwd_corrupto_pero_de_la_lista_no_revienta(
+def test_a_payload_with_a_corrupt_cwd_but_on_the_whitelist_does_not_blow_up(
     proyecto_vigilado, informes
 ):
     raiz, ruta_config = proyecto_vigilado
@@ -375,7 +375,7 @@ def test_un_payload_con_cwd_corrupto_pero_de_la_lista_no_revienta(
     assert not Path(informes).exists()
 
 
-def test_stdin_que_revienta_al_leer_sale_0(proyecto_vigilado, informes):
+def test_stdin_that_blows_up_on_read_exits_0(proyecto_vigilado, informes):
     _, ruta_config = proyecto_vigilado
 
     class StdinRoto:
@@ -386,7 +386,7 @@ def test_stdin_que_revienta_al_leer_sale_0(proyecto_vigilado, informes):
     assert not Path(informes).exists()
 
 
-def test_si_no_se_puede_escribir_sale_0(proyecto_vigilado, informes, monkeypatch):
+def test_if_it_cannot_write_it_exits_0(proyecto_vigilado, informes, monkeypatch):
     raiz, ruta_config = proyecto_vigilado
 
     def mkdir_roto(*args, **kwargs):
@@ -397,7 +397,7 @@ def test_si_no_se_puede_escribir_sale_0(proyecto_vigilado, informes, monkeypatch
     assert not Path(informes).exists()
 
 
-def test_un_fallo_de_escritura_identifica_el_turno_en_el_log(
+def test_a_write_failure_identifies_the_turn_in_the_log(
     proyecto_vigilado, informes, log, monkeypatch
 ):
     """Crear la carpeta caia al except generico y anotaba '- | ERROR | <exc>'
@@ -425,7 +425,7 @@ def test_un_fallo_de_escritura_identifica_el_turno_en_el_log(
     assert "ruta=" in linea.detalle
 
 
-def test_si_git_revienta_el_informe_se_escribe_igual(
+def test_if_git_blows_up_the_report_is_written_anyway(
     proyecto_vigilado, informes, monkeypatch
 ):
     raiz, ruta_config = proyecto_vigilado
@@ -440,7 +440,7 @@ def test_si_git_revienta_el_informe_se_escribe_igual(
     assert sobre["git_branch"] is None and sobre["git_head"] is None
 
 
-def test_el_hook_no_escribe_en_stdout_ni_en_stderr(proyecto_vigilado, capsys):
+def test_the_hook_writes_to_neither_stdout_nor_stderr(proyecto_vigilado, capsys):
     raiz, ruta_config = proyecto_vigilado
     ejecutar(payload(cwd=str(raiz)), ruta_config)
     ejecutar(None, ruta_config, texto_crudo="{basura")
@@ -454,7 +454,7 @@ def test_el_hook_no_escribe_en_stdout_ni_en_stderr(proyecto_vigilado, capsys):
 # --- respaldo desde el transcript ---
 
 
-def test_sin_last_assistant_message_se_lee_del_transcript(
+def test_without_last_assistant_message_it_reads_from_the_transcript(
     proyecto_vigilado, informes, tmp_path
 ):
     raiz, ruta_config = proyecto_vigilado
@@ -480,7 +480,7 @@ def test_sin_last_assistant_message_se_lee_del_transcript(
     assert sobre["respuesta_markdown"] == RESPUESTA
 
 
-def test_un_transcript_inexistente_no_revienta(proyecto_vigilado, informes, tmp_path):
+def test_a_nonexistent_transcript_does_not_blow_up(proyecto_vigilado, informes, tmp_path):
     raiz, ruta_config = proyecto_vigilado
     datos = payload(cwd=str(raiz), transcript_path=str(tmp_path / "no-existe.jsonl"))
     del datos["last_assistant_message"]
@@ -489,7 +489,7 @@ def test_un_transcript_inexistente_no_revienta(proyecto_vigilado, informes, tmp_
     assert not Path(informes).exists()
 
 
-def test_procesar_informa_de_que_la_sesion_no_esta_registrada(tmp_path):
+def test_procesar_reports_that_the_session_is_not_registered(tmp_path):
     configuracion = cfg.cargar(tmp_path / "no-existe.json")
     resultado = hk.procesar(payload(cwd=str(tmp_path)), configuracion)
     assert resultado.resultado == reg.OMITIDO_SESION
@@ -499,7 +499,7 @@ def test_procesar_informa_de_que_la_sesion_no_esta_registrada(tmp_path):
 # --- raiz por proyecto ---
 
 
-def test_cada_proyecto_escribe_en_su_propia_raiz(escribir_config, tmp_path):
+def test_each_project_writes_into_its_own_root(escribir_config, tmp_path):
     """Lo sensible puede ir a un sitio y el resto a otro."""
     comun = tmp_path / "comun"
     cofre = tmp_path / "cofre"
@@ -524,7 +524,7 @@ def test_cada_proyecto_escribe_en_su_propia_raiz(escribir_config, tmp_path):
     assert not (cofre / "publico").exists()
 
 
-def test_sin_raiz_propia_se_escribe_en_la_global(escribir_config, tmp_path):
+def test_without_its_own_root_it_writes_into_the_global_one(escribir_config, tmp_path):
     comun = tmp_path / "comun"
     raiz = tmp_path / "hereda"
     raiz.mkdir()
@@ -536,7 +536,7 @@ def test_sin_raiz_propia_se_escribe_en_la_global(escribir_config, tmp_path):
     assert escritos(comun, "hereda") == [f"01-{SLUG}.json"]
 
 
-def test_la_herramienta_con_raiz_propia_archiva_en_su_cofre(escribir_config, tmp_path):
+def test_the_tool_with_its_own_root_archives_into_its_own_vault(escribir_config, tmp_path):
     """La raiz por proyecto manda tambien cuando el proyecto es la herramienta."""
     propia = cfg.raiz_de_la_herramienta()
     cofre = tmp_path / "cofre"
@@ -551,7 +551,7 @@ def test_la_herramienta_con_raiz_propia_archiva_en_su_cofre(escribir_config, tmp
     assert not (tmp_path / "comun").exists()
 
 
-def test_una_raiz_que_no_existe_se_crea_entera(escribir_config, tmp_path):
+def test_a_root_that_does_not_exist_is_created_in_full(escribir_config, tmp_path):
     lejos = tmp_path / "sin" / "crear" / "todavia"
     raiz = tmp_path / "repo"
     raiz.mkdir()
@@ -563,7 +563,7 @@ def test_una_raiz_que_no_existe_se_crea_entera(escribir_config, tmp_path):
     assert escritos(lejos, "repo") == [f"01-{SLUG}.json"]
 
 
-def test_si_la_raiz_no_se_puede_crear_sale_0(escribir_config, tmp_path, monkeypatch):
+def test_if_the_root_cannot_be_created_it_exits_0(escribir_config, tmp_path, monkeypatch):
     lejos = tmp_path / "imposible"
     raiz = tmp_path / "repo"
     raiz.mkdir()

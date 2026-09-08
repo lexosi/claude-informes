@@ -70,7 +70,7 @@ def archivo(tmp_path, escribir_config, log):
 # --- lo que hay que denegar ---
 
 
-def test_una_escritura_bajo_la_raiz_global_se_deniega(archivo):
+def test_a_write_under_the_global_root_is_denied(archivo):
     comun, _, ruta_config = archivo
     codigo, salida = ejecutar(payload(comun / "alfa" / "2026-08-28" / "09-x.json"), ruta_config)
 
@@ -78,7 +78,7 @@ def test_una_escritura_bajo_la_raiz_global_se_deniega(archivo):
     assert deniega(salida)
 
 
-def test_una_escritura_bajo_una_raiz_por_proyecto_se_deniega(archivo):
+def test_a_write_under_a_per_project_root_is_denied(archivo):
     """La raiz del proyecto no es la global y tambien esta protegida."""
     _, cofre, ruta_config = archivo
     codigo, salida = ejecutar(payload(cofre / "beta" / "2026-08-28" / "01-x.json"), ruta_config)
@@ -88,7 +88,7 @@ def test_una_escritura_bajo_una_raiz_por_proyecto_se_deniega(archivo):
     assert "beta" in razon(salida)
 
 
-def test_una_escritura_al_fichero_de_log_se_deniega(archivo, log):
+def test_a_write_to_the_log_file_is_denied(archivo, log):
     _, _, ruta_config = archivo
     codigo, salida = ejecutar(payload(log), ruta_config)
 
@@ -96,7 +96,7 @@ def test_una_escritura_al_fichero_de_log_se_deniega(archivo, log):
     assert "hook's log" in razon(salida)
 
 
-def test_una_ruta_relativa_con_dos_puntos_se_resuelve_y_se_deniega(archivo, tmp_path):
+def test_a_relative_path_with_dot_dot_segments_is_resolved_and_denied(archivo, tmp_path):
     """`..\\..\\informes-claude\\x.json` cae dentro igual."""
     comun, _, ruta_config = archivo
     desde = tmp_path / "repos" / "alfa"
@@ -109,13 +109,13 @@ def test_una_ruta_relativa_con_dos_puntos_se_resuelve_y_se_deniega(archivo, tmp_
     assert str(comun) in razon(salida).replace("/", "\\") or comun.name in razon(salida)
 
 
-def test_la_propia_carpeta_del_archivo_se_deniega(archivo):
+def test_the_archive_folder_itself_is_denied(archivo):
     comun, _, ruta_config = archivo
     assert deniega(ejecutar(payload(comun), ruta_config)[1])
 
 
 @pytest.mark.parametrize("herramienta", ["Write", "Edit", "MultiEdit", "NotebookEdit"])
-def test_todas_las_herramientas_de_escritura_quedan_cubiertas(herramienta, archivo):
+def test_all_the_write_tools_are_covered(herramienta, archivo):
     comun, _, ruta_config = archivo
     campo = "notebook_path" if herramienta == "NotebookEdit" else "file_path"
     datos = payload(comun / "x.json", herramienta=herramienta)
@@ -124,7 +124,7 @@ def test_todas_las_herramientas_de_escritura_quedan_cubiertas(herramienta, archi
     assert deniega(ejecutar(datos, ruta_config)[1])
 
 
-def test_una_edicion_multiple_se_revisa_entrada_por_entrada(archivo):
+def test_a_multi_edit_is_checked_entry_by_entry(archivo):
     comun, _, ruta_config = archivo
     datos = payload(comun / "x.json", herramienta="MultiEdit")
     datos["tool_input"] = {
@@ -136,7 +136,7 @@ def test_una_edicion_multiple_se_revisa_entrada_por_entrada(archivo):
     assert deniega(ejecutar(datos, ruta_config)[1])
 
 
-def test_el_mensaje_dice_por_que_y_que_hacer(archivo):
+def test_the_message_says_why_and_what_to_do_instead(archivo):
     comun, _, ruta_config = archivo
     motivo = razon(ejecutar(payload(comun / "alfa" / "x.json"), ruta_config)[1])
 
@@ -149,7 +149,7 @@ def test_el_mensaje_dice_por_que_y_que_hacer(archivo):
 # --- lo que NO se puede denegar ---
 
 
-def test_una_escritura_normal_en_un_repo_se_permite(archivo):
+def test_a_normal_write_inside_a_repo_is_allowed(archivo):
     _, _, ruta_config = archivo
     for ruta in [
         "C:\\proyectos\\alfa\\README.md",
@@ -161,7 +161,7 @@ def test_una_escritura_normal_en_un_repo_se_permite(archivo):
         assert codigo == 0 and salida == "", ruta
 
 
-def test_un_hermano_con_prefijo_comun_se_permite(archivo, tmp_path):
+def test_a_sibling_sharing_a_common_prefix_is_allowed(archivo, tmp_path):
     """`informes-claude-otra-cosa` no esta dentro de `informes-claude`."""
     comun, _, ruta_config = archivo
     vecino = comun.parent / (comun.name + "-otra-cosa") / "x.json"
@@ -169,14 +169,14 @@ def test_un_hermano_con_prefijo_comun_se_permite(archivo, tmp_path):
     assert ejecutar(payload(vecino), ruta_config)[1] == ""
 
 
-def test_una_herramienta_que_no_escribe_ficheros_se_permite(archivo):
+def test_a_tool_that_does_not_write_files_is_allowed(archivo):
     comun, _, ruta_config = archivo
     for herramienta in ["Read", "Bash", "Glob", "Grep"]:
         datos = payload(comun / "x.json", herramienta=herramienta)
         assert ejecutar(datos, ruta_config)[1] == "", herramienta
 
 
-def test_bash_no_se_intercepta_aunque_mencione_el_archivo(archivo):
+def test_bash_is_not_intercepted_even_when_it_mentions_the_archive(archivo):
     """Adivinar rutas dentro de una linea de shell da falsos positivos."""
     comun, _, ruta_config = archivo
     datos = payload("x", herramienta="Bash")
@@ -188,7 +188,7 @@ def test_bash_no_se_intercepta_aunque_mencione_el_archivo(archivo):
 # --- falla abierto: lo contrario del hook Stop ---
 
 
-def test_una_config_ausente_permite_y_lo_anota(tmp_path, log):
+def test_a_missing_config_allows_and_records_it(tmp_path, log):
     codigo, salida = ejecutar(
         payload(tmp_path / "informes-claude" / "x.json"), tmp_path / "no-existe.json"
     )
@@ -199,7 +199,7 @@ def test_una_config_ausente_permite_y_lo_anota(tmp_path, log):
     assert "FileNotFoundError" in anotacion.detalle
 
 
-def test_una_config_corrupta_permite_y_lo_anota(tmp_path, log):
+def test_a_corrupt_config_allows_and_records_it(tmp_path, log):
     rota = tmp_path / "rota.json"
     rota.write_text("{esto no es json", encoding="utf-8")
 
@@ -210,7 +210,7 @@ def test_una_config_corrupta_permite_y_lo_anota(tmp_path, log):
     assert anotacion.resultado == reg.PERMITIDO_POR_ERROR
 
 
-def test_un_payload_corrupto_permite_sin_ruido(archivo, capsys):
+def test_a_corrupt_payload_allows_without_noise(archivo, capsys):
     _, _, ruta_config = archivo
     for crudo in ["", "no soy json", "{", "[1,2]", "null", '"cadena"']:
         codigo, salida = ejecutar(None, ruta_config, texto_crudo=crudo)
@@ -218,13 +218,13 @@ def test_un_payload_corrupto_permite_sin_ruido(archivo, capsys):
     assert capsys.readouterr().out == ""
 
 
-def test_un_payload_sin_los_campos_esperados_permite(archivo):
+def test_a_payload_missing_the_expected_fields_is_allowed(archivo):
     _, _, ruta_config = archivo
     for datos in [{}, {"tool_name": "Write"}, {"tool_name": "Write", "tool_input": None}]:
         assert ejecutar(datos, ruta_config)[1] == ""
 
 
-def test_si_revisar_revienta_se_permite(archivo, monkeypatch, log):
+def test_if_the_review_blows_up_it_allows(archivo, monkeypatch, log):
     _, _, ruta_config = archivo
 
     def revisar_roto(*args, **kwargs):
@@ -237,7 +237,7 @@ def test_si_revisar_revienta_se_permite(archivo, monkeypatch, log):
     assert reg.leer(log)[0].resultado == reg.PERMITIDO_POR_ERROR
 
 
-def test_si_falla_el_log_la_denegacion_sigue_saliendo(archivo, monkeypatch):
+def test_if_the_log_fails_the_denial_still_comes_out(archivo, monkeypatch):
     comun, _, ruta_config = archivo
 
     def anotar_roto(*args, **kwargs):
@@ -250,7 +250,7 @@ def test_si_falla_el_log_la_denegacion_sigue_saliendo(archivo, monkeypatch):
     assert deniega(salida), "el log es secundario; la decision no depende de el"
 
 
-def test_nunca_devuelve_un_codigo_distinto_de_cero(archivo, tmp_path):
+def test_it_never_returns_a_nonzero_exit_code(archivo, tmp_path):
     comun, _, ruta_config = archivo
     casos = [
         (payload(comun / "x.json"), ruta_config),
@@ -264,7 +264,7 @@ def test_nunca_devuelve_un_codigo_distinto_de_cero(archivo, tmp_path):
 # --- el log ---
 
 
-def test_la_denegacion_queda_en_el_log(archivo, log):
+def test_the_denial_is_recorded_in_the_log(archivo, log):
     comun, _, ruta_config = archivo
     ejecutar(payload(comun / "alfa" / "2026-08-28" / "09-x.json"), ruta_config)
 
@@ -275,7 +275,7 @@ def test_la_denegacion_queda_en_el_log(archivo, log):
     assert "09-x.json" in anotacion.detalle
 
 
-def test_una_escritura_permitida_no_ensucia_el_log(archivo, log):
+def test_an_allowed_write_does_not_clutter_the_log(archivo, log):
     """Una linea por tool call llenaria el log de ruido."""
     _, _, ruta_config = archivo
     ejecutar(payload("C:\\proyectos\\alfa\\README.md"), ruta_config)
@@ -296,7 +296,7 @@ def lanzar(entrada):
     )
 
 
-def test_mecanismo_la_lanzadera_deniega_dentro_del_archivo(
+def test_mechanism_the_launcher_denies_inside_the_archive(
     escribir_config, informes, log, tmp_path
 ):
     """La lanzadera de verdad, en otro proceso, deniega una escritura dentro del
@@ -321,14 +321,14 @@ def test_mecanismo_la_lanzadera_deniega_dentro_del_archivo(
     assert not destino.exists(), "denegar no crea nada"
 
 
-@pytest.mark.datos_reales
-def test_datos_reales_la_lanzadera_deniega_sobre_mis_rutas(exigir_fichero_de_datos):
+@pytest.mark.real_data
+def test_real_data_the_launcher_denies_over_my_real_paths(exigir_fichero_de_datos):
     """La lanzadera deniega sobre MIS rutas reales: la unica garantia que este
     test existe para dar.
 
     Hermeticizarlo con una config de fixture comprobaria que el guardian deniega
-    EN GENERAL --y eso ya lo hace `test_mecanismo_la_lanzadera_deniega_dentro_del
-    _archivo`-- pero dejaria de comprobar que deniega sobre las rutas REALES del
+    EN GENERAL --y eso ya lo hace `test_mechanism_the_launcher_denies_inside_the
+    _archive`-- pero dejaria de comprobar que deniega sobre las rutas REALES del
     archivo, que es lo unico que impide que alguien escriba a mano dentro de el.
     Por eso el par: mecanismo y datos son dos preguntas distintas. Solo corre
     donde existe la config real; si falta, FALLA con instrucciones, nunca skip.
@@ -337,8 +337,8 @@ def test_datos_reales_la_lanzadera_deniega_sobre_mis_rutas(exigir_fichero_de_dat
     exigir_fichero_de_datos(
         ruta_real,
         como_crearlo=(
-            "Crea tu config real con 'python -m claude_informes init' y pon las\n"
-            "rutas reales de tus proyectos y de la raiz de informes."
+            "Create your real config with 'python -m claude_informes init' and put the\n"
+            "real paths of your projects and of the reports root."
         ),
     )
 
@@ -351,21 +351,21 @@ def test_datos_reales_la_lanzadera_deniega_sobre_mis_rutas(exigir_fichero_de_dat
     assert not Path(destino).exists(), "denegar no crea nada"
 
 
-def test_la_lanzadera_permite_una_escritura_normal():
+def test_the_launcher_allows_a_normal_write():
     proceso = lanzar(json.dumps(payload("C:\\proyectos\\alfa\\README.md")))
 
     assert proceso.returncode == 0
     assert proceso.stdout == ""
 
 
-def test_la_lanzadera_permite_con_un_payload_roto():
+def test_the_launcher_allows_with_a_broken_payload():
     proceso = lanzar("{esto no es json")
 
     assert proceso.returncode == 0
     assert proceso.stdout == ""
 
 
-def test_una_raiz_propia_anidada_en_la_global_gana_a_la_global(
+def test_an_own_root_nested_inside_the_global_one_wins_over_the_global(
     escribir_config, tmp_path, log
 ):
     """La zona mas especifica manda, y con ella el proyecto que se anota."""
@@ -382,7 +382,7 @@ def test_una_raiz_propia_anidada_en_la_global_gana_a_la_global(
     assert reg.leer(log)[0].proyecto == "beta"
 
 
-def test_una_carpeta_desconocida_bajo_la_raiz_se_deniega_sin_proyecto(archivo, log):
+def test_an_unknown_folder_under_the_root_is_denied_without_a_project(archivo, log):
     """No se adivina el proyecto, pero se deniega igual."""
     comun, _, ruta_config = archivo
     assert deniega(ejecutar(payload(comun / "quien-sabe" / "x.json"), ruta_config)[1])
@@ -408,7 +408,7 @@ def _lanzar_guardian(payload, ruta_config, log):
     )
 
 
-def test_deniega_aunque_la_ruta_no_quepa_en_el_encoding_de_la_consola(
+def test_it_denies_even_when_the_path_does_not_fit_the_console_encoding(
     escribir_config, informes, log, tmp_path
 ):
     """La frontera con consecuencia de seguridad.
@@ -441,7 +441,7 @@ def test_deniega_aunque_la_ruta_no_quepa_en_el_encoding_de_la_consola(
     assert "\u274c" in decision["permissionDecisionReason"]
 
 
-def test_ante_un_json_invalido_sigue_fallando_abierto(escribir_config, informes, log, tmp_path):
+def test_faced_with_invalid_json_it_keeps_failing_open(escribir_config, informes, log, tmp_path):
     """Regla numero uno del guardian, comprobada DESPUES de tocar sus flujos."""
     ruta_config = escribir_config(
         [{"nombre": "vigilado", "cwd": str(tmp_path / "vigilado")}],

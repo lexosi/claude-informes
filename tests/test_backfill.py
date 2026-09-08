@@ -108,15 +108,15 @@ def nombres(raiz, proyecto="repo", fecha=None):
 # --- lectura del transcript ---
 
 
-def test_solo_se_recogen_los_turnos_cerrados_con_texto(transcripcion):
+def test_only_closed_turns_with_text_are_collected(transcripcion):
     assert [t["uuid"] for t in tr.turnos(transcripcion)] == ["a", "b", "c", "d"]
 
 
-def test_las_lineas_rotas_no_tumban_la_lectura(transcripcion):
+def test_broken_lines_do_not_bring_down_the_reading(transcripcion):
     assert len(tr.turnos(transcripcion)) == 4
 
 
-def test_un_bloque_text_no_string_no_tumba_la_lectura(tmp_path):
+def test_a_non_string_text_block_does_not_bring_down_the_reading(tmp_path):
     """Un `text` que no es cadena (numero, null, lista) daba TypeError en
     _texto_de y tumbaba la lectura entera --y con ella el backfill de la CLI, con
     traceback crudo--. Ahora ese bloque se salta como uno que no aporta texto:
@@ -149,7 +149,7 @@ def test_un_bloque_text_no_string_no_tumba_la_lectura(tmp_path):
     assert "de verdad" in dict((t["uuid"], t["respuesta_markdown"]) for t in leidos)["mixto"]
 
 
-def test_el_backfill_no_revienta_con_un_turno_malformado(tmp_path):
+def test_the_backfill_does_not_blow_up_with_a_malformed_turn(tmp_path):
     """El backfill leia el transcript con tr.turnos, asi que el mismo TypeError
     lo mataba con traceback y exit 1. Ahora reconstruye los turnos buenos y salta
     el malo sin lanzar."""
@@ -170,18 +170,18 @@ def test_el_backfill_no_revienta_con_un_turno_malformado(tmp_path):
     assert sum(1 for r in resultados if r["escrito"]) == 2
 
 
-def test_un_transcript_inexistente_da_lista_vacia(tmp_path):
+def test_a_nonexistent_transcript_gives_an_empty_list(tmp_path):
     assert tr.turnos(tmp_path / "no-existe.jsonl") == []
 
 
-def test_ultimo_turno_es_el_ultimo_del_fichero(transcripcion):
+def test_the_last_turn_is_the_last_one_in_the_file(transcripcion):
     assert tr.ultimo_turno(transcripcion)["uuid"] == "d"
 
 
 # --- reconstruccion ---
 
 
-def test_un_fichero_por_turno(transcripcion, tmp_path):
+def test_one_file_is_written_per_turn(transcripcion, tmp_path):
     raiz = tmp_path / "archivo"
     resultados = bf.reconstruir(transcripcion, raiz, "repo")
 
@@ -191,14 +191,14 @@ def test_un_fichero_por_turno(transcripcion, tmp_path):
     assert len({r["ruta"] for r in escritos}) == 3
 
 
-def test_los_turnos_cortos_se_omiten_por_umbral(transcripcion, tmp_path):
+def test_short_turns_are_skipped_by_the_threshold(transcripcion, tmp_path):
     resultados = bf.reconstruir(transcripcion, tmp_path / "archivo", "repo")
     omitidos = [r for r in resultados if not r["escrito"]]
     assert len(omitidos) == 1
     assert "umbral" in omitidos[0]["motivo"]
 
 
-def test_los_nombres_son_ordinal_y_slug_sin_fecha(transcripcion, tmp_path):
+def test_the_filenames_are_ordinal_and_slug_without_the_date(transcripcion, tmp_path):
     raiz = tmp_path / "archivo"
     bf.reconstruir(transcripcion, raiz, "repo")
 
@@ -206,7 +206,7 @@ def test_los_nombres_son_ordinal_y_slug_sin_fecha(transcripcion, tmp_path):
     assert all(HOY not in nombre for nombre in nombres(raiz))
 
 
-def test_cada_informe_conserva_su_propio_markdown(transcripcion, tmp_path):
+def test_each_report_keeps_its_own_markdown(transcripcion, tmp_path):
     raiz = tmp_path / "archivo"
     bf.reconstruir(transcripcion, raiz, "repo")
 
@@ -215,7 +215,7 @@ def test_cada_informe_conserva_su_propio_markdown(transcripcion, tmp_path):
     assert [s["respuesta_markdown"] for s in sobres] == [LARGO_A, LARGO_B, LARGO_C]
 
 
-def test_los_metadatos_vienen_del_registro_no_del_reloj(transcripcion, tmp_path):
+def test_the_metadata_comes_from_the_record_not_from_the_clock(transcripcion, tmp_path):
     raiz = tmp_path / "archivo"
     bf.reconstruir(transcripcion, raiz, "repo")
 
@@ -226,7 +226,7 @@ def test_los_metadatos_vienen_del_registro_no_del_reloj(transcripcion, tmp_path)
     assert sobre["git_branch"] == "main"
 
 
-def test_cada_dia_va_a_su_carpeta_y_el_ordinal_reinicia(tmp_path):
+def test_each_day_goes_to_its_own_folder_and_the_ordinal_restarts(tmp_path):
     ruta = escribir_transcript(
         tmp_path / "sesion.jsonl",
         [
@@ -243,7 +243,7 @@ def test_cada_dia_va_a_su_carpeta_y_el_ordinal_reinicia(tmp_path):
     assert nombres(raiz) == [SLUG_A, SLUG_B]
 
 
-def test_una_carpeta_de_dia_con_ficheros_continua_el_ordinal(transcripcion, tmp_path):
+def test_a_day_folder_with_existing_files_continues_the_ordinal(transcripcion, tmp_path):
     raiz = tmp_path / "archivo"
     dia = raiz / "repo" / HOY
     dia.mkdir(parents=True)
@@ -259,7 +259,7 @@ def test_una_carpeta_de_dia_con_ficheros_continua_el_ordinal(transcripcion, tmp_
     ]
 
 
-def test_las_carpetas_existentes_se_reutilizan(transcripcion, tmp_path):
+def test_existing_folders_are_reused(transcripcion, tmp_path):
     raiz = tmp_path / "archivo"
     (raiz / "repo" / HOY).mkdir(parents=True)
 
@@ -269,7 +269,7 @@ def test_las_carpetas_existentes_se_reutilizan(transcripcion, tmp_path):
     assert [p.name for p in (raiz / "repo").iterdir()] == [HOY]
 
 
-def test_dos_proyectos_distintos_no_se_mezclan(transcripcion, tmp_path):
+def test_two_different_projects_do_not_get_mixed_together(transcripcion, tmp_path):
     raiz = tmp_path / "archivo"
     bf.reconstruir(transcripcion, raiz, "uno")
     bf.reconstruir(transcripcion, raiz, "dos")
@@ -278,7 +278,7 @@ def test_dos_proyectos_distintos_no_se_mezclan(transcripcion, tmp_path):
     assert nombres(raiz, "uno") == nombres(raiz, "dos") == [SLUG_A, SLUG_B, SLUG_C]
 
 
-def test_una_segunda_pasada_es_idempotente(transcripcion, tmp_path):
+def test_a_second_pass_is_idempotent(transcripcion, tmp_path):
     """Reejecutar el mismo backfill no duplica: cada turno ya archivado se salta."""
     raiz = tmp_path / "archivo"
     bf.reconstruir(transcripcion, raiz, "repo")
@@ -290,7 +290,7 @@ def test_una_segunda_pasada_es_idempotente(transcripcion, tmp_path):
     assert len(ya) == 3
 
 
-def test_rellena_un_hueco_sin_duplicar_lo_que_ya_esta(transcripcion, tmp_path):
+def test_fills_a_gap_without_duplicating_what_is_already_there(transcripcion, tmp_path):
     """Si falta un informe, se reescribe; los presentes no se duplican."""
     raiz = tmp_path / "archivo"
     bf.reconstruir(transcripcion, raiz, "repo")
@@ -304,7 +304,7 @@ def test_rellena_un_hueco_sin_duplicar_lo_que_ya_esta(transcripcion, tmp_path):
     assert markdowns.count(LARGO_B) == 1, "el hueco se rellena, no se duplica"
 
 
-def test_el_backfill_anota_en_el_log_y_ultimo_lo_encuentra(transcripcion, tmp_path):
+def test_the_backfill_records_in_the_log_and_ultimo_finds_it(transcripcion, tmp_path):
     """Sin linea de log, `ultimo` es ciego a lo backfilleado. Con ella, lo ve."""
     raiz = tmp_path / "archivo"
     log = tmp_path / "hook.log"
@@ -316,20 +316,20 @@ def test_el_backfill_anota_en_el_log_y_ultimo_lo_encuentra(transcripcion, tmp_pa
     assert [Path(a.detalle).name for a in escritos] == [SLUG_A, SLUG_B, SLUG_C]
 
 
-def test_la_simulacion_no_anota_en_el_log(transcripcion, tmp_path):
+def test_the_simulation_does_not_record_in_the_log(transcripcion, tmp_path):
     raiz = tmp_path / "archivo"
     log = tmp_path / "hook.log"
     bf.reconstruir(transcripcion, raiz, "repo", ruta_log=log, simular=True)
     assert not log.exists()
 
 
-def test_limite_coge_los_ultimos_turnos(transcripcion, tmp_path):
+def test_the_limit_takes_the_most_recent_turns(transcripcion, tmp_path):
     raiz = tmp_path / "archivo"
     bf.reconstruir(transcripcion, raiz, "repo", limite=1)
     assert nombres(raiz) == ["01-tercer-turno-cerrado.json"]
 
 
-def test_la_simulacion_no_escribe_nada(transcripcion, tmp_path):
+def test_the_simulation_writes_nothing(transcripcion, tmp_path):
     raiz = tmp_path / "archivo"
     resultados = bf.reconstruir(transcripcion, raiz, "repo", simular=True)
 
@@ -337,7 +337,7 @@ def test_la_simulacion_no_escribe_nada(transcripcion, tmp_path):
     assert all(not r["escrito"] for r in resultados)
 
 
-def test_la_simulacion_predice_los_ordinales_reales(transcripcion, tmp_path):
+def test_the_simulation_predicts_the_real_ordinals(transcripcion, tmp_path):
     """Un dry-run que numera todo 01 miente sobre el resultado y no sirve.
 
     Tres turnos del mismo dia deben salir 01, 02, 03 en la simulacion, igual que
@@ -353,7 +353,7 @@ def test_la_simulacion_predice_los_ordinales_reales(transcripcion, tmp_path):
     assert not raiz.exists(), "seguir siendo un dry-run: cero escrituras"
 
 
-def test_la_simulacion_continua_el_ordinal_de_lo_que_ya_hay(transcripcion, tmp_path):
+def test_the_simulation_continues_the_ordinal_of_what_is_already_there(transcripcion, tmp_path):
     """Si el dia ya tiene otros ficheros, la simulacion sigue por donde toca.
 
     Se siembra el dia con tres informes AJENOS (otro contenido): la simulacion
@@ -376,7 +376,7 @@ def test_la_simulacion_continua_el_ordinal_de_lo_que_ya_hay(transcripcion, tmp_p
     assert [n[:2] for n in simulados] == ["04", "05", "06"]
 
 
-def test_el_umbral_del_backfill_es_configurable(transcripcion, tmp_path):
+def test_the_backfill_threshold_is_configurable(transcripcion, tmp_path):
     raiz = tmp_path / "archivo"
     bf.reconstruir(transcripcion, raiz, "repo", umbral=2)
     assert len(nombres(raiz)) == 4
@@ -385,7 +385,7 @@ def test_el_umbral_del_backfill_es_configurable(transcripcion, tmp_path):
 # --- localizacion del transcript ---
 
 
-def test_se_localiza_el_transcript_por_sesion(tmp_path):
+def test_the_transcript_is_located_by_session_id(tmp_path):
     raiz = tmp_path / "projects" / "C--repo"
     raiz.mkdir(parents=True)
     esperado = escribir_transcript(raiz / "abc-123.jsonl", [turno(LARGO_A)])
@@ -393,7 +393,7 @@ def test_se_localiza_el_transcript_por_sesion(tmp_path):
     assert tr.localizar(session_id="abc-123", raiz=tmp_path / "projects") == esperado
 
 
-def test_se_localiza_el_transcript_mas_reciente_del_proyecto(tmp_path):
+def test_the_most_recent_transcript_of_the_project_is_located(tmp_path):
     import os
 
     base = tmp_path / "projects"
@@ -406,14 +406,14 @@ def test_se_localiza_el_transcript_mas_reciente_del_proyecto(tmp_path):
     assert tr.localizar(cwd="C:\\repo", raiz=base) == nuevo
 
 
-def test_sin_transcript_se_devuelve_none(tmp_path):
+def test_when_there_is_no_transcript_none_is_returned(tmp_path):
     assert tr.localizar(cwd="C:\\ninguno", raiz=tmp_path) is None
 
 
 # --- la orden de consola ---
 
 
-def test_la_orden_escribe_en_la_raiz_indicada(transcripcion, tmp_path, capsys):
+def test_the_command_writes_to_the_indicated_root(transcripcion, tmp_path, capsys):
     raiz = tmp_path / "fuera"
     codigo = cli.main(
         [
@@ -431,7 +431,7 @@ def test_la_orden_escribe_en_la_raiz_indicada(transcripcion, tmp_path, capsys):
     assert "3 report(s) written" in capsys.readouterr().out
 
 
-def test_la_orden_respeta_la_lista_blanca(transcripcion, tmp_path, capsys):
+def test_the_command_respects_the_whitelist(transcripcion, tmp_path, capsys):
     codigo = cli.main(
         [
             "backfill",
@@ -446,7 +446,7 @@ def test_la_orden_respeta_la_lista_blanca(transcripcion, tmp_path, capsys):
     assert list(tmp_path.glob("**/*.json")) == []
 
 
-def test_la_orden_usa_la_raiz_y_el_nombre_de_la_config(
+def test_the_command_uses_the_root_and_name_from_the_config(
     transcripcion, escribir_config, tmp_path
 ):
     proyecto = tmp_path / "repo-renombrado"
@@ -472,7 +472,7 @@ def test_la_orden_usa_la_raiz_y_el_nombre_de_la_config(
     assert nombres(archivo) == [SLUG_A, SLUG_B, SLUG_C]
 
 
-def test_la_orden_avisa_si_no_hay_transcript(tmp_path, capsys):
+def test_the_command_warns_when_there_is_no_transcript(tmp_path, capsys):
     codigo = cli.main(["backfill", "--transcript", str(tmp_path / "no.jsonl")])
     assert codigo == 2
     assert "Transcript not found" in capsys.readouterr().err

@@ -51,7 +51,7 @@ def _escribir_y_releer(markdown, raiz, ruta_config, informes):
 
 
 @pytest.mark.parametrize("nombre", sorted(MUESTRAS))
-def test_el_markdown_del_json_coincide_byte_a_byte_con_la_entrada(
+def test_the_markdown_in_the_json_matches_the_input_byte_for_byte(
     nombre, proyecto_vigilado, informes
 ):
     raiz, ruta_config = proyecto_vigilado
@@ -63,7 +63,7 @@ def test_el_markdown_del_json_coincide_byte_a_byte_con_la_entrada(
     assert len(sobre["respuesta_markdown"]) == len(entrada)
 
 
-def test_el_fichero_en_disco_es_utf8_valido(proyecto_vigilado, informes):
+def test_the_file_on_disk_is_valid_utf8(proyecto_vigilado, informes):
     raiz, ruta_config = proyecto_vigilado
     entrada = MUESTRAS["cirilico_y_cjk"]
     _escribir_y_releer(entrada, raiz, ruta_config, informes)
@@ -73,7 +73,7 @@ def test_el_fichero_en_disco_es_utf8_valido(proyecto_vigilado, informes):
     assert not crudo.startswith(b"\xef\xbb\xbf"), "sin BOM al principio del fichero"
 
 
-def test_el_troceo_no_altera_el_markdown_original(proyecto_vigilado, informes):
+def test_the_chunking_does_not_alter_the_original_markdown(proyecto_vigilado, informes):
     """Las secciones y bloques son extras; el original queda intacto."""
     raiz, ruta_config = proyecto_vigilado
     entrada = MUESTRAS["bloque_de_codigo"]
@@ -86,7 +86,7 @@ def test_el_troceo_no_altera_el_markdown_original(proyecto_vigilado, informes):
     ]
 
 
-def test_los_saltos_de_linea_no_se_traducen_al_escribir(proyecto_vigilado, informes):
+def test_the_line_breaks_are_not_translated_when_writing(proyecto_vigilado, informes):
     """En Windows nada debe convertir \\n en \\r\\n dentro del markdown."""
     raiz, ruta_config = proyecto_vigilado
     entrada = "# LF puro\n\nuno\ndos\ntres\ncuatro\ncinco\n"
@@ -97,7 +97,7 @@ def test_los_saltos_de_linea_no_se_traducen_al_escribir(proyecto_vigilado, infor
     assert sobre["respuesta_markdown"] == entrada
 
 
-def test_los_crlf_de_la_entrada_se_conservan(proyecto_vigilado, informes):
+def test_the_crlfs_from_the_input_are_preserved(proyecto_vigilado, informes):
     raiz, ruta_config = proyecto_vigilado
     entrada = MUESTRAS["crlf"]
 
@@ -107,7 +107,7 @@ def test_los_crlf_de_la_entrada_se_conservan(proyecto_vigilado, informes):
     assert sobre["respuesta_markdown"] == entrada
 
 
-def test_el_fichero_en_disco_usa_saltos_lf(proyecto_vigilado, informes):
+def test_the_file_on_disk_uses_lf_line_breaks(proyecto_vigilado, informes):
     """El archivo entero en LF: si no, git y las herramientas ven ruido."""
     raiz, ruta_config = proyecto_vigilado
     _escribir_y_releer(MUESTRAS["crlf"], raiz, ruta_config, informes)

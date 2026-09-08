@@ -52,7 +52,7 @@ def escritos(informes, proyecto, fecha=None):
 # --- el mapeo del slug al proyecto ---
 
 
-def test_el_slug_del_directorio_se_mapea_al_nombre_de_la_config(
+def test_the_directory_slug_maps_to_the_name_declared_in_the_config(
     escribir_config, informes, tmp_path
 ):
     """`e--proyectos-alfa` -> `alfa`, via el cwd declarado."""
@@ -68,7 +68,7 @@ def test_el_slug_del_directorio_se_mapea_al_nombre_de_la_config(
     assert proyecto is not None and proyecto.nombre == "alfa"
 
 
-def test_el_mapeo_no_depende_del_nombre_del_directorio_sino_del_cwd(
+def test_the_mapping_does_not_depend_on_the_directory_name_but_on_the_cwd(
     escribir_config, informes, tmp_path
 ):
     """El nombre de carpeta puede no parecerse al slug: manda el cwd."""
@@ -84,7 +84,7 @@ def test_el_mapeo_no_depende_del_nombre_del_directorio_sino_del_cwd(
     assert proyecto is not None and proyecto.nombre == "informes-del-curro"
 
 
-def test_un_slug_de_un_hermano_no_se_confunde_con_un_subdirectorio(
+def test_a_sibling_slug_is_not_mistaken_for_a_subdirectory(
     escribir_config, informes
 ):
     """`alfa-audit` es otro proyecto, no `alfa/audit`. Sin exactitud,
@@ -100,7 +100,7 @@ def test_un_slug_de_un_hermano_no_se_confunde_con_un_subdirectorio(
     assert hk.proyecto_del_transcript(ruta, configuracion) is None
 
 
-def test_un_proyecto_desactivado_no_se_mapea(escribir_config, informes):
+def test_a_deactivated_project_is_not_mapped(escribir_config, informes):
     configuracion = cfg.cargar(
         escribir_config(
             [{"nombre": "alfa", "cwd": "C:\\proyectos\\alfa", "activo": False}],
@@ -115,7 +115,7 @@ def test_un_proyecto_desactivado_no_se_mapea(escribir_config, informes):
 # --- el fallo original, en sus dos direcciones ---
 
 
-def test_dos_turnos_con_cwd_distinto_van_al_mismo_proyecto(
+def test_two_turns_with_a_different_cwd_go_to_the_same_project(
     escribir_config, informes, tmp_path, log
 ):
     """El caso real: entre turno y turno, la shell se movio."""
@@ -135,7 +135,7 @@ def test_dos_turnos_con_cwd_distinto_van_al_mismo_proyecto(
     assert all(a.resultado == reg.ESCRITO for a in reg.leer(log))
 
 
-def test_un_turno_de_una_sesion_no_vigilada_no_se_archiva_aunque_el_cwd_lo_este(
+def test_a_turn_from_an_unwatched_session_is_not_archived_even_when_the_cwd_is_watched(
     escribir_config, informes, tmp_path, log
 ):
     """La direccion peligrosa: la shell dentro de alfa, la sesion no."""
@@ -154,7 +154,7 @@ def test_un_turno_de_una_sesion_no_vigilada_no_se_archiva_aunque_el_cwd_lo_este(
     assert "proyecto no registrado" in anotacion.detalle
 
 
-def test_un_turno_de_una_sesion_vigilada_no_se_pierde_por_un_cd(
+def test_a_turn_from_a_watched_session_is_not_lost_because_of_a_cd(
     escribir_config, informes, tmp_path
 ):
     """La otra direccion: la sesion en alfa, la shell fuera."""
@@ -173,7 +173,7 @@ def test_un_turno_de_una_sesion_vigilada_no_se_pierde_por_un_cd(
 # --- camino degradado: cae al cwd, pero se ve ---
 
 
-def test_sin_transcript_path_se_cae_al_cwd_y_se_anota(
+def test_without_a_transcript_path_it_falls_back_to_the_cwd_and_is_logged(
     escribir_config, informes, tmp_path, log
 ):
     raiz = tmp_path / "alfa"
@@ -192,7 +192,7 @@ def test_sin_transcript_path_se_cae_al_cwd_y_se_anota(
     assert escrito.resultado == reg.ESCRITO
 
 
-def test_un_slug_que_no_mapea_no_archiva_y_se_anota(
+def test_a_slug_that_does_not_map_does_not_archive_and_is_logged(
     escribir_config, informes, tmp_path, log
 ):
     """Con transcript, manda el transcript: no se cae al cwd.
@@ -214,7 +214,7 @@ def test_un_slug_que_no_mapea_no_archiva_y_se_anota(
     assert "slug-de-otra-cosa" in anotacion.detalle
 
 
-def test_el_aviso_solo_aparece_cuando_el_camino_degradado_archiva(
+def test_the_warning_only_appears_when_the_degraded_path_actually_archives(
     escribir_config, informes, tmp_path, log
 ):
     """Si el cwd tampoco vale, no hay nada que avisar: una sola linea."""
@@ -229,7 +229,7 @@ def test_el_aviso_solo_aparece_cuando_el_camino_degradado_archiva(
     assert anotacion.resultado == reg.OMITIDO_CWD
 
 
-def test_un_transcript_path_ilegible_no_revienta(escribir_config, informes, tmp_path):
+def test_an_unreadable_transcript_path_does_not_blow_up(escribir_config, informes, tmp_path):
     raiz = tmp_path / "alfa"
     raiz.mkdir()
     ruta_config = escribir_config(
@@ -245,7 +245,7 @@ def test_un_transcript_path_ilegible_no_revienta(escribir_config, informes, tmp_
 # --- lo que no cambia ---
 
 
-def test_un_turno_de_la_propia_herramienta_se_archiva_como_cualquier_otro(
+def test_a_turn_from_the_tool_itself_is_archived_like_any_other(
     escribir_config, informes
 ):
     """La herramienta dejo de ser un caso aparte cuando el archivo se mudo."""
@@ -260,7 +260,7 @@ def test_un_turno_de_la_propia_herramienta_se_archiva_como_cualquier_otro(
     assert [p.name for p in dia.iterdir()] == ["01-informe-prueba-diaria.json"]
 
 
-def test_el_umbral_sigue_siendo_el_del_proyecto_mapeado(
+def test_the_threshold_stays_the_one_from_the_mapped_project(
     escribir_config, informes, tmp_path, log
 ):
     raiz = tmp_path / "exigente"

@@ -29,18 +29,18 @@ def dia(informes, proyecto="repo", fecha="2026-08-28"):
 # --- estructura de carpetas ---
 
 
-def test_la_ruta_es_raiz_proyecto_dia(tmp_path):
+def test_the_path_is_root_then_project_then_day(tmp_path):
     destino = inf.escribir(tmp_path, "repo", sobre(cuando="2026-08-28T10:00:00Z"))
     assert destino.parent == dia(tmp_path)
     assert destino.name == f"01-{SLUG}.json"
 
 
-def test_se_crean_los_dos_niveles_de_golpe(tmp_path):
+def test_both_levels_are_created_in_one_go(tmp_path):
     inf.escribir(tmp_path / "sin" / "hacer", "repo", sobre(cuando="2026-08-28T10:00:00Z"))
     assert (tmp_path / "sin" / "hacer" / "repo" / "2026-08-28").is_dir()
 
 
-def test_una_carpeta_de_proyecto_existente_se_reutiliza(tmp_path):
+def test_an_existing_project_folder_is_reused(tmp_path):
     dia(tmp_path).mkdir(parents=True)
     inf.escribir(tmp_path, "repo", sobre(cuando="2026-08-28T10:00:00Z"))
 
@@ -48,7 +48,7 @@ def test_una_carpeta_de_proyecto_existente_se_reutiliza(tmp_path):
     assert [p.name for p in (tmp_path / "repo").iterdir()] == ["2026-08-28"]
 
 
-def test_no_se_crean_variantes_de_una_carpeta_que_ya_existe(tmp_path):
+def test_no_case_variants_of_an_already_existing_folder_are_created(tmp_path):
     """En Windows 'Repo' y 'repo' son la misma; se usa la que ya esta."""
     (tmp_path / "Repo").mkdir()
     destino = inf.escribir(tmp_path, "repo", sobre(cuando="2026-08-28T10:00:00Z"))
@@ -57,7 +57,7 @@ def test_no_se_crean_variantes_de_una_carpeta_que_ya_existe(tmp_path):
     assert destino.parent.parent.name == "Repo"
 
 
-def test_dos_dias_distintos_son_dos_carpetas(tmp_path):
+def test_two_different_days_are_two_folders(tmp_path):
     inf.escribir(tmp_path, "repo", sobre(cuando="2026-08-27T10:00:00Z"))
     inf.escribir(tmp_path, "repo", sobre(cuando="2026-08-28T10:00:00Z"))
 
@@ -67,7 +67,7 @@ def test_dos_dias_distintos_son_dos_carpetas(tmp_path):
     ]
 
 
-def test_dos_proyectos_no_comparten_carpeta(tmp_path):
+def test_two_projects_do_not_share_a_folder(tmp_path):
     inf.escribir(tmp_path, "uno", sobre(cuando="2026-08-28T10:00:00Z"))
     inf.escribir(tmp_path, "dos", sobre(cuando="2026-08-28T10:00:00Z"))
 
@@ -79,12 +79,12 @@ def test_dos_proyectos_no_comparten_carpeta(tmp_path):
 # --- ordinal ---
 
 
-def test_el_primer_informe_del_dia_es_el_01(tmp_path):
+def test_the_first_report_of_the_day_is_number_01(tmp_path):
     destino = inf.escribir(tmp_path, "repo", sobre(cuando="2026-08-28T10:00:00Z"))
     assert destino.name.startswith("01-")
 
 
-def test_el_ordinal_continua_donde_lo_dejo_el_anterior(tmp_path):
+def test_the_ordinal_continues_where_the_previous_one_left_off(tmp_path):
     dia(tmp_path).mkdir(parents=True)
     (dia(tmp_path) / "07-lo-que-sea.json").write_text("{}", encoding="utf-8")
 
@@ -92,7 +92,7 @@ def test_el_ordinal_continua_donde_lo_dejo_el_anterior(tmp_path):
     assert destino.name.startswith("08-")
 
 
-def test_el_ordinal_reinicia_en_01_cada_dia(tmp_path):
+def test_the_ordinal_resets_to_01_each_day(tmp_path):
     for _ in range(3):
         inf.escribir(tmp_path, "repo", sobre(cuando="2026-08-27T10:00:00Z"))
     destino = inf.escribir(tmp_path, "repo", sobre(cuando="2026-08-28T10:00:00Z"))
@@ -105,7 +105,7 @@ def test_el_ordinal_reinicia_en_01_cada_dia(tmp_path):
     assert destino.name.startswith("01-")
 
 
-def test_el_ordinal_no_se_confunde_entre_proyectos(tmp_path):
+def test_the_ordinal_does_not_get_confused_between_projects(tmp_path):
     inf.escribir(tmp_path, "uno", sobre(cuando="2026-08-28T10:00:00Z"))
     inf.escribir(tmp_path, "uno", sobre(cuando="2026-08-28T10:00:00Z"))
     destino = inf.escribir(tmp_path, "dos", sobre(cuando="2026-08-28T10:00:00Z"))
@@ -113,7 +113,7 @@ def test_el_ordinal_no_se_confunde_entre_proyectos(tmp_path):
     assert destino.name.startswith("01-")
 
 
-def test_dos_informes_con_el_mismo_slug_no_se_pisan(tmp_path):
+def test_two_reports_with_the_same_slug_do_not_overwrite_each_other(tmp_path):
     uno = inf.escribir(tmp_path, "repo", sobre(cuando="2026-08-28T10:00:00Z"))
     dos = inf.escribir(tmp_path, "repo", sobre(cuando="2026-08-28T10:00:00Z"))
 
@@ -122,7 +122,7 @@ def test_dos_informes_con_el_mismo_slug_no_se_pisan(tmp_path):
     assert len(list(dia(tmp_path).glob("*.json"))) == 2
 
 
-def test_un_nombre_ya_reservado_no_se_sobrescribe(tmp_path):
+def test_an_already_reserved_name_is_not_overwritten(tmp_path):
     """Simula el turno simultaneo: el ordinal libre ya no lo esta."""
     dia(tmp_path).mkdir(parents=True)
     ocupado = dia(tmp_path) / f"01-{SLUG}.json"
@@ -134,7 +134,7 @@ def test_un_nombre_ya_reservado_no_se_sobrescribe(tmp_path):
     assert ocupado.read_text(encoding="utf-8") == "de otro turno"
 
 
-def test_los_ficheros_ajenos_de_la_carpeta_no_estorban(tmp_path):
+def test_unrelated_files_in_the_folder_do_not_get_in_the_way(tmp_path):
     dia(tmp_path).mkdir(parents=True)
     (dia(tmp_path) / "notas.txt").write_text("hola", encoding="utf-8")
     (dia(tmp_path) / "sin-ordinal.json").write_text("{}", encoding="utf-8")
@@ -146,12 +146,12 @@ def test_los_ficheros_ajenos_de_la_carpeta_no_estorban(tmp_path):
 # --- escritura ---
 
 
-def test_no_queda_ningun_temporal(tmp_path):
+def test_no_temporary_file_is_left_behind(tmp_path):
     inf.escribir(tmp_path, "repo", sobre())
     assert list(tmp_path.rglob("*.tmp")) == []
 
 
-def test_el_json_es_legible_y_con_sangria(tmp_path):
+def test_the_json_is_readable_and_indented(tmp_path):
     destino = inf.escribir(tmp_path, "repo", sobre())
     texto = destino.read_text(encoding="utf-8")
     assert texto.endswith("\n")
@@ -161,18 +161,18 @@ def test_el_json_es_legible_y_con_sangria(tmp_path):
 # --- fecha y hora ---
 
 
-def test_una_marca_de_tiempo_en_utc_se_pasa_a_hora_local():
+def test_a_utc_timestamp_is_converted_to_local_time():
     resultado = inf.construir("x", session_id=None, cwd=None, cuando="2026-08-28T11:31:37.388Z")
     assert resultado["fecha"] == "2026-08-28"
     assert len(resultado["hora"].split(":")) == 3
 
 
-def test_una_marca_de_tiempo_ilegible_no_revienta():
+def test_an_unreadable_timestamp_does_not_blow_up():
     resultado = inf.construir("x", session_id=None, cwd=None, cuando="ayer por la tarde")
     assert len(resultado["fecha"]) == 10
 
 
-def test_sin_marca_de_tiempo_se_usa_el_reloj():
+def test_without_a_timestamp_the_clock_is_used():
     resultado = inf.construir("x", session_id=None, cwd=None)
     assert len(resultado["fecha"]) == 10 and len(resultado["hora"]) == 8
 
@@ -180,11 +180,11 @@ def test_sin_marca_de_tiempo_se_usa_el_reloj():
 # --- git ---
 
 
-def test_git_en_un_directorio_que_no_existe_da_none(tmp_path):
+def test_git_in_a_nonexistent_directory_returns_none(tmp_path):
     assert inf.datos_git(str(tmp_path / "fantasma")) == (None, None)
 
 
-def test_git_fuera_de_un_repositorio_da_none(tmp_path):
+def test_git_outside_a_repository_returns_none(tmp_path):
     assert inf.datos_git(str(tmp_path)) == (None, None)
 
 
@@ -211,13 +211,13 @@ def lanzar(entrada, ruta_config=None):
     )
 
 
-def test_la_lanzadera_sale_0_con_un_payload_corrupto():
+def test_the_launcher_exits_0_with_a_corrupt_payload():
     proceso = lanzar("{esto no es json")
     assert proceso.returncode == 0
     assert proceso.stdout == "" and proceso.stderr == ""
 
 
-def test_la_lanzadera_sale_0_con_un_cwd_ajeno(tmp_path):
+def test_the_launcher_exits_0_with_a_foreign_cwd(tmp_path):
     proceso = lanzar(
         json.dumps(
             {
@@ -233,7 +233,7 @@ def test_la_lanzadera_sale_0_con_un_cwd_ajeno(tmp_path):
     assert list(tmp_path.rglob("*.json")) == []
 
 
-def test_la_lanzadera_archiva_con_el_cwd_de_la_propia_herramienta(
+def test_the_launcher_archives_with_the_tools_own_cwd(
     tmp_path, escribir_config, informes
 ):
     """Retirada la guardia, la herramienta se archiva como cualquier proyecto.
@@ -266,14 +266,14 @@ def test_la_lanzadera_archiva_con_el_cwd_de_la_propia_herramienta(
     assert not (RAIZ / "informes").exists(), "el destino viejo no debe resucitar"
 
 
-def test_la_lanzadera_sale_0_con_stdin_vacio():
+def test_the_launcher_exits_0_with_empty_stdin():
     assert lanzar("").returncode == 0
 
 
 # --- el cerrojo: el .tmp reserva, el .json solo aparece al final ---
 
 
-def test_el_json_no_existe_hasta_tener_contenido(tmp_path, monkeypatch):
+def test_the_json_does_not_exist_until_it_has_content(tmp_path, monkeypatch):
     """Mientras se escribe hay `.tmp` y NO hay `.json`. Nunca uno a cero."""
     vistos = []
     real = inf.json.dumps
@@ -290,7 +290,7 @@ def test_el_json_no_existe_hasta_tener_contenido(tmp_path, monkeypatch):
     assert [p.name for p in dia(tmp_path).iterdir()] == [f"01-{SLUG}.json"]
 
 
-def test_un_tmp_huerfano_tiene_su_ordinal_cogido(tmp_path):
+def test_an_orphan_tmp_has_its_ordinal_taken(tmp_path):
     """Si no se contaran los .tmp, el cerrojo no serviria de nada."""
     dia(tmp_path).mkdir(parents=True)
     (dia(tmp_path) / "01-de-otro-turno.json.tmp").write_text("", encoding="utf-8")
@@ -300,7 +300,7 @@ def test_un_tmp_huerfano_tiene_su_ordinal_cogido(tmp_path):
     assert destino.name == f"02-{SLUG}.json"
 
 
-def test_ocho_turnos_a_la_vez_no_repiten_ordinal(tmp_path):
+def test_eight_simultaneous_turns_do_not_repeat_an_ordinal(tmp_path):
     """El O_EXCL sigue mandando ahora que el cerrojo es el .tmp."""
     errores = []
 
@@ -322,7 +322,7 @@ def test_ocho_turnos_a_la_vez_no_repiten_ordinal(tmp_path):
     assert sorted(n[:2] for n in nombres) == [f"{i:02d}" for i in range(1, 9)]
 
 
-def test_la_carrera_no_reusa_un_ordinal_ya_publicado(tmp_path, monkeypatch):
+def test_the_race_does_not_reuse_an_already_published_ordinal(tmp_path, monkeypatch):
     """Perdida de datos real: `os.replace` libera el `.tmp` al renombrarlo, y un
     hilo rezagado que habia elegido ese mismo ordinal lo reserva de nuevo y su
     `os.replace` machaca el `.json` que otro turno ya habia escrito.
@@ -364,7 +364,7 @@ def test_la_carrera_no_reusa_un_ordinal_ya_publicado(tmp_path, monkeypatch):
         assert len(nombres) == N, f"ronda {ronda}: {len(nombres)} de {N} informes; uno machacado"
 
 
-def test_un_fallo_al_crear_la_carpeta_es_fallo_de_escritura(tmp_path):
+def test_a_failure_creating_the_folder_is_a_write_failure(tmp_path):
     """mkdir y la reserva del .tmp estaban fuera del try, asi que su fallo salia
     crudo en vez de FalloDeEscritura y perdia la ruta del turno. Ahora todo el
     cuerpo de escribir esta envuelto: crear la carpeta del dia sobre un fichero
@@ -378,7 +378,7 @@ def test_un_fallo_al_crear_la_carpeta_es_fallo_de_escritura(tmp_path):
     assert "repo" in str(fallo.value.ruta)
 
 
-def test_si_la_escritura_falla_no_queda_nada_en_disco(tmp_path, monkeypatch):
+def test_if_the_write_fails_nothing_is_left_on_disk(tmp_path, monkeypatch):
     """Los tres informes a cero de produccion eran exactamente esto."""
 
     def revienta(*args, **kwargs):
