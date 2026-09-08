@@ -152,14 +152,6 @@ def test_un_subdirectorio_de_la_herramienta_tambien_mapea(escribir_config):
     assert cfg.buscar_proyecto(str(propia / "tests"), configuracion) is not None
 
 
-def test_la_guardia_reconoce_la_herramienta():
-    propia = cfg.raiz_de_la_herramienta()
-    assert cfg.es_la_propia_herramienta(str(propia)) is True
-    assert cfg.es_la_propia_herramienta(str(propia / "tests")) is True
-    assert cfg.es_la_propia_herramienta(str(propia.parent)) is False
-    assert cfg.es_la_propia_herramienta(None) is False
-
-
 # Los tests que afirmaban sobre "la config real del repo" se retiraron: la
 # config real ya no vive en el repositorio (vive en la config de usuario del
 # SO). La invariante equivalente -que el EJEMPLO sea JSON valido y no lleve

@@ -212,17 +212,6 @@ def _esta_dentro(candidato: str, raiz: str) -> bool:
     return candidato.startswith(raiz.rstrip(os.sep) + os.sep)
 
 
-def es_la_propia_herramienta(cwd: str | None) -> bool:
-    """Guardia: el destino de los informes vive dentro de este proyecto.
-
-    Si algun dia claude-informes acaba en la lista de vigilados, un turno suyo
-    escribiria dentro de su propia carpeta de salida. No se escribe, y punto.
-    """
-    if not isinstance(cwd, str) or not cwd.strip():
-        return False
-    return _esta_dentro(normalizar(cwd), normalizar(raiz_de_la_herramienta()))
-
-
 def buscar_proyecto(cwd: str | None, configuracion: Configuracion) -> Proyecto | None:
     """Lista blanca: el cwd debe ser la raiz de un proyecto activo o colgar de ella.
 
