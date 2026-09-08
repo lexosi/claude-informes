@@ -63,6 +63,13 @@ def _momento(cuando: str | datetime | None) -> datetime:
     return instante.replace(tzinfo=None)
 
 
+# Envelope schema version. The consumer contract (see the README): a missing
+# field OR version_esquema == 1 means v1, so the reports archived before this
+# field existed stay valid as v1 without being rewritten. An incompatible change
+# to the shape bumps this; a purely additive one does not.
+VERSION_ESQUEMA = 1
+
+
 def construir(
     respuesta_markdown: str,
     *,
@@ -75,6 +82,7 @@ def construir(
     """The envelope. Its only requirement is to carry the full markdown."""
     instante = _momento(cuando)
     return {
+        "version_esquema": VERSION_ESQUEMA,
         "fecha": instante.strftime("%Y-%m-%d"),
         "hora": instante.strftime("%H:%M:%S"),
         "session_id": session_id,

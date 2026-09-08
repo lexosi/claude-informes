@@ -95,6 +95,7 @@ def test_the_envelope_carries_exactly_the_agreed_schema(proyecto_vigilado, infor
 
     sobre = json.loads(next(Path(informes).rglob("*.json")).read_text("utf-8"))
     assert list(sobre) == [
+        "version_esquema",
         "fecha",
         "hora",
         "session_id",
@@ -106,6 +107,7 @@ def test_the_envelope_carries_exactly_the_agreed_schema(proyecto_vigilado, infor
         "bloques_codigo",
         "casillas",
     ]
+    assert sobre["version_esquema"] == 1
     assert sobre["session_id"] == "sesion-1"
     assert sobre["cwd"] == str(raiz)
 

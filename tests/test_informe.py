@@ -177,6 +177,19 @@ def test_without_a_timestamp_the_clock_is_used():
     assert len(resultado["fecha"]) == 10 and len(resultado["hora"]) == 8
 
 
+# --- schema version ---
+
+
+def test_the_envelope_declares_schema_version_1():
+    """The envelope carries an explicit schema version. Contract (see README):
+    a missing field OR ==1 means v1, so the reports archived before the field
+    existed stay valid as v1 without being rewritten.
+    """
+    resultado = inf.construir("x", session_id=None, cwd=None)
+    assert resultado["version_esquema"] == 1
+    assert resultado["version_esquema"] == inf.VERSION_ESQUEMA
+
+
 # --- git ---
 
 

@@ -106,6 +106,7 @@ markdown; there is no semantic structure at all.
 
 ```json
 {
+  "version_esquema": 1,
   "fecha": "2026-08-28",
   "hora": "13:35:17",
   "session_id": "a6e5a399-f600-4b6a-a258-e7f1bcae90f8",
@@ -121,6 +122,13 @@ markdown; there is no semantic structure at all.
 
 `secciones`, `bloques_codigo` and `casillas` are **syntactic** splits of the same
 markdown, for the convenience of whoever consumes it. The original rules.
+
+> **Schema version.** `version_esquema` is the envelope's schema version. The
+> contract for a consumer is: **a missing field OR `version_esquema == 1` means
+> v1.** The reports archived before this field existed carry no version and are
+> v1 by that rule; they are **not** rewritten, because the archive is written
+> once. An **incompatible** change to the shape bumps the number to `2`; a purely
+> additive change (like adding this very field) does not.
 
 > **Note on field names.** The envelope keys (`fecha`, `respuesta_markdown`,
 > `secciones`...) are in Spanish on purpose: they are a data format, not text.
