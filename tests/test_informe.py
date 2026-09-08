@@ -364,6 +364,20 @@ def test_la_carrera_no_reusa_un_ordinal_ya_publicado(tmp_path, monkeypatch):
         assert len(nombres) == N, f"ronda {ronda}: {len(nombres)} de {N} informes; uno machacado"
 
 
+def test_un_fallo_al_crear_la_carpeta_es_fallo_de_escritura(tmp_path):
+    """mkdir y la reserva del .tmp estaban fuera del try, asi que su fallo salia
+    crudo en vez de FalloDeEscritura y perdia la ruta del turno. Ahora todo el
+    cuerpo de escribir esta envuelto: crear la carpeta del dia sobre un fichero
+    (no una carpeta) da FalloDeEscritura, y su ruta identifica adonde iba.
+    """
+    (tmp_path / "repo").write_text("soy un fichero, no una carpeta", encoding="utf-8")
+
+    with pytest.raises(inf.FalloDeEscritura) as fallo:
+        inf.escribir(tmp_path, "repo", sobre(cuando="2026-08-28T10:00:00Z"))
+
+    assert "repo" in str(fallo.value.ruta)
+
+
 def test_si_la_escritura_falla_no_queda_nada_en_disco(tmp_path, monkeypatch):
     """Los tres informes a cero de produccion eran exactamente esto."""
 

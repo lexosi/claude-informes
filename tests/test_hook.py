@@ -397,6 +397,34 @@ def test_si_no_se_puede_escribir_sale_0(proyecto_vigilado, informes, monkeypatch
     assert not Path(informes).exists()
 
 
+def test_un_fallo_de_escritura_identifica_el_turno_en_el_log(
+    proyecto_vigilado, informes, log, monkeypatch
+):
+    """Crear la carpeta caia al except generico y anotaba '- | ERROR | <exc>'
+    sin proyecto, ruta ni sesion: el fallo silencioso que el diseño dice
+    eliminar. Ahora cualquier fallo de escritura identifica el turno.
+    """
+    raiz, ruta_config = proyecto_vigilado
+
+    fallos = {"activo": False}
+    mkdir_real = Path.mkdir
+
+    def mkdir_roto(self, *args, **kwargs):
+        # solo revienta la carpeta del informe, no la del log
+        if "vigilado" in str(self):
+            raise PermissionError("disco de solo lectura")
+        return mkdir_real(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "mkdir", mkdir_roto)
+    assert ejecutar(payload(cwd=str(raiz)), ruta_config) == 0
+
+    linea = reg.leer(log)[-1]
+    assert linea.resultado == reg.ERROR
+    assert linea.proyecto == "vigilado"
+    assert "sesion-1" in linea.detalle
+    assert "ruta=" in linea.detalle
+
+
 def test_si_git_revienta_el_informe_se_escribe_igual(
     proyecto_vigilado, informes, monkeypatch
 ):

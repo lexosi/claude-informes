@@ -211,12 +211,22 @@ def escribir(raiz_informes: Path, proyecto: str, sobre: dict) -> Path:
     Orden: se reserva el `.tmp`, se escribe entero, y solo entonces aparece
     el `.json`. Si algo falla por el camino no queda nada en disco: ni un
     informe a cero ni un `.tmp` huerfano.
+
+    TODO el cuerpo va dentro del try, `mkdir` y la reserva incluidos: cuando
+    estaban fuera, un fallo de permisos al crear la carpeta salia crudo en vez
+    de `FalloDeEscritura` y la linea de ERROR del hook perdia proyecto, ruta y
+    sesion --justo el fallo silencioso que el diseño dice eliminar--. `destino`
+    guarda el mejor nombre conocido en cada momento (la carpeta del dia hasta
+    que se reserva el `.tmp`), para que la ruta identifique el turno aunque el
+    fallo ocurra antes de elegir el fichero.
     """
     directorio = carpeta_del_dia(Path(raiz_informes), proyecto, sobre["fecha"])
-    directorio.mkdir(parents=True, exist_ok=True)
-    temporal = _reservar(directorio, md.nombre_desde_markdown(sobre["respuesta_markdown"]))
-    destino = temporal.with_name(temporal.name[: -len(".tmp")])
+    destino: Path = directorio
+    temporal: Path | None = None
     try:
+        directorio.mkdir(parents=True, exist_ok=True)
+        temporal = _reservar(directorio, md.nombre_desde_markdown(sobre["respuesta_markdown"]))
+        destino = temporal.with_name(temporal.name[: -len(".tmp")])
         texto = json.dumps(sobre, ensure_ascii=False, indent=2) + "\n"
         # newline="\n": en Windows, write_text convertiria los saltos a CRLF y
         # el archivo quedaria con dos formatos distintos segun quien lo
@@ -224,9 +234,10 @@ def escribir(raiz_informes: Path, proyecto: str, sobre: dict) -> Path:
         temporal.write_text(texto, encoding="utf-8", newline="\n")
         os.replace(temporal, destino)
     except BaseException as error:
-        try:
-            temporal.unlink(missing_ok=True)
-        except Exception:  # noqa: BLE001 - la causa original manda
-            pass
+        if temporal is not None:
+            try:
+                temporal.unlink(missing_ok=True)
+            except Exception:  # noqa: BLE001 - la causa original manda
+                pass
         raise FalloDeEscritura(destino, error) from error
     return destino
