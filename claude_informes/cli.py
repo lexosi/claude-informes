@@ -20,50 +20,50 @@ def _construir_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="claude-informes", description=__doc__)
     subs = parser.add_subparsers(dest="modo", required=True)
 
-    p_hook = subs.add_parser("hook", help="lee el payload de Stop por stdin")
+    p_hook = subs.add_parser("hook", help="read the Stop payload from stdin")
     p_hook.add_argument("--config", default=None)
 
-    p_bf = subs.add_parser("backfill", help="reconstruye informes de turnos pasados")
-    p_bf.add_argument("--transcript", help="ruta al .jsonl")
-    p_bf.add_argument("--session", help="id de sesion; se busca el .jsonl")
+    p_bf = subs.add_parser("backfill", help="reconstruct reports of past turns")
+    p_bf.add_argument("--transcript", help="path to the .jsonl")
+    p_bf.add_argument("--session", help="session id; the .jsonl is looked up")
     p_bf.add_argument(
         "--cwd",
-        help="proyecto: localiza su transcript mas reciente y resuelve su config",
+        help="project: locate its most recent transcript and resolve its config",
     )
     p_bf.add_argument(
-        "--salida", default=None, help="raiz de informes; por defecto, la de la config"
+        "--salida", default=None, help="report root; by default, the config's"
     )
     p_bf.add_argument(
-        "--proyecto", default=None, help="nombre de la carpeta de proyecto"
+        "--proyecto", default=None, help="name of the project folder"
     )
     p_bf.add_argument("--umbral", type=int, default=None)
-    p_bf.add_argument("--limite", type=int, default=None, help="ultimos N turnos")
+    p_bf.add_argument("--limite", type=int, default=None, help="last N turns")
     p_bf.add_argument("--config", default=None)
     p_bf.add_argument("--dry-run", action="store_true")
 
-    p_ult = subs.add_parser("ultimo", help="el ultimo informe escrito, verificado en disco")
-    p_ult.add_argument("--proyecto", default=None, help="por defecto, cualquiera")
+    p_ult = subs.add_parser("ultimo", help="the last written report, verified on disk")
+    p_ult.add_argument("--proyecto", default=None, help="by default, any")
     p_ult.add_argument("--config", default=None)
 
-    p_new = subs.add_parser("nuevo", help="crea la carpeta del proyecto y lo registra")
+    p_new = subs.add_parser("nuevo", help="create the project folder and register it")
     p_new.add_argument("nombre")
     p_new.add_argument(
-        "--en", default=None, help="donde crear la carpeta; por defecto, junto a esta herramienta"
+        "--en", default=None, help="where to create the folder; by default, next to this tool"
     )
     p_new.add_argument("--umbral", type=int, default=cfg.UMBRAL_POR_DEFECTO)
-    p_new.add_argument("--raiz-informes", default=None, help="archivar este proyecto aparte")
+    p_new.add_argument("--raiz-informes", default=None, help="archive this project separately")
     p_new.add_argument("--config", default=None)
 
     p_pen = subs.add_parser(
-        "pendientes", help="turnos que no se archivaron por proyecto no registrado"
+        "pendientes", help="turns not archived because the project is unregistered"
     )
     p_pen.add_argument("--config", default=None)
 
     p_ini = subs.add_parser(
-        "init", help="crea la config de usuario a partir del ejemplo, la primera vez"
+        "init", help="create the user config from the example, the first time"
     )
     p_ini.add_argument(
-        "--config", default=None, help="donde crearla; por defecto, la ubicacion estandar del SO"
+        "--config", default=None, help="where to create it; by default, the OS's standard location"
     )
     return parser
 
@@ -132,6 +132,10 @@ def _ejecutar_backfill(args) -> int:
     )
     escritos = 0
     for entrada in resultados:
+        # The `motivo` values ("simulacion", "ya archivado", "umbral ...") stay
+        # in Spanish on purpose: they are the backfill's internal protocol, not
+        # display text. They are compared here, so translating them would break
+        # the comparison; only the surrounding message is shown to the user.
         if entrada["escrito"]:
             escritos += 1
             print(f"  + {Path(entrada['ruta']).name}")
