@@ -123,7 +123,13 @@ def test_a_short_turn_is_logged_as_skipped_by_threshold(proyecto_vigilado, log):
 
 def test_a_foreign_cwd_is_logged_as_skipped_by_cwd(proyecto_vigilado, tmp_path, log):
     _, ruta_config = proyecto_vigilado
-    ejecutar(payload(cwd=str(tmp_path / "beta")), ruta_config)
+    beta = tmp_path / "beta"
+    transcripcion = tmp_path / "projects" / tr.slug_de_cwd(str(beta)) / "s.jsonl"
+    transcripcion.parent.mkdir(parents=True)
+    transcripcion.write_text(
+        json.dumps({"type": "user", "cwd": str(beta)}) + "\n", encoding="utf-8"
+    )
+    ejecutar(payload(cwd=str(beta), transcript_path=str(transcripcion)), ruta_config)
 
     (anotacion,) = reg.leer(log)
     assert anotacion.resultado == reg.OMITIDO_SESION
@@ -166,9 +172,16 @@ def test_the_five_results_all_fit_in_the_same_log(
         [{"nombre": "vigilado", "cwd": str(raiz)}], raiz_informes=informes
     )
 
+    ajeno = tmp_path / "ajeno"
+    transcripcion = tmp_path / "projects" / tr.slug_de_cwd(str(ajeno)) / "s.jsonl"
+    transcripcion.parent.mkdir(parents=True)
+    transcripcion.write_text(
+        json.dumps({"type": "user", "cwd": str(ajeno)}) + "\n", encoding="utf-8"
+    )
+
     ejecutar(payload(cwd=str(raiz)), ruta_config)
     ejecutar(payload(cwd=str(raiz), last_assistant_message=CORTA), ruta_config)
-    ejecutar(payload(cwd=str(tmp_path / "ajeno")), ruta_config)
+    ejecutar(payload(cwd=str(ajeno), transcript_path=str(transcripcion)), ruta_config)
     ejecutar(payload(cwd=str(raiz), stop_hook_active=True), ruta_config)
     ejecutar(None, ruta_config, texto_crudo="no soy json")
 

@@ -138,14 +138,24 @@ def test_two_turns_with_a_different_cwd_go_to_the_same_project(
 def test_a_turn_from_an_unwatched_session_is_not_archived_even_when_the_cwd_is_watched(
     escribir_config, informes, tmp_path, log
 ):
-    """The dangerous direction: the shell inside alfa, the session not."""
+    """The dangerous direction: the shell inside alfa, the session not.
+
+    The transcript is a REAL file whose startup cwd is not watched --so the
+    omission is genuinely 'project not registered', not an unreadable file.
+    """
     vigilado = tmp_path / "alfa"
     vigilado.mkdir()
     ruta_config = escribir_config(
         [{"nombre": "alfa", "cwd": str(vigilado)}], raiz_informes=informes
     )
+    ajeno = tmp_path / "proyectos"
+    transcripcion = tmp_path / "projects" / tr.slug_de_cwd(str(ajeno)) / "s.jsonl"
+    transcripcion.parent.mkdir(parents=True)
+    transcripcion.write_text(
+        json.dumps({"type": "user", "cwd": str(ajeno)}) + "\n", encoding="utf-8"
+    )
 
-    datos = turno(vigilado, transcript_de(tmp_path / "proyectos"))
+    datos = turno(vigilado, str(transcripcion))
     assert ejecutar(datos, ruta_config) == 0
 
     assert not Path(informes).exists(), "the session rules over the cwd"
@@ -205,8 +215,13 @@ def test_a_slug_that_does_not_map_does_not_archive_and_is_logged(
     ruta_config = escribir_config(
         [{"nombre": "alfa", "cwd": str(raiz)}], raiz_informes=informes
     )
+    transcripcion = tmp_path / "p" / "slug-de-otra-cosa" / "abc.jsonl"
+    transcripcion.parent.mkdir(parents=True)
+    transcripcion.write_text(
+        json.dumps({"type": "user", "cwd": "C:\\otro\\sitio"}) + "\n", encoding="utf-8"
+    )
 
-    ejecutar(turno(raiz, "C:\\p\\slug-de-otra-cosa\\abc.jsonl"), ruta_config)
+    ejecutar(turno(raiz, str(transcripcion)), ruta_config)
 
     assert not Path(informes).exists()
     (anotacion,) = reg.leer(log)
@@ -240,6 +255,97 @@ def test_an_unreadable_transcript_path_does_not_blow_up(escribir_config, informe
         datos = turno(raiz, "x")
         datos["transcript_path"] = basura
         assert ejecutar(datos, ruta_config) == 0
+
+
+# --- a wrong label is worse than no label: the log is the only way to find out ---
+
+
+def test_an_unreadable_transcript_is_logged_as_ilegible_not_unregistered(
+    escribir_config, informes, tmp_path, log
+):
+    """A transcript that cannot be read is not 'project not registered'. Logging
+    OMITIDO_SESION here would be a lie in the one place meant to catch it.
+    """
+    ruta_config = escribir_config(
+        [{"nombre": "alfa", "cwd": str(tmp_path / "alfa")}], raiz_informes=informes
+    )
+    # folder does not map AND the file does not exist -> ILEGIBLE
+    ejecutar(turno(tmp_path / "x", str(tmp_path / "p" / "no-mapea" / "s.jsonl")), ruta_config)
+
+    (anotacion,) = reg.leer(log)
+    assert anotacion.resultado == reg.TRANSCRIPT_ILEGIBLE
+    assert anotacion.resultado != reg.OMITIDO_SESION
+
+
+def test_a_drifted_transcript_in_the_mapping_path_is_logged_as_drift(
+    escribir_config, informes, tmp_path, log
+):
+    """Assistant lines but no extractable turn while resolving the project: the
+    format drifted. Logged as drift, not as 'project not registered'.
+    """
+    ruta_config = escribir_config(
+        [{"nombre": "alfa", "cwd": str(tmp_path / "alfa")}], raiz_informes=informes
+    )
+    transcripcion = tmp_path / "p" / "no-mapea" / "s.jsonl"
+    transcripcion.parent.mkdir(parents=True)
+    transcripcion.write_text(
+        json.dumps(
+            {
+                "type": "assistant",
+                "message": {
+                    "stopReason": "end_turn",  # renamed -> never recognized as a turn
+                    "content": [{"type": "text", "text": "# t\n\na\nb\nc\nd\n"}],
+                },
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    ejecutar(turno(tmp_path / "x", str(transcripcion)), ruta_config)
+
+    (anotacion,) = reg.leer(log)
+    assert anotacion.resultado == reg.DERIVA_FORMATO
+
+
+def test_a_mapped_turn_whose_transcript_drifted_is_drift_not_no_text(
+    escribir_config, informes, tmp_path, log
+):
+    """The project maps, but there is no `last_assistant_message` and the
+    fallback to the transcript hits a drift: logged as drift, not 'no text'.
+    """
+    vigilado = tmp_path / "alfa"
+    vigilado.mkdir()
+    ruta_config = escribir_config(
+        [{"nombre": "alfa", "cwd": str(vigilado)}], raiz_informes=informes
+    )
+    transcripcion = tmp_path / "projects" / tr.slug_de_cwd(str(vigilado)) / "s.jsonl"
+    transcripcion.parent.mkdir(parents=True)
+    transcripcion.write_text(
+        json.dumps(
+            {
+                "type": "assistant",
+                "message": {
+                    "stopReason": "end_turn",
+                    "content": [{"type": "text", "text": "# t\n\na\nb\nc\nd\n"}],
+                },
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    datos = {
+        "session_id": "s",
+        "cwd": str(vigilado),
+        "transcript_path": str(transcripcion),
+        "stop_hook_active": False,
+        # no last_assistant_message on purpose: forces the transcript fallback
+    }
+
+    ejecutar(datos, ruta_config)
+
+    (anotacion,) = reg.leer(log)
+    assert anotacion.resultado == reg.DERIVA_FORMATO
 
 
 # --- what does not change ---

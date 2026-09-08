@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import re
+from dataclasses import dataclass, field
 from pathlib import Path
 
 
@@ -61,19 +62,51 @@ def _texto_de(mensaje: dict) -> str:
     return "".join(partes)
 
 
-def turnos(ruta: str | os.PathLike[str]) -> list[dict]:
-    """Closed assistant turns, in order.
+# The four ways reading a transcript can end. The old code collapsed the last
+# three into a single silent `[]`, so a format change and a legitimately empty
+# session looked identical --the drift the auditor flagged (H1).
+LEIDO = "leido"        # at least one closed turn was extracted
+VACIO = "vacio"        # readable, but no `assistant` line at all: nothing to archive yet
+DERIVA = "deriva"      # readable, `assistant` lines PRESENT but none produced a turn
+ILEGIBLE = "ilegible"  # the file could not be read (permissions, gone, IO)
 
-    Criterion: type=='assistant' AND stop_reason=='end_turn' AND some non-empty
-    'text' block. Broken lines are ignored one by one, and a block with a 'text'
-    that is not a string is skipped the same way (see `_texto_de`): a malformed
-    turn is omitted, it does not bring down the reading.
+
+@dataclass(frozen=True)
+class Lectura:
+    """The result of reading a transcript, WITH why it may carry no turns.
+
+    Only `LEIDO` carries turns. `DERIVA` is the alarm: there are assistant lines
+    but not one of them could be turned into a turn, which is what happens when
+    the JSONL format drifts (a renamed field, a new `content` shape). It is a
+    SUSPICION, stated as a fact (`detalle` says how many assistant lines yielded
+    zero turns), not a certainty.
     """
-    resultado: list[dict] = []
+
+    estado: str
+    turnos: list[dict] = field(default_factory=list)
+    arranque: str | None = None
+    lineas_asistente: int = 0
+    detalle: str = ""
+
+
+def leer(ruta: str | os.PathLike[str]) -> Lectura:
+    """Read a transcript once, returning the turns AND why they may be empty.
+
+    Criterion for a turn: type=='assistant' AND stop_reason=='end_turn' AND some
+    non-empty 'text' block. Broken lines are ignored one by one, and a block with
+    a 'text' that is not a string is skipped the same way (see `_texto_de`): a
+    malformed turn is omitted, it does not bring down the reading. `arranque` is
+    the `cwd` of the first record that carries one --the startup directory, which
+    does not move with the `cd`s of the turn.
+    """
     try:
         crudo = Path(ruta).read_text(encoding="utf-8", errors="replace")
-    except Exception:
-        return []
+    except Exception as error:
+        return Lectura(ILEGIBLE, detalle=f"{type(error).__name__}: {error}")
+
+    resultado: list[dict] = []
+    arranque: str | None = None
+    asistentes = 0
     for linea in crudo.splitlines():
         linea = linea.strip()
         if not linea:
@@ -82,8 +115,15 @@ def turnos(ruta: str | os.PathLike[str]) -> list[dict]:
             registro = json.loads(linea)
         except Exception:
             continue
-        if not isinstance(registro, dict) or registro.get("type") != "assistant":
+        if not isinstance(registro, dict):
             continue
+        if arranque is None:
+            cwd = registro.get("cwd")
+            if isinstance(cwd, str) and cwd.strip():
+                arranque = cwd
+        if registro.get("type") != "assistant":
+            continue
+        asistentes += 1
         mensaje = registro.get("message")
         if not isinstance(mensaje, dict) or mensaje.get("stop_reason") != "end_turn":
             continue
@@ -100,33 +140,29 @@ def turnos(ruta: str | os.PathLike[str]) -> list[dict]:
                 "uuid": registro.get("uuid"),
             }
         )
-    return resultado
+
+    if resultado:
+        return Lectura(LEIDO, resultado, arranque, asistentes)
+    if asistentes:
+        return Lectura(
+            DERIVA,
+            arranque=arranque,
+            lineas_asistente=asistentes,
+            detalle=f"{asistentes} lineas de asistente, 0 turnos extraibles",
+        )
+    return Lectura(VACIO, arranque=arranque)
+
+
+def turnos(ruta: str | os.PathLike[str]) -> list[dict]:
+    """Just the closed turns. See `leer` for the reason an empty list can hide."""
+    return leer(ruta).turnos
 
 
 def ultimo_turno(ruta: str | os.PathLike[str]) -> dict | None:
-    encontrados = turnos(ruta)
+    encontrados = leer(ruta).turnos
     return encontrados[-1] if encontrados else None
 
 
 def cwd_de_arranque(ruta: str | os.PathLike[str]) -> str | None:
-    """The `cwd` of the first record: where the session was opened.
-
-    The following records carry the cwd of the moment, which moves with every
-    `cd`. The first one does not: it identifies the startup directory.
-    """
-    try:
-        with open(ruta, encoding="utf-8", errors="replace") as fichero:
-            for linea in fichero:
-                linea = linea.strip()
-                if not linea:
-                    continue
-                try:
-                    registro = json.loads(linea)
-                except Exception:
-                    continue
-                cwd = registro.get("cwd") if isinstance(registro, dict) else None
-                if isinstance(cwd, str) and cwd.strip():
-                    return cwd
-    except Exception:
-        return None
-    return None
+    """The `cwd` of the first record: where the session was opened (see `leer`)."""
+    return leer(ruta).arranque

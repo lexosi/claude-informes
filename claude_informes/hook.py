@@ -56,7 +56,7 @@ def proyecto_del_transcript(
 
 def proyecto_del_turno(
     payload: dict, configuracion: cfg.Configuracion
-) -> tuple[cfg.Proyecto | None, str, str]:
+) -> tuple[cfg.Proyecto | None, str, tuple[str, str] | None]:
     """The project comes from the SESSION, not from the directory the shell is in.
 
     The payload's `cwd` follows the `cd` commands made during the turn, so
@@ -70,22 +70,32 @@ def proyecto_del_turno(
 
     The cwd only comes into play when there is no transcript to trust.
 
-    Returns (project, degradation reason, omission reason).
+    Returns (project, degradation reason, omission). The omission, when there is
+    one, is a `(label, detail)` pair so the RIGHT reason reaches the log: a
+    transcript that cannot be read or whose format drifted is not the same as a
+    project that is simply not registered --logging the wrong one is worse than
+    not logging, because the log is the only way to find out.
     """
     ruta = payload.get("transcript_path")
     if isinstance(ruta, str) and ruta.strip():
         proyecto = proyecto_del_transcript(ruta, configuracion)
         if proyecto is not None:
-            return proyecto, "", ""
-        # The slug is ambiguous for subdirectories, but the transcript's first
-        # record carries the startup cwd without any ambiguity.
-        arranque = tr.cwd_de_arranque(ruta)
-        proyecto = cfg.buscar_proyecto(arranque, configuracion)
+            return proyecto, "", None
+        # The folder slug did not map. Read the transcript ONCE: its first record
+        # carries the startup cwd without the slug's ambiguity, and reading also
+        # tells us whether the file is unreadable or its format drifted --neither
+        # of which is "project not registered".
+        lectura = tr.leer(ruta)
+        if lectura.estado == tr.ILEGIBLE:
+            return None, "", (reg.TRANSCRIPT_ILEGIBLE, f"transcript ilegible ({lectura.detalle}); transcript={ruta}")
+        if lectura.estado == tr.DERIVA:
+            return None, "", (reg.DERIVA_FORMATO, f"{lectura.detalle}; transcript={ruta}")
+        proyecto = cfg.buscar_proyecto(lectura.arranque, configuracion)
         if proyecto is not None:
-            return proyecto, "", ""
-        return None, "", motivo_de_omision(ruta, arranque)
+            return proyecto, "", None
+        return None, "", (reg.OMITIDO_SESION, motivo_de_omision(ruta, lectura.arranque))
     proyecto = cfg.buscar_proyecto(payload.get("cwd"), configuracion)
-    return proyecto, "sin transcript_path", ""
+    return proyecto, "sin transcript_path", None
 
 
 def nombre_que_tendria(ruta_transcript: str, arranque: str | None) -> str:
@@ -106,17 +116,25 @@ def motivo_de_omision(ruta_transcript: str, arranque: str | None) -> str:
     )
 
 
-def _markdown_del_payload(payload: dict) -> str:
-    """The normal path parses nothing: the text already comes in the payload."""
+def _markdown_del_payload(payload: dict) -> tuple[str, str]:
+    """The turn's markdown and the transcript-read state behind it.
+
+    The normal path parses nothing: the text already comes in the payload
+    (`last_assistant_message`), and the state is `LEIDO`. Only when that field is
+    missing does it fall back to the transcript, and it returns the read state so
+    that a fallback which comes back empty can say WHY (drift, unreadable) instead
+    of being logged as a plain 'no text'.
+    """
     directo = payload.get("last_assistant_message")
     if isinstance(directo, str) and directo.strip():
-        return directo
+        return directo, tr.LEIDO
     ruta = payload.get("transcript_path")
     if isinstance(ruta, str) and ruta.strip():
-        ultimo = tr.ultimo_turno(ruta)
-        if ultimo:
-            return ultimo["respuesta_markdown"]
-    return ""
+        lectura = tr.leer(ruta)
+        if lectura.turnos:
+            return lectura.turnos[-1]["respuesta_markdown"], tr.LEIDO
+        return "", lectura.estado
+    return "", tr.VACIO
 
 
 def procesar(payload: dict, configuracion: cfg.Configuracion) -> Resultado:
@@ -132,8 +150,9 @@ def procesar(payload: dict, configuracion: cfg.Configuracion) -> Resultado:
 
     cwd = payload.get("cwd")
     proyecto, degradacion, omision = proyecto_del_turno(payload, configuracion)
-    if omision:
-        return Resultado(reg.OMITIDO_SESION, detalle=omision)
+    if omision is not None:
+        etiqueta, detalle = omision
+        return Resultado(etiqueta, detalle=detalle)
     if proyecto is None:
         return Resultado(
             reg.OMITIDO_CWD,
@@ -148,8 +167,18 @@ def procesar(payload: dict, configuracion: cfg.Configuracion) -> Resultado:
         else None
     )
 
-    respuesta = _markdown_del_payload(payload)
+    respuesta, estado_texto = _markdown_del_payload(payload)
     if not respuesta.strip():
+        if estado_texto == tr.DERIVA:
+            return Resultado(
+                reg.DERIVA_FORMATO,
+                proyecto.nombre,
+                "transcript con lineas de asistente y ningun turno extraible",
+            )
+        if estado_texto == tr.ILEGIBLE:
+            return Resultado(
+                reg.TRANSCRIPT_ILEGIBLE, proyecto.nombre, "transcript_path ilegible"
+            )
         return Resultado(reg.OMITIDO_SIN_TEXTO, proyecto.nombre, "sin texto de respuesta")
     lineas = md.contar_lineas(respuesta)
     if not md.supera_umbral(respuesta, proyecto.umbral_lineas):

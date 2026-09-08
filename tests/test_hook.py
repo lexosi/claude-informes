@@ -206,7 +206,12 @@ def test_a_session_opened_in_a_subdirectory_writes_into_the_same_folder(
 def test_a_subdirectory_session_without_a_readable_transcript_is_not_archived(
     proyecto_vigilado, informes, tmp_path, log
 ):
-    """Without being able to read the startup, the ambiguous slug is not forced."""
+    """Without being able to read the startup, the ambiguous slug is not forced.
+
+    And the unreadable transcript is logged as such (`transcript-ilegible`), not
+    as 'project not registered': mislabeling it would mislead in the one place
+    meant to catch it.
+    """
     raiz, ruta_config = proyecto_vigilado
     hondo = raiz / "src" / "hondo"
     hondo.mkdir(parents=True)
@@ -215,7 +220,7 @@ def test_a_subdirectory_session_without_a_readable_transcript_is_not_archived(
     ejecutar(payload(cwd=str(hondo), transcript_path=fantasma), ruta_config)
 
     assert not Path(informes).exists()
-    assert reg.leer(log)[0].resultado == reg.OMITIDO_SESION
+    assert reg.leer(log)[0].resultado == reg.TRANSCRIPT_ILEGIBLE
 
 
 def test_background_tasks_does_not_prevent_writing(proyecto_vigilado, informes):
@@ -493,7 +498,16 @@ def test_a_nonexistent_transcript_does_not_blow_up(proyecto_vigilado, informes, 
 
 def test_procesar_reports_that_the_session_is_not_registered(tmp_path):
     configuracion = cfg.cargar(tmp_path / "no-existe.json")
-    resultado = hk.procesar(payload(cwd=str(tmp_path)), configuracion)
+    # A REAL transcript (as in production) whose startup cwd is not registered:
+    # that is 'not registered', distinct from an unreadable transcript.
+    transcripcion = tmp_path / "projects" / tr.slug_de_cwd(str(tmp_path)) / "s.jsonl"
+    transcripcion.parent.mkdir(parents=True)
+    transcripcion.write_text(
+        json.dumps({"type": "user", "cwd": str(tmp_path)}) + "\n", encoding="utf-8"
+    )
+    resultado = hk.procesar(
+        payload(cwd=str(tmp_path), transcript_path=str(transcripcion)), configuracion
+    )
     assert resultado.resultado == reg.OMITIDO_SESION
     assert resultado.ruta is None
 

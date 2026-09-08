@@ -102,13 +102,37 @@ def _ejecutar_backfill(args) -> int:
         print("Transcript not found.", file=sys.stderr)
         return 2
 
-    turnos = tr.turnos(ruta)
-    if not turnos:
-        print(f"{ruta}: no closed turns.", file=sys.stderr)
+    configuracion = cfg.cargar(args.config)
+    lectura = tr.leer(ruta)
+    if not lectura.turnos:
+        if lectura.estado in (tr.DERIVA, tr.ILEGIBLE):
+            # Not silent: a drift or an unreadable transcript leaves its own line
+            # in the log, so a backfill that suddenly extracts nothing is
+            # distinguishable from a session that legitimately has no turn.
+            etiqueta = (
+                reg.DERIVA_FORMATO if lectura.estado == tr.DERIVA else reg.TRANSCRIPT_ILEGIBLE
+            )
+            try:
+                reg.anotar(
+                    configuracion.ruta_log,
+                    etiqueta,
+                    reg.SIN_PROYECTO,
+                    f"{lectura.detalle}; transcript={ruta}",
+                )
+            except Exception:  # noqa: BLE001 - the log cannot bring down the CLI
+                pass
+            aviso = (
+                "has assistant lines but no extractable turn -- possible format drift"
+                if lectura.estado == tr.DERIVA
+                else f"could not be read ({lectura.detalle})"
+            )
+            print(f"{ruta}: {aviso} (logged).", file=sys.stderr)
+        else:
+            print(f"{ruta}: no closed turns.", file=sys.stderr)
         return 1
 
+    turnos = lectura.turnos
     cwd_transcript = args.cwd or turnos[-1].get("cwd") or ""
-    configuracion = cfg.cargar(args.config)
     proyecto = cfg.buscar_proyecto(cwd_transcript, configuracion)
     umbral = args.umbral
 

@@ -484,3 +484,33 @@ def test_the_command_warns_when_there_is_no_transcript(tmp_path, capsys):
     codigo = cli.main(["backfill", "--transcript", str(tmp_path / "no.jsonl")])
     assert codigo == 2
     assert "Transcript not found" in capsys.readouterr().err
+
+
+def test_the_command_flags_a_drifted_transcript_instead_of_silence(
+    escribir_config, informes, tmp_path, capsys, log
+):
+    """A transcript that EXISTS but yields no turn is not a silent '0 written':
+    with assistant lines present it is a possible format drift, and it leaves its
+    own line in the log so the change is not invisible.
+    """
+    ruta_config = escribir_config([], raiz_informes=informes)
+    drift = tmp_path / "drift.jsonl"
+    drift.write_text(
+        json.dumps(
+            {
+                "type": "assistant",
+                "message": {
+                    "stopReason": "end_turn",  # renamed -> never recognized as a turn
+                    "content": [{"type": "text", "text": "# t\n\na\nb\nc\nd\n"}],
+                },
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    codigo = cli.main(["backfill", "--transcript", str(drift), "--config", str(ruta_config)])
+
+    assert codigo == 1
+    assert "format drift" in capsys.readouterr().err
+    assert any(a.resultado == reg.DERIVA_FORMATO for a in reg.leer(log))

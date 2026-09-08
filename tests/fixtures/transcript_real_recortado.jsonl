@@ -1,0 +1,11 @@
+{"type": "bridge-session", "sessionId": "demo-0001", "timestamp": "2026-08-28T09:00:00.000Z", "bridge": {"from": "cli"}}
+{"type": "user", "cwd": "C:/proyectos/demo", "sessionId": "demo-0001", "timestamp": "2026-08-28T09:00:01.000Z", "message": {"role": "user", "content": "arranca la demo"}}
+{"type": "ai-title", "sessionId": "demo-0001", "title": "Demo run"}
+{"type": "assistant", "cwd": "C:/proyectos/demo", "sessionId": "demo-0001", "gitBranch": "main", "uuid": "u-100", "timestamp": "2026-08-28T09:00:05.000Z", "message": {"role": "assistant", "stop_reason": "tool_use", "content": [{"type": "tool_use", "name": "Read", "input": {"file_path": "a.txt"}}]}}
+{"type": "file-history-snapshot", "messageId": "u-100", "snapshot": {"files": []}}
+{"type": "assistant", "cwd": "C:/proyectos/demo", "sessionId": "demo-0001", "gitBranch": "main", "uuid": "u-101", "timestamp": "2026-08-28T09:00:10.000Z", "message": {"role": "assistant", "stop_reason": "end_turn", "content": [{"type": "text", "text": "# Primer turno\n\nHecho A\nHecho B\nHecho C\nHecho D\n"}]}}
+{"type": "atis-latch", "sessionId": "demo-0001", "state": "idle"}
+{"type": "attachment", "sessionId": "demo-0001", "path": "nota.txt", "bytes": 12}
+{"type": "last-prompt", "sessionId": "demo-0001", "text": "sigue"}
+{"type": "user", "cwd": "C:/proyectos/demo/sub", "sessionId": "demo-0001", "timestamp": "2026-08-28T09:00:15.000Z", "message": {"role": "user", "content": "sigue"}}
+{"type": "assistant", "cwd": "C:/proyectos/demo/sub", "sessionId": "demo-0001", "gitBranch": "main", "uuid": "u-102", "timestamp": "2026-08-28T09:00:20.000Z", "message": {"role": "assistant", "stop_reason": "end_turn", "content": [{"type": "text", "text": "## Segundo turno\n\nHecho E\nHecho F\nHecho G\nHecho H\n"}]}}
