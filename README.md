@@ -1,27 +1,27 @@
 # claude-informes
 
-> ⛔ **NO PUBLICAR todavia.** El historial de git contiene datos reales del
-> autor; la punta esta limpia pero el pasado no. Antes de hacer publico este
-> repo, leer y resolver [NO-PUBLICAR.md](NO-PUBLICAR.md).
+> ⛔ **DO NOT PUBLISH yet.** The git history contains the author's real data;
+> the tip is clean but the past is not. Before making this repo public, read and
+> resolve [NO-PUBLICAR.md](NO-PUBLICAR.md).
 
-Captura la respuesta de cada turno de Claude Code y la guarda como JSON. Cero
-coste de tokens: lo escribe un hook `Stop`, que es un proceso externo, no una
-llamada al modelo.
+Captures the response of every Claude Code turn and saves it as JSON. Zero token
+cost: it is written by a `Stop` hook, which is an external process, not a call to
+the model.
 
-Motivo: los `.md` llegan vacios al destinatario, y duplicar la respuesta a mano
-cuesta tokens.
+Why: the `.md` files arrive empty to the recipient, and duplicating the response
+by hand costs tokens.
 
-## Para empezar un proyecto nuevo
+## Starting a new project
 
-**El orden importa.** El proyecto se deriva de donde **arranca** la sesion, no
-de donde este la shell: los `cd` de dentro del turno no cambian nada.
+**Order matters.** The project is derived from where the session **starts**, not
+from where the shell is: the `cd` commands within a turn change nothing.
 
-1. Crear la carpeta del proyecto donde tengas tus repos.
-2. Registrarlo en la config de claude-informes (nombre + cwd).
-3. **Abrir el CLI dentro de esa carpeta**, no en el padre.
+1. Create the project folder wherever you keep your repos.
+2. Register it in the claude-informes config (name + cwd).
+3. **Open the CLI inside that folder**, not in the parent.
 
-Los pasos 1 y 2 son una sola orden (las rutas de ejemplo son ficticias; en tu
-maquina saldran las tuyas):
+Steps 1 and 2 are a single command (the example paths are fictitious; on your own
+machine you will see yours):
 
 ```sh
 python -m claude_informes nuevo mi-proyecto
@@ -30,22 +30,22 @@ python -m claude_informes nuevo mi-proyecto
 # Ya puedes abrir el CLI ahi:  cd /ruta/a/proyectos/mi-proyecto
 ```
 
-> **Si abres el CLI en el directorio padre, esa sesion NO se archiva.** Y son
-> justo las sesiones de arranque las que mas valen: toda la construccion del
-> proyecto esta ahi. No es recuperable sobre la marcha, pero si despues: ver
-> [Recuperar lo que no se archivo](#recuperar-lo-que-no-se-archivo).
+> **If you open the CLI in the parent directory, that session is NOT archived.**
+> And it is precisely the startup sessions that are worth the most: the whole
+> construction of the project is there. It is not recoverable on the fly, but it
+> is afterwards: see [Recovering what was not archived](#recovering-what-was-not-archived).
 
-## Que hace
+## What it does
 
-- **Un JSON por turno.** Nunca se acumulan varios turnos en un fichero.
-- Solo actua en los proyectos listados en su configuracion. En cualquier otro
-  sitio no hace absolutamente nada.
-- Solo escribe si la respuesta tiene **mas de 5 lineas de markdown crudo**.
+- **One JSON per turn.** Several turns never accumulate in a single file.
+- Only acts on the projects listed in its configuration. Anywhere else it does
+  absolutely nothing.
+- Only writes if the response has **more than 5 lines of raw markdown**.
 
-## Donde escribe
+## Where it writes
 
-Todo va a un archivo central que vive **fuera de cualquier repositorio git**,
-en la raiz que declara `raiz_informes` (por ejemplo `~/informes-claude`):
+Everything goes to a central archive that lives **outside any git repository**,
+under the root declared by `raiz_informes` (for example `~/informes-claude`):
 
 ```
 <raiz_informes>/<proyecto>/<AAAA-MM-DD>/<NN>-<slug>.json
@@ -60,43 +60,45 @@ en la raiz que declara `raiz_informes` (por ejemplo `~/informes-claude`):
         └── 03-hecho-push-verificacion-x-get-location-git-remote.json
 ```
 
-Buscar un informe es entrar en la carpeta del proyecto, en la del dia, y ahi
-solo estan los de esa jornada.
+Finding a report means entering the project folder, then the day folder, and
+there you have only the reports of that day.
 
-- `<proyecto>` sale del campo `nombre` de la config, **no** del nombre del
-  directorio: renombrar el repositorio no parte el historico.
-- Una carpeta que ya existe se reutiliza. Nunca se crea una variante ni un
-  sufijo, ni siquiera si difiere en mayusculas.
-- `<NN>` empieza en `01` en cada carpeta de dia. El nombre no repite la fecha
-  ni el proyecto: ya los aporta la ruta.
+- `<proyecto>` comes from the `nombre` field of the config, **not** from the
+  directory name: renaming the repository does not split the history.
+- A folder that already exists is reused. A variant or a suffix is never created,
+  not even if it differs in case.
+- `<NN>` starts at `01` in each day folder. The name does not repeat the date or
+  the project: the path already provides them.
 
-El archivo esta deliberadamente fuera de todo arbol git. Guarda el texto
-integro de sesiones de trabajo de todos los proyectos vigilados, y eso no debe
-poder llegar a un `git add -A`, a un `git clean -xdf` ni a un remoto por
-descuido. `informes/` esta ademas en el `.gitignore` de este repositorio como
-segundo cinturon, por si algun dia `raiz_informes` volviera a apuntar dentro.
+The archive is deliberately outside any git tree. It stores the full text of work
+sessions of all watched projects, and that must not be able to reach a
+`git add -A`, a `git clean -xdf` or a remote by accident. `informes/` is also in
+this repository's `.gitignore` as a second belt, in case `raiz_informes` ever
+points inside again.
 
-Cada proyecto puede declarar su propia `raiz_informes` y archivarse aparte,
-para separar lo sensible del resto. Si no la declara, hereda la global.
+Each project can declare its own `raiz_informes` and be archived separately, to
+keep the sensitive apart from the rest. If it does not declare one, it inherits
+the global one.
 
-### El slug
+### The slug
 
-1. El primer encabezado, si trae **3 o mas palabras significativas**, quitandole
-   la numeracion inicial: `## 1. TRANSCRIPT del runtime` da `transcript-runtime`.
-2. Si se queda corto, se concatenan encabezados sucesivos hasta llegar a tres
-   palabras o agotarlos: `## Tabla` + `## Veredicto final` da
+1. The first heading, if it carries **3 or more significant words**, after
+   removing the leading numbering: `## 1. TRANSCRIPT del runtime` gives
+   `transcript-runtime`.
+2. If it comes up short, successive headings are concatenated until reaching
+   three words or running out: `## Tabla` + `## Veredicto final` gives
    `tabla-veredicto-final`.
-3. Si aun asi es pobre, o no hay encabezados, las primeras palabras
-   significativas del cuerpo.
-4. Tope de 60 caracteres, cortando siempre por guion.
+3. If it is still poor, or there are no headings, the first significant words of
+   the body.
+4. Capped at 60 characters, always cutting at a hyphen.
 
-Significativas = descartando articulos, preposiciones y conectores comunes en
-espanol e ingles, y los numeros sueltos.
+Significant = discarding articles, prepositions and common connectors in Spanish
+and English, and lone numbers.
 
-## El sobre
+## The envelope
 
-El JSON es un sobre mecanico. Su unico requisito es llevar el markdown
-integro; no hay estructura semantica ninguna.
+The JSON is a mechanical envelope. Its only requirement is to carry the full
+markdown; there is no semantic structure at all.
 
 ```json
 {
@@ -113,57 +115,61 @@ integro; no hay estructura semantica ninguna.
 }
 ```
 
-`secciones`, `bloques_codigo` y `casillas` son troceos **sintacticos** del
-mismo markdown, por comodidad de quien lo consuma. El original manda.
+`secciones`, `bloques_codigo` and `casillas` are **syntactic** splits of the same
+markdown, for the convenience of whoever consumes it. The original rules.
 
-## Configuracion
+> **Note on field names.** The envelope keys (`fecha`, `respuesta_markdown`,
+> `secciones`...) are in Spanish on purpose: they are a data format, not text.
+> Translating them would break every already-archived report and any consumer.
+> See [CONTRIBUTING.md](CONTRIBUTING.md#what-is-not-translated-and-why).
 
-### Por que la config vive fuera del repo
+## Configuration
 
-**Decision de diseño.** Este proyecto es publico y se instala en maquinas que
-no son la del autor. Por eso el repositorio **no contiene ninguna configuracion
-real**: solo `config/proyectos.ejemplo.json`, con rutas ficticias.
+### Why the config lives outside the repo
 
-Una config real dentro del repo tendria dos problemas graves:
+**Design decision.** This project is public and is installed on machines that are
+not the author's. That is why the repository **contains no real configuration**:
+only `config/proyectos.ejemplo.json`, with fictitious paths.
 
-1. **Filtracion.** Las rutas absolutas revelan la estructura de directorios del
-   autor, y publicarlas es publicar informacion que no pinta nada en un repo.
-2. **Conflictos.** Cada maquina tiene rutas distintas. Un fichero versionado
-   con rutas dentro convierte cada cambio de equipo en un conflicto de git.
+A real config inside the repo would have two serious problems:
 
-La config real vive, por tanto, **fuera del repo**, en la ubicacion de
-configuracion de usuario estandar de cada sistema operativo:
+1. **Leakage.** Absolute paths reveal the author's directory structure, and
+   publishing them is publishing information that has no business in a repo.
+2. **Conflicts.** Each machine has different paths. A versioned file with paths
+   inside turns every change of machine into a git conflict.
 
-| Sistema | Fichero de config de usuario |
+The real config therefore lives **outside the repo**, in the standard per-user
+configuration location of each operating system:
+
+| System | User config file |
 | --- | --- |
-| Windows | `%APPDATA%\claude-informes\proyectos.json` (la carpeta *Roaming* del perfil) |
+| Windows | `%APPDATA%\claude-informes\proyectos.json` (the *Roaming* folder of the profile) |
 | macOS | `~/Library/Application Support/claude-informes/proyectos.json` |
-| Linux | `$XDG_CONFIG_HOME/claude-informes/proyectos.json` (o `~/.config/claude-informes/proyectos.json`) |
+| Linux | `$XDG_CONFIG_HOME/claude-informes/proyectos.json` (or `~/.config/claude-informes/proyectos.json`) |
 
-**Orden de resolucion** (documentado y testeado en `tests/test_config_ubicacion.py`):
+**Resolution order** (documented and tested in `tests/test_config_ubicacion.py`):
 
-1. La variable de entorno `CLAUDE_INFORMES_CONFIG`, si esta definida. Gana
-   siempre.
-2. La config de usuario en la ubicacion estandar del SO, si existe.
-3. Si no hay ninguna: un **mensaje claro** que dice como crearla. Nunca un
-   traceback, y el hook/guardian no se rompen (se comportan como si la lista
-   estuviera vacia).
+1. The environment variable `CLAUDE_INFORMES_CONFIG`, if defined. Always wins.
+2. The user config in the standard OS location, if it exists.
+3. If there is none: a **clear message** that says how to create it. Never a
+   traceback, and the hook/guardian do not break (they behave as if the list were
+   empty).
 
-### Crear la config la primera vez
+### Creating the config the first time
 
 ```sh
 python -m claude_informes init
 # Config de usuario creada: <ubicacion estandar del SO>/proyectos.json
 ```
 
-`init` copia el ejemplo a la ubicacion de usuario y no pisa una que ya exista.
-Despues se edita a mano y se ponen las rutas reales.
+`init` copies the example to the user location and does not overwrite one that
+already exists. Afterwards you edit it by hand and put in the real paths.
 
-### Forma del fichero
+### Shape of the file
 
-Anadir un proyecto es anadir una entrada; el codigo no conoce ninguna ruta
-concreta. En Windows las rutas usan `\` (doblada en JSON: `"C:\\Users\\..."`);
-en macOS y Linux, `/`.
+Adding a project means adding an entry; the code knows no specific path. On
+Windows paths use `\` (doubled in JSON: `"C:\\Users\\..."`); on macOS and Linux,
+`/`.
 
 ```json
 {
@@ -184,47 +190,46 @@ en macOS y Linux, `/`.
 }
 ```
 
-| Clave | Por defecto | Que hace |
+| Key | Default | What it does |
 | --- | --- | --- |
-| `ruta_log` | hermano del archivo | El log del hook. |
-| `raiz_informes` (global) | `informes/` de esta herramienta | Raiz que heredan los proyectos. |
-| `raiz_informes` (por proyecto) | la global | Archiva ESE proyecto aparte. |
-| `nombre` | el del directorio | Carpeta del proyecto dentro del archivo. |
-| `cwd` | obligatorio | Raiz del proyecto. Sus subdirectorios tambien cuentan. |
-| `activo` | `true` | `false` lo apaga sin borrar la linea. |
-| `umbral_lineas` | `5` | Se escribe con **mas** de estas lineas. |
+| `ruta_log` | sibling of the archive | The hook's log. |
+| `raiz_informes` (global) | this tool's `informes/` | Root inherited by the projects. |
+| `raiz_informes` (per project) | the global one | Archives THAT project separately. |
+| `nombre` | the directory's | Project folder inside the archive. |
+| `cwd` | required | Project root. Its subdirectories also count. |
+| `activo` | `true` | `false` turns it off without deleting the line. |
+| `umbral_lineas` | `5` | Written with **more** than this many lines. |
 
-Si la config falta o esta rota, la herramienta se comporta como si la lista
-estuviera vacia: no escribe en ningun sitio.
+If the config is missing or broken, the tool behaves as if the list were empty:
+it writes nowhere.
 
-## Seguridad
+## Security
 
-Este hook corre en **todas** las sesiones de Claude Code. No puede romper
-ninguna, jamas.
+This hook runs in **every** Claude Code session. It cannot break any of them,
+ever.
 
-- Todo el modo hook va envuelto en `try/except`. Cualquier excepcion sale 0 en
-  silencio.
-- Nunca escribe en `stdout` ni en `stderr`.
-- `cwd` fuera de la lista: sale 0 sin tocar nada.
-- `stop_hook_active`: sale 0 sin tocar nada, para no reentrar.
-- Si el directorio de salida no existe, lo crea; si no puede, sale 0.
-- El nombre del fichero se reserva con `O_CREAT|O_EXCL`: dos turnos a la vez no
-  pueden quedarse con el mismo ordinal.
-- Las llamadas a `git` llevan tiempo limite y su fallo no impide el informe.
-- El archivo vive fuera de todo repositorio: ningun `git add -A` puede barrerlo
-  a un commit, y ningun `git clean -xdf` puede borrarlo.
+- The whole hook mode is wrapped in `try/except`. Any exception exits 0 silently.
+- It never writes to `stdout` or `stderr`.
+- `cwd` outside the list: exits 0 without touching anything.
+- `stop_hook_active`: exits 0 without touching anything, so as not to re-enter.
+- If the output directory does not exist, it creates it; if it cannot, it exits 0.
+- The file name is reserved with `O_CREAT|O_EXCL`: two turns at once cannot take
+  the same ordinal.
+- Calls to `git` carry a time limit and their failure does not prevent the report.
+- The archive lives outside any repository: no `git add -A` can sweep it into a
+  commit, and no `git clean -xdf` can delete it.
 
-> La herramienta puede vigilarse a si misma como un proyecto mas. Mientras el
-> archivo vivio dentro de `claude-informes/informes/`, un turno suyo se habria
-> escrito en su propia carpeta de salida, y por eso habia una guardia que lo
-> impedia. Desde que el archivo vive en una raiz propia fuera de todo repo esa
-> premisa desaparecio, y la guardia se retiro: lo unico que hacia era tirar los
-> turnos de quien trabajaba en la propia herramienta.
+> The tool can watch itself like any other project. While the archive lived inside
+> `claude-informes/informes/`, one of its own turns would have been written into
+> its own output folder, and that is why there was a guard preventing it. Since
+> the archive lives in its own root outside any repo, that premise disappeared,
+> and the guard was removed: all it did was throw away the turns of whoever was
+> working on the tool itself.
 
-## El log
+## The log
 
-Salir en silencio evita romper sesiones, pero convertiria cualquier fallo en
-algo invisible. Por eso **cada turno deja una linea**, pase lo que pase:
+Exiting silently avoids breaking sessions, but it would turn any failure into
+something invisible. That is why **every turn leaves a line**, no matter what:
 
 ```
 2026-08-28T16:50:38 | alfa  | escrito         | <raiz_informes>/alfa/2026-08-28/08-....json
@@ -234,29 +239,36 @@ algo invisible. Por eso **cada turno deja una linea**, pase lo que pase:
 2026-08-28T16:50:38 | alfa  | ERROR           | UnicodeEncodeError: ...; ruta=.../14-....json; sesion=abc123
 ```
 
-`marca | proyecto | resultado | ruta o motivo`, solo se anade, y en LF. Hay dos
-resultados mas para que ningun turno quede sin linea: `omitido-reentrada`
-(`stop_hook_active`) y `omitido-sin-texto`.
+`timestamp | project | result | path or reason`, append-only, and in LF. There
+are two more results so that no turn is left without a line: `omitido-reentrada`
+(`stop_hook_active`) and `omitido-sin-texto`.
 
-La linea de `ERROR` de un turno que llego a tener proyecto dice **cual**, que
-ruta iba a tener el informe y de que sesion era. Sin esos tres datos el log
-registra que algo fallo pero no se puede contrastar contra el disco, y el
-fallo sigue siendo silencioso en la practica.
+The `ERROR` line of a turn that did get a project says **which** one, what path
+the report was going to have and which session it belonged to. Without those
+three facts the log records that something failed but it cannot be checked against
+the disk, and the failure remains silent in practice.
 
-Vive fuera de las carpetas de informes y fuera de todo repositorio. Por defecto
-es el hermano del archivo: con `raiz_informes` en `~/informes-claude`, el log
-es `~/informes-claude.log`. Se puede fijar con `ruta_log` en la config, o con
-la variable de entorno `CLAUDE_INFORMES_LOG`, que manda sobre las dos.
+> The result labels in the log (`escrito`, `omitido-umbral`...) are a data format,
+> not text, and are kept in Spanish for the same reason as the envelope keys:
+> translating them would break every already-written log. See
+> [CONTRIBUTING.md](CONTRIBUTING.md#what-is-not-translated-and-why).
 
-Escribir el log tambien va dentro del `try/except`. Si el log falla, el hook
-sale 0 igual y sin ruido: el log no vale nada si tumba una sesion.
+It lives outside the report folders and outside any repository. By default it is
+the sibling of the archive: with `raiz_informes` at `~/informes-claude`, the log
+is `~/informes-claude.log`. It can be fixed with `ruta_log` in the config, or with
+the environment variable `CLAUDE_INFORMES_LOG`, which takes precedence over both.
 
-Es un log unico para todos los proyectos. Lleva nombres de proyecto y rutas
-(con sus slugs), no contenido de los informes.
+Writing the log also goes inside the `try/except`. If the log fails, the hook
+exits 0 all the same and without noise: the log is worthless if it brings down a
+session.
 
-### `ultimo`: que el log no pueda mentir
+It is a single log for all projects. It carries project names and paths (with
+their slugs), not the content of the reports.
 
-El log dice donde quedo el informe; el disco dice si es verdad. Manda el disco.
+### `ultimo`: so the log cannot lie
+
+The log says where the report ended up; the disk says whether that is true. The
+disk rules.
 
 ```sh
 python -m claude_informes ultimo --proyecto alfa
@@ -270,11 +282,11 @@ anotado  : 2026-08-28T16:50:38
 estado   : existe en disco, 453 bytes
 ```
 
-**El log es un registro de lo que ocurrio, no un indice de ficheros vivos.** Si
-un informe se renombra o se mueve, la linea `escrito` sigue siendo cierta
---describe un hecho del pasado-- y `ultimo` lo informa sin alarma: dice que ya
-no esta donde se registro, y distingue si su carpeta sigue ahi (renombrado o
-borrado dentro) o si el archivo entero se movio.
+**The log is a record of what happened, not an index of live files.** If a report
+is renamed or moved, the `escrito` line remains true --it describes a past fact--
+and `ultimo` reports it without alarm: it says it is no longer where it was
+recorded, and distinguishes whether its folder is still there (renamed or deleted
+within) or whether the whole archive was moved.
 
 ```
 estado   : ya no esta donde el log lo registro. Su carpeta del dia sigue ahi,
@@ -282,34 +294,35 @@ estado   : ya no esta donde el log lo registro. Su carpeta del dia sigue ahi,
            describe lo que paso el 2026-08-28T16:50:38.
 ```
 
-Sin `--proyecto`, el ultimo de cualquiera. Codigos: `0` hay un informe
-registrado (el mensaje dice si sigue o no en su ruta), `2` no hay nada anotado.
+Without `--proyecto`, the last of any of them. Exit codes: `0` there is a
+recorded report (the message says whether it is still at its path or not), `2`
+nothing is recorded.
 
-## El guardian: que no se escriban informes a mano
+## The guardian: keeping reports from being written by hand
 
-Un segundo hook, `PreToolUse`, deniega `Write`, `Edit`, `MultiEdit` y
-`NotebookEdit` cuando la ruta cae dentro del archivo o sobre el log. Los
-informes los escribe el hook `Stop`; escribirlos a mano es siempre un error, y
-casi siempre el de anunciar un fichero que no existe.
+A second hook, `PreToolUse`, denies `Write`, `Edit`, `MultiEdit` and
+`NotebookEdit` when the path falls inside the archive or onto the log. The reports
+are written by the `Stop` hook; writing them by hand is always a mistake, and
+almost always the mistake of announcing a file that does not exist.
 
-Su regla numero uno es la **contraria** a la del `Stop`: **falla abierto**.
-Cualquier excepcion, config ilegible o ruta que no se pueda resolver termina en
-"permitido", en silencio. Un guardian que bloquea por error es peor que no
-tener guardian: rompe sesiones ajenas por un fallo suyo.
+Its rule number one is the **opposite** of the `Stop` one: **it fails open.** Any
+exception, unreadable config or path that cannot be resolved ends in "allowed",
+silently. A guardian that blocks by mistake is worse than having no guardian: it
+breaks other people's sessions through a fault of its own.
 
-- Solo deniega cuando la ruta esta **inequivocamente** dentro. Ante la duda,
-  permite.
-- Las zonas salen de la config, no del codigo: la raiz global, la de cada
-  proyecto, y el log. Gana la mas especifica.
-- La ruta se resuelve antes de comparar (absoluta, `..`, enlaces), asi que
-  `../../informes-claude/x.json` cae igual.
-- `Bash` queda fuera a proposito: adivinar rutas dentro de una linea de shell
-  da falsos positivos.
-- Cada denegacion se anota como `denegado-escritura`. Las escrituras permitidas
-  no anotan nada: seria una linea por cada uso de una herramienta.
-- Si la config no se puede leer, permite y lo anota como `permitido-por-error`.
+- It only denies when the path is **unequivocally** inside. When in doubt, it
+  allows.
+- The zones come from the config, not from the code: the global root, each
+  project's, and the log. The most specific one wins.
+- The path is resolved before comparing (absolute, `..`, links), so
+  `../../informes-claude/x.json` falls in just the same.
+- `Bash` is left out on purpose: guessing paths inside a shell line gives false
+  positives.
+- Each denial is recorded as `denegado-escritura`. Allowed writes record nothing:
+  it would be a line for every use of a tool.
+- If the config cannot be read, it allows and records it as `permitido-por-error`.
 
-El mensaje dice por que y que hacer en su lugar:
+The message says why and what to do instead:
 
 ```
 claude-informes: <raiz_informes>/alfa/2026-08-28/99-x.json esta dentro
@@ -321,56 +334,58 @@ Para saber cual fue el ultimo y comprobar que existe de verdad:
     .venv/Scripts/python -m claude_informes ultimo --proyecto alfa
 ```
 
-### Servidores MCP
+### MCP servers
 
-Cualquier servidor MCP con escritura montado en Claude Code se saltaria un
-matcher limitado a las herramientas nativas: la herramienta se llamaria
-`mcp__servidor__write_file`. Por eso el matcher incluye `mcp__.*`.
+Any MCP server with write capability mounted in Claude Code would slip past a
+matcher limited to the native tools: the tool would be called
+`mcp__servidor__write_file`. That is why the matcher includes `mcp__.*`.
 
-Los servidores MCP no comparten esquema: ni el nombre de la herramienta ni el
-del campo de la ruta estan estandarizados. La deteccion es heuristica, y por
-eso **solo sirve para denegar mejor; permitir sigue garantizado**:
+MCP servers do not share a schema: neither the tool name nor the path field name
+are standardized. The detection is heuristic, and that is why **it only serves to
+deny better; allowing remains guaranteed**:
 
-- Se mira el ultimo tramo del nombre (`mcp__servidor__write_file` -> `write_file`)
-  y se busca un verbo de escritura entre sus palabras. Por palabras, no por
-  subcadena: si no, `get_output` contendria "put".
-- Las de lectura (`read_file`, `list_directory`, `directory_tree`...) pasan sin
-  mirarse. Leer los informes es legitimo; solo se impide escribirlos.
-- Un verbo que no se reconoce se trata como lectura. Fallar abierto manda.
-- Si la herramienta dice escribir, se prueban los nombres de campo habituales
-  (`path`, `file_path`, `filename`, `destination`, `target`, `paths`...). Si no
-  aparece ninguna ruta reconocible, **se permite** y se anota como
-  `permitido-sin-ruta`, para que el punto ciego sea visible y no silencioso.
+- The last segment of the name is looked at (`mcp__servidor__write_file` ->
+  `write_file`) and a write verb is searched among its words. By words, not by
+  substring: otherwise `get_output` would contain "put".
+- The read ones (`read_file`, `list_directory`, `directory_tree`...) pass without
+  being looked at. Reading the reports is legitimate; only writing them is
+  prevented.
+- A verb that is not recognized is treated as a read. Failing open rules.
+- If the tool says it writes, the usual field names are tried (`path`,
+  `file_path`, `filename`, `destination`, `target`, `paths`...). If no recognizable
+  path appears, **it is allowed** and recorded as `permitido-sin-ruta`, so the
+  blind spot is visible and not silent.
 
-La consecuencia honesta: un servidor que llame `persistir` a su escritura, o
-que meta la ruta en un campo con un nombre inventado, pasa. Denegar es siempre
-mejor esfuerzo; lo unico garantizado es que no se rompe nada.
+The honest consequence: a server that calls its write `persistir`, or that puts
+the path in a field with a made-up name, gets through. Denying is always
+best-effort; the only thing guaranteed is that nothing breaks.
 
-## De que proyecto es un turno
+## Which project a turn belongs to
 
-De la **sesion**, no de la shell. El `cwd` del payload sigue a cada `cd` que se
-haga durante el turno, y archivar por el falla en las dos direcciones: mete
-turnos de un proyecto no registrado en la carpeta de uno registrado, y pierde
-turnos de uno registrado cuando la shell se ha ido a otro sitio. Un archivo del
-que no te puedes fiar no sirve de nada.
+To the **session**, not to the shell. The `cwd` of the payload follows every `cd`
+made during the turn, and archiving by it fails in both directions: it puts turns
+of an unregistered project into a registered one's folder, and loses turns of a
+registered one when the shell has gone elsewhere. An archive you cannot trust is
+worthless.
 
-El `transcript_path` identifica la sesion y no se mueve:
+The `transcript_path` identifies the session and does not move:
 
-1. Se compara el directorio del transcript con el slug que produce el `cwd`
-   declarado de cada proyecto. El mapeo es explicito y comprobable; no se
-   intenta deshacer el slug, que es ambiguo (`--proyectos-alfa-audit`
-   tanto podria ser `alfa/audit` como el proyecto hermano `alfa-audit`).
-2. Si no hay coincidencia exacta, se lee el **primer registro** del transcript,
-   que lleva el `cwd` de arranque sin ambiguedad. Eso resuelve las sesiones
-   abiertas en un subdirectorio.
-3. Si con eso tampoco sale, la sesion no esta registrada: **no se archiva**, y
-   la linea del log lleva el transcript y el nombre que tendria el proyecto.
+1. The transcript's directory is compared with the slug that each project's
+   declared `cwd` produces. The mapping is explicit and checkable; there is no
+   attempt to undo the slug, which is ambiguous (`--proyectos-alfa-audit` could be
+   either `alfa/audit` or the sibling project `alfa-audit`).
+2. If there is no exact match, the **first record** of the transcript is read,
+   which carries the startup `cwd` without ambiguity. That resolves sessions
+   opened in a subdirectory.
+3. If that does not work either, the session is not registered: **it is not
+   archived**, and the log line carries the transcript and the name the project
+   would have.
 
-Caer al `cwd` en el paso 3 reabriria el agujero, asi que solo se usa cuando no
-hay `transcript_path` del que fiarse. En ese caso se archiva por `cwd` y se
-anota una linea extra, `proyecto-por-cwd`, para que el camino degradado se vea.
+Falling back to `cwd` in step 3 would reopen the hole, so it is only used when
+there is no `transcript_path` to trust. In that case it archives by `cwd` and
+records an extra line, `proyecto-por-cwd`, so the degraded path is visible.
 
-### Recuperar lo que no se archivo
+### Recovering what was not archived
 
 ```sh
 python -m claude_informes pendientes
@@ -381,45 +396,45 @@ python -m claude_informes pendientes
 #                --proyecto claude-informes --salida "<raiz_informes>"
 ```
 
-`pendientes` sale con 1 cuando hay algo que recuperar, para que se note. El
-backfill reconstruye la sesion entera desde el transcript, aunque el proyecto
-nunca haya estado registrado: el JSONL guarda los turnos igual.
+`pendientes` exits with 1 when there is something to recover, so it is noticed.
+The backfill reconstructs the whole session from the transcript, even if the
+project was never registered: the JSONL stores the turns all the same.
 
-## Modo backfill
+## Backfill mode
 
-Reconstruye informes de turnos ya pasados leyendo el transcript JSONL. Criterio:
-`type == "assistant"` y `stop_reason == "end_turn"` y algun bloque `text` no
-vacio.
+Reconstructs reports of already-past turns by reading the JSONL transcript.
+Criterion: `type == "assistant"` and `stop_reason == "end_turn"` and some
+non-empty `text` block.
 
 ```sh
-# Toda la sesion mas reciente de un proyecto, a su carpeta del archivo
+# The most recent whole session of a project, to its archive folder
 python -m claude_informes backfill --cwd "/ruta/a/alfa"
 
-# Una sesion concreta, a otro archivo distinto
+# A specific session, to a different archive
 python -m claude_informes backfill --session a6e5a399-... \
     --salida /tmp/archivo --proyecto alfa
 
-# Un transcript en disco, sin escribir nada
+# A transcript on disk, without writing anything
 python -m claude_informes backfill --transcript ruta/sesion.jsonl --dry-run
 ```
 
-| Opcion | Que hace |
+| Option | What it does |
 | --- | --- |
-| `--transcript` | Ruta al `.jsonl`. |
-| `--session` | Id de sesion; busca el `.jsonl` bajo `~/.claude/projects/`. |
-| `--cwd` | Proyecto: coge su transcript mas reciente y resuelve su config. |
-| `--salida` | Raiz del archivo. Salta la lista blanca (es manual). |
-| `--proyecto` | Carpeta de proyecto; por defecto, la de la config. |
-| `--umbral` | Lineas minimas; por defecto, el del proyecto. |
-| `--limite` | Solo los ultimos N turnos. |
-| `--dry-run` | Dice que escribiria, sin escribir. |
+| `--transcript` | Path to the `.jsonl`. |
+| `--session` | Session id; looks for the `.jsonl` under `~/.claude/projects/`. |
+| `--cwd` | Project: takes its most recent transcript and resolves its config. |
+| `--salida` | Root of the archive. Skips the allowlist (it is manual). |
+| `--proyecto` | Project folder; by default, the config's. |
+| `--umbral` | Minimum lines; by default, the project's. |
+| `--limite` | Only the last N turns. |
+| `--dry-run` | Says what it would write, without writing. |
 
-Sin `--salida`, el backfill respeta la lista blanca y sale con codigo 3 si el
-proyecto no esta en ella.
+Without `--salida`, the backfill respects the allowlist and exits with code 3 if
+the project is not in it.
 
-## Instalacion del hook
+## Installing the hook
 
-Ver [INSTALACION.md](INSTALACION.md).
+See [INSTALACION.md](INSTALACION.md).
 
 ## Tests
 
