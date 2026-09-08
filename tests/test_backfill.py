@@ -245,6 +245,34 @@ def test_la_simulacion_no_escribe_nada(transcripcion, tmp_path):
     assert all(not r["escrito"] for r in resultados)
 
 
+def test_la_simulacion_predice_los_ordinales_reales(transcripcion, tmp_path):
+    """Un dry-run que numera todo 01 miente sobre el resultado y no sirve.
+
+    Tres turnos del mismo dia deben salir 01, 02, 03 en la simulacion, igual que
+    saldrian en la pasada real (SLUG_A/B/C ya llevan ese ordinal).
+    """
+    raiz = tmp_path / "archivo"
+    simulados = [
+        r["ruta"].name
+        for r in bf.reconstruir(transcripcion, raiz, "repo", simular=True)
+        if r["motivo"] == "simulacion"
+    ]
+    assert simulados == [SLUG_A, SLUG_B, SLUG_C]
+    assert not raiz.exists(), "seguir siendo un dry-run: cero escrituras"
+
+
+def test_la_simulacion_continua_el_ordinal_de_lo_que_ya_hay(transcripcion, tmp_path):
+    """Si el dia ya tiene ficheros, la simulacion sigue por donde toca."""
+    raiz = tmp_path / "archivo"
+    bf.reconstruir(transcripcion, raiz, "repo")  # escribe 01, 02, 03 de verdad
+    simulados = [
+        r["ruta"].name
+        for r in bf.reconstruir(transcripcion, raiz, "repo", simular=True)
+        if r["motivo"] == "simulacion"
+    ]
+    assert [n[:2] for n in simulados] == ["04", "05", "06"]
+
+
 def test_el_umbral_del_backfill_es_configurable(transcripcion, tmp_path):
     raiz = tmp_path / "archivo"
     bf.reconstruir(transcripcion, raiz, "repo", umbral=2)
