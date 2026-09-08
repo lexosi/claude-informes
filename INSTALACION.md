@@ -1,66 +1,65 @@
-# Instalacion de los hooks
+# Installing the hooks
 
-Son dos hooks de Claude Code con reglas opuestas a proposito:
+They are two Claude Code hooks with deliberately opposite rules:
 
-| Hook | Cuando | Que hace | Si algo falla |
+| Hook | When | What it does | If something fails |
 | --- | --- | --- | --- |
-| `Stop` | fin de turno | escribe el informe | sale 0 y calla (**falla cerrado**) |
-| `PreToolUse` | antes de `Write`/`Edit`/... | deniega escribir dentro del archivo | **permite** (**falla abierto**) |
+| `Stop` | end of turn | writes the report | exits 0 and stays quiet (**fails closed**) |
+| `PreToolUse` | before `Write`/`Edit`/... | denies writing inside the archive | **allows** (**fails open**) |
 
-En lo que sigue, `<claude-informes>` es la ruta donde has clonado este
-repositorio. Sustituyela por la tuya.
+In what follows, `<claude-informes>` is the path where you cloned this
+repository. Replace it with yours.
 
-## 0. La regla de operacion
+## 0. The operating rule
 
-**El proyecto se deriva de donde ARRANCA la sesion, no de donde este la shell.**
-Los `cd` de dentro de un turno no cambian el archivo.
+**The project is derived from where the session STARTS, not from where the shell
+is.** The `cd` commands within a turn do not change the archive.
 
-Por eso, para un proyecto nuevo, el orden es: crear la carpeta, registrarlo, y
-**entonces** abrir el CLI dentro de ella. `python -m claude_informes nuevo
-<nombre>` hace los dos primeros pasos de una vez.
+That is why, for a new project, the order is: create the folder, register it, and
+**then** open the CLI inside it. `python -m claude_informes nuevo <nombre>` does
+the first two steps at once.
 
-Si abres el CLI en el directorio padre, esa sesion no se archiva. Se puede
-recuperar despues con `pendientes` y `backfill`, pero no sobre la marcha.
+If you open the CLI in the parent directory, that session is not archived. It can
+be recovered afterwards with `pendientes` and `backfill`, but not on the fly.
 
-## 1. La config
+## 1. The config
 
-La configuracion real **no vive en el repo**: vive en la config de usuario de
-tu sistema operativo. Crea la tuya a partir del ejemplo:
+The real configuration **does not live in the repo**: it lives in the user config
+of your operating system. Create yours from the example:
 
 ```sh
 python -m claude_informes init
 ```
 
-Edita el fichero que crea y pon las rutas reales de tus proyectos y de la raiz
-de informes. El detalle del formato, la ubicacion por sistema operativo y el
-orden de resolucion estan en el [README](README.md#configuracion).
+Edit the file it creates and put in the real paths of your projects and of the
+report root. The detail of the format, the per-operating-system location and the
+resolution order are in the [README](README.md#configuration).
 
-## 2. El entorno (venv)
+## 2. The environment (venv)
 
-El hook corre en **todas** tus sesiones de Claude Code. Para que no dependa del
-`python` del PATH (que puede cambiar de version sin avisar), se usa un venv
-propio con ruta absoluta:
+The hook runs in **every** one of your Claude Code sessions. So that it does not
+depend on the `python` on the PATH (which can change version without warning), a
+dedicated venv with an absolute path is used:
 
 ```sh
-# desde <claude-informes>
+# from <claude-informes>
 python -m venv .venv
 .venv/Scripts/python -m pip install pytest    # Windows
 # .venv/bin/python -m pip install pytest       # macOS / Linux
 ```
 
-El intérprete del venv es el que iran a buscar los hooks:
+The venv interpreter is the one the hooks will look for:
 
 - Windows: `<claude-informes>\.venv\Scripts\python.exe`
 - macOS / Linux: `<claude-informes>/.venv/bin/python`
 
-Las lanzaderas anaden su propio directorio al `sys.path` y no tienen
-dependencias, asi que tecnicamente valdria cualquier Python 3.10+; se prefiere
-el venv por determinismo.
+The launchers add their own directory to `sys.path` and have no dependencies, so
+technically any Python 3.10+ would work; the venv is preferred for determinism.
 
-## 3. Lo que va en `~/.claude/settings.json`
+## 3. What goes in `~/.claude/settings.json`
 
-Ejemplo para Windows (en JSON las barras invertidas van dobladas; tambien sirve
-`/`). En macOS/Linux, usa `<claude-informes>/.venv/bin/python`.
+Example for Windows (in JSON the backslashes are doubled; `/` also works). On
+macOS/Linux, use `<claude-informes>/.venv/bin/python`.
 
 ```json
 {
@@ -92,50 +91,50 @@ Ejemplo para Windows (en JSON las barras invertidas van dobladas; tambien sirve
 }
 ```
 
-- El matcher del guardian incluye `mcp__.*` para cubrir servidores MCP con
-  escritura (ver README).
-- Los `timeout` son una red de seguridad mas; los hooks ya se autolimitan.
-- Si ya tienes otros hooks para `Stop` o `PreToolUse`, **anade** estas entradas
-  al array existente; no las sustituyas. Claude Code ejecuta todos los hooks de
-  un evento y, en `PreToolUse`, gana la decision mas restrictiva.
+- The guardian's matcher includes `mcp__.*` to cover MCP servers with write
+  capability (see README).
+- The `timeout` values are one more safety net; the hooks already self-limit.
+- If you already have other hooks for `Stop` or `PreToolUse`, **add** these
+  entries to the existing array; do not replace them. Claude Code runs all the
+  hooks of an event and, in `PreToolUse`, the most restrictive decision wins.
 
-## 4. Reiniciar Claude Code
+## 4. Restart Claude Code
 
-**Los hooks se leen al arrancar la sesion.** Una sesion que ya estuviera
-abierta cuando se instalaron sigue sin ellos hasta que se reinicie.
+**The hooks are read when the session starts.** A session that was already open
+when they were installed continues without them until it is restarted.
 
-## 5. Comprobar que funcionan
+## 5. Checking that they work
 
-Los dos se pueden ejercitar sin abrir una sesion: leen el payload por stdin,
-tal cual se lo pasa Claude Code.
+Both can be exercised without opening a session: they read the payload from
+stdin, exactly as Claude Code passes it.
 
 ```sh
-# fin de turno en un proyecto vigilado -> escribe el informe
+# end of turn in a watched project -> writes the report
 python <claude-informes>/hook_informes.py < turno.json
-echo $?    # 0, y sin imprimir nada
+echo $?    # 0, and printing nothing
 
-# intento de escribir dentro del archivo -> deniega
+# attempt to write inside the archive -> denies
 python <claude-informes>/guardian_informes.py < escritura.json
-# imprime un JSON con permissionDecision: "deny"; exit sigue siendo 0
+# prints a JSON with permissionDecision: "deny"; exit is still 0
 ```
 
-Lo que de verdad conviene mirar es el log, porque ahi queda todo. Su ruta por
-defecto es el hermano de la raiz de informes (`<raiz_informes>.log`). Para
-contrastar el log con el disco:
+What is really worth looking at is the log, because everything ends up there. Its
+default path is the sibling of the report root (`<raiz_informes>.log`). To check
+the log against the disk:
 
 ```sh
 cd <claude-informes>
 .venv/Scripts/python -m claude_informes ultimo --proyecto <proyecto>
 ```
 
-Para mandar el log a otro sitio mientras pruebas, sin tocar el real, define la
-variable de entorno `CLAUDE_INFORMES_LOG`.
+To send the log elsewhere while you test, without touching the real one, define
+the environment variable `CLAUDE_INFORMES_LOG`.
 
-## 6. Desinstalar
+## 6. Uninstalling
 
-Quita las dos entradas que anadiste al bloque `"hooks"` de
-`~/.claude/settings.json` (o restaura tu copia previa de ese fichero).
+Remove the two entries you added to the `"hooks"` block of
+`~/.claude/settings.json` (or restore your previous copy of that file).
 
-Para apagar solo la escritura sin tocar los ajustes de Claude Code, basta con
-`"activo": false` en la config. El guardian se puede quitar solo, borrando su
-entrada `PreToolUse`.
+To turn off only the writing without touching the Claude Code settings, it is
+enough to set `"activo": false` in the config. The guardian can be removed on its
+own, by deleting its `PreToolUse` entry.
