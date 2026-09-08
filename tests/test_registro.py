@@ -190,7 +190,12 @@ def test_a_hook_reentry_also_leaves_a_line(proyecto_vigilado, log):
 
 
 def test_each_turn_leaves_exactly_one_line(proyecto_vigilado, log):
-    """One line per turn. The second appears only on the degraded path."""
+    """One line per normal turn.
+
+    That a degraded turn adds a second line is a separate guarantee, checked by
+    test_the_warning_only_appears_when_the_degraded_path_actually_archives (in
+    test_proyecto_del_turno.py); this test only exercises the normal path.
+    """
     raiz, ruta_config = proyecto_vigilado
     for i in range(4):
         ejecutar(payload(cwd=str(raiz), last_assistant_message=RESPUESTA + str(i)), ruta_config)
