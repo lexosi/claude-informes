@@ -1,11 +1,11 @@
-"""Umbral, slug y troceo sintactico."""
+"""Threshold, slug, and syntactic chunking."""
 
 import pytest
 
 from claude_informes import markdown as md
 
 
-# --- umbral: estrictamente mas de N lineas de markdown CRUDO ---
+# --- threshold: strictly more than N lines of RAW markdown ---
 
 
 def test_threshold_exactly_at_the_limit_does_not_pass():
@@ -34,7 +34,7 @@ def test_threshold_counts_lines_with_crlf_endings():
     assert md.supera_umbral("1\r\n2\r\n3\r\n4\r\n5\r\n6", 5) is True
 
 
-# --- palabras significativas ---
+# --- significant words ---
 
 
 def test_spanish_articles_and_prepositions_are_discarded():
@@ -56,7 +56,7 @@ def test_an_alphanumeric_identifier_does_count():
     assert md.palabras_significativas("commit ac72eff") == ["commit", "ac72eff"]
 
 
-# --- slug, regla 1: primer encabezado con 3+ palabras significativas ---
+# --- slug, rule 1: first heading with 3+ significant words ---
 
 
 def test_a_rich_heading_is_used_as_is():
@@ -75,7 +75,7 @@ def test_accents_and_inline_marks_are_stripped():
 
 
 def test_the_leading_numbering_is_stripped():
-    """El caso real que daba '1-transcript'."""
+    """The real case that gave '1-transcript'."""
     texto = "## 1. TRANSCRIPT del runtime instalado\n\ntexto"
     assert md.nombre_desde_markdown(texto) == "transcript-runtime-instalado"
 
@@ -94,11 +94,11 @@ def test_the_numbering_is_stripped_in_all_its_variants(encabezado):
     assert md.nombre_desde_markdown(encabezado + "\n\ncuerpo") == "uno-dos-tres"
 
 
-# --- slug, regla 2: concatenar encabezados sucesivos ---
+# --- slug, rule 2: concatenate successive headings ---
 
 
 def test_a_poor_heading_is_concatenated_with_the_next_one():
-    """El caso real que daba 'tabla'."""
+    """The real case that gave 'tabla'."""
     texto = "## Tabla\n\nfila\n\n## Veredicto final\n\ntexto"
     assert md.nombre_desde_markdown(texto) == "tabla-veredicto-final"
 
@@ -113,7 +113,7 @@ def test_the_concatenation_stops_upon_reaching_three_words():
     assert "sobra" not in md.nombre_desde_markdown(texto)
 
 
-# --- slug, regla 3: el cuerpo ---
+# --- slug, rule 3: the body ---
 
 
 def test_without_headings_the_body_words_are_used():
@@ -151,7 +151,7 @@ def test_an_empty_markdown_does_not_blow_up():
     assert md.nombre_desde_markdown("") == "sin-titulo"
 
 
-# --- slug, regla 4: tope de longitud ---
+# --- slug, rule 4: length cap ---
 
 
 def test_the_slug_is_trimmed_without_splitting_words():
@@ -169,11 +169,11 @@ def test_a_single_very_long_word_is_cut_anyway():
 
 
 def test_trimming_a_word_longer_than_the_cap_cuts_it_hard():
-    """Caso degenerado, fijado: una sola palabra sin guion mas larga que el tope
-    no cabe en ninguna frontera de palabra. Como el resultado es un NOMBRE DE
-    FICHERO, el tope es DURO: se corta duro y el resultado NUNCA excede el tope,
-    aunque eso parta la palabra. Un cap blando que devolviera la palabra entera
-    (mas de TOPE) fallaria aqui.
+    """Degenerate case, pinned: a single word without a hyphen longer than the cap
+    does not fit at any word boundary. Since the result is a FILE
+    NAME, the cap is HARD: it is cut hard and the result NEVER exceeds the cap,
+    even if that splits the word. A soft cap that returned the whole word
+    (more than TOPE) would fail here.
     """
     resultado = md.recortar("x" * 300)
 
@@ -181,14 +181,14 @@ def test_trimming_a_word_longer_than_the_cap_cuts_it_hard():
     assert len(resultado) == md.TOPE, "una palabra de 300 se corta justo al tope"
 
 
-# --- slug llano, para nombres propios ---
+# --- plain slug, for proper names ---
 
 
 def test_the_plain_slug_does_not_discard_words():
     assert md.slug_llano("Mi Repo de la Empresa") == "mi-repo-de-la-empresa"
 
 
-# --- troceo sintactico ---
+# --- syntactic chunking ---
 
 
 def test_sections_are_split_by_headings():

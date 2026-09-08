@@ -1,8 +1,8 @@
-"""El agujero de clase: cualquier MCP con escritura montado en Claude Code.
+"""The class-wide hole: any write-capable MCP mounted in Claude Code.
 
-Los servidores MCP no comparten esquema: ni el nombre de la herramienta ni el
-del campo de la ruta estan estandarizados. Por eso aqui la deteccion es
-heuristica y solo sirve para denegar mejor. Permitir sigue garantizado.
+MCP servers don't share a schema: neither the tool name nor the
+path field name are standardized. That's why detection here is
+heuristic and only serves to deny better. Allowing stays guaranteed.
 """
 
 import pytest
@@ -23,7 +23,7 @@ def mcp(herramienta, entrada, cwd="C:\\proyectos\\alfa"):
     }
 
 
-# --- deteccion de escritura por el nombre ---
+# --- write detection by name ---
 
 
 @pytest.mark.parametrize(
@@ -55,17 +55,17 @@ def test_the_read_only_ones_are_not_inspected(herramienta):
 
 
 def test_the_verb_comes_from_the_tool_name_not_the_server():
-    """`mcp__write-tools__read_file` lee, aunque el servidor se llame write."""
+    """`mcp__write-tools__read_file` reads, even though the server is named write."""
     assert gd.campos_a_mirar("mcp__write-tools__read_file") is None
     assert gd.campos_a_mirar("mcp__lectura__write_file") is gd.CAMPOS_MCP
 
 
 def test_a_verb_is_not_recognized_as_a_substring():
-    """`get_output` contiene 'put' y no por eso es una escritura."""
+    """`get_output` contains 'put' and that doesn't make it a write."""
     assert gd.campos_a_mirar("mcp__x__get_output") is None
 
 
-# --- lo que hay que denegar ---
+# --- what must be denied ---
 
 
 def test_an_mcp_write_inside_the_archive_is_denied(archivo):
@@ -127,7 +127,7 @@ def test_an_mcp_write_to_the_log_is_denied(archivo, log):
     assert deniega(ejecutar(mcp("mcp__x__write_file", {"path": str(log)}), ruta_config)[1])
 
 
-# --- lo que NO se puede denegar ---
+# --- what must NOT be denied ---
 
 
 def test_an_mcp_write_outside_the_archive_is_allowed(archivo, log):
@@ -143,7 +143,7 @@ def test_an_mcp_write_outside_the_archive_is_allowed(archivo, log):
 
 
 def test_an_mcp_read_inside_the_archive_is_allowed(archivo, log):
-    """Leer los informes es legitimo: solo se impide escribirlos."""
+    """Reading the reports is legitimate: only writing them is prevented."""
     comun, _, ruta_config = archivo
     for herramienta in [
         "mcp__informes-claude__read_file",
@@ -158,7 +158,7 @@ def test_an_mcp_read_inside_the_archive_is_allowed(archivo, log):
 
 
 def test_an_mcp_tool_without_a_path_is_allowed_and_logged(archivo, log):
-    """El punto ciego se permite, pero no en silencio."""
+    """The blind spot is allowed, but not silently."""
     _, _, ruta_config = archivo
     datos = mcp("mcp__x__write_blob", {"contenido": "algo", "id": 42})
 
@@ -180,7 +180,7 @@ def test_an_mcp_tool_with_empty_tool_input_is_allowed_and_logged(archivo, log):
 
 
 def test_an_mcp_read_without_a_path_does_not_dirty_the_log(archivo, log):
-    """Solo se anota el punto ciego de las que dicen escribir."""
+    """Only the blind spot of those that claim to write is recorded."""
     _, _, ruta_config = archivo
     ejecutar(mcp("mcp__claude_ai_Gmail__search_threads", {"q": "hola"}), ruta_config)
 
@@ -188,7 +188,7 @@ def test_an_mcp_read_without_a_path_does_not_dirty_the_log(archivo, log):
 
 
 def test_an_unknown_verb_is_treated_as_a_read(archivo, log):
-    """Fallar abierto manda: lo que no se reconoce, pasa."""
+    """Failing open rules: what isn't recognized passes."""
     comun, _, ruta_config = archivo
     datos = mcp("mcp__x__persistir_cosa", {"path": str(comun / "x.json")})
 

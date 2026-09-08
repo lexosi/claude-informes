@@ -1,12 +1,12 @@
-"""Las fronteras de codificacion, cruzadas por BYTES.
+"""The encoding boundaries, crossed by BYTES.
 
-Estos tests NO usan `io.StringIO`. Un flujo de texto en memoria entra por
-detras de la unica frontera que estaba rota, que es exactamente por lo que la
-fixture con el ❌ culpable llevaba pasando desde el principio.
+These tests do NOT use `io.StringIO`. An in-memory text stream comes in behind
+the only boundary that was broken, which is exactly why the fixture with the
+guilty ❌ had been passing from the start.
 
-Aqui se lanza `hook_informes.py` como subproceso real, se le mete el payload
-por un pipe en utf-8, y se comprueba EL FICHERO EN DISCO: su nombre y su
-contenido. No lo que devuelva ninguna funcion.
+Here `hook_informes.py` is launched as a real subprocess, the payload is fed to
+it through a pipe in utf-8, and THE FILE ON DISK is checked: its name and its
+content. Not whatever any function returns.
 """
 
 import json
@@ -20,8 +20,8 @@ import pytest
 RAIZ = Path(__file__).resolve().parent.parent
 LANZADERA = RAIZ / "hook_informes.py"
 
-# Acentos en minuscula: sus bytes utf-8 caen todos en huecos que cp1252 SI
-# sabe decodificar, asi que el turno se escribe... con mojibake.
+# Lowercase accents: their utf-8 bytes all fall into gaps that cp1252 DOES
+# know how to decode, so the turn gets written... with mojibake.
 MINUSCULAS = (
     "# Enumeración de qué pasó después\n\n"
     "No edité nada; la sesión terminó ahí.\n"
@@ -29,8 +29,8 @@ MINUSCULAS = (
 )
 SLUG_MINUSCULAS = "enumeracion-paso-despues"
 
-# Mayusculas acentuadas: 'Á' es C3 81 e 'Í' es C3 8D, y 0x81 y 0x8D son dos de
-# los cinco huecos de cp1252. Estas son las que matan el informe.
+# Accented uppercase: 'Á' is C3 81 and 'Í' is C3 8D, and 0x81 and 0x8D are two
+# of cp1252's five gaps. These are the ones that kill the report.
 MAYUSCULAS = (
     "# ÍNDICE del ÁRBOL de decisión\n\n"
     "Ángel revisó la Ñ y la Ó.\n"
@@ -38,7 +38,7 @@ MAYUSCULAS = (
 )
 SLUG_MAYUSCULAS = "indice-arbol-decision"
 
-# '❌' U+274C es E2 9D 8C: el 0x9D del '\udc9d' que aparece en el log real.
+# '❌' U+274C is E2 9D 8C: the 0x9D of the '\udc9d' that appears in the real log.
 CRUZ = (
     "# Resultado final de la comprobación completa\n\n"
     "Todo verde ✅\nY un fallo ❌\n"
@@ -46,7 +46,7 @@ CRUZ = (
 )
 SLUG_CRUZ = "resultado-final-comprobacion-completa"
 
-# Un turno sin nada raro: sirve para exigir que no quede basura en disco.
+# A turn with nothing odd: used to require that no garbage is left on disk.
 LLANA = (
     "# Un turno normal y corriente\n\n"
     "sin nada raro\nlinea tres\nlinea cuatro\nlinea cinco\nlinea seis\n"
@@ -55,11 +55,11 @@ SLUG_LLANA = "turno-normal-corriente"
 
 
 def lanzar(markdown, raiz_proyecto, ruta_config):
-    """El hook de verdad, en otro proceso, con el payload en bytes utf-8.
+    """The real hook, in another process, with the payload in utf-8 bytes.
 
-    El entorno se limpia a proposito de PYTHONUTF8 y PYTHONIOENCODING: si un
-    dia alguien los pone en su maquina, el test tiene que seguir viendo el
-    caso real, que es el de Claude Code lanzando `python` a pelo.
+    The environment is deliberately cleared of PYTHONUTF8 and PYTHONIOENCODING:
+    if one day someone sets them on their machine, the test has to keep seeing
+    the real case, which is Claude Code launching `python` bare.
     """
     entorno = dict(os.environ)
     for variable in ("PYTHONUTF8", "PYTHONIOENCODING", "PYTHONLEGACYWINDOWSSTDIO"):
@@ -120,7 +120,7 @@ def test_the_castilian_accents_arrive_intact_on_disk(
 
 
 def test_a_character_outside_cp1252_does_not_kill_the_report(vigilado, informes):
-    """El ❌ U+274C lleva el byte 0x9D, uno de los cinco huecos de cp1252."""
+    """The ❌ U+274C carries the byte 0x9D, one of cp1252's five gaps."""
     raiz, ruta_config = vigilado
 
     salida = lanzar(CRUZ, raiz, ruta_config)
@@ -133,13 +133,13 @@ def test_a_character_outside_cp1252_does_not_kill_the_report(vigilado, informes)
 
 
 def test_no_lone_surrogate_survives_the_envelope(vigilado, informes):
-    """Lo que revienta al escribir es el surrogate, no el caracter."""
+    """What blows up when writing is the surrogate, not the character."""
     raiz, ruta_config = vigilado
 
     lanzar(CRUZ, raiz, ruta_config)
 
     crudo = el_unico_informe(informes).read_bytes()
-    crudo.decode("utf-8")  # revienta si quedo un surrogate
+    crudo.decode("utf-8")  # blows up if a surrogate was left
     texto = markdown_de(el_unico_informe(informes))
     assert not any(0xD800 <= ord(c) <= 0xDFFF for c in texto)
 
@@ -147,7 +147,7 @@ def test_no_lone_surrogate_survives_the_envelope(vigilado, informes):
 def test_after_a_correct_turn_neither_a_tmp_nor_a_zero_byte_file_remains(
     vigilado, informes
 ):
-    """Los tres informes a cero de produccion son esto, sin la asercion."""
+    """The three zero-byte reports in production are this, without the assertion."""
     raiz, ruta_config = vigilado
 
     lanzar(LLANA, raiz, ruta_config)

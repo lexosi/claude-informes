@@ -1,82 +1,81 @@
-"""El repositorio es publicable: ni una ruta ni un identificador real de nadie.
+"""The repository is publishable: not a single real path or identifier of anyone.
 
-La config real vive fuera del repo; aqui se comprueba que el repo solo lleva el
-ejemplo (JSON valido, rutas ficticias) y que en ningun fichero versionado se
-cuela un identificador real (usuario, nombre de proyecto o raiz absoluta).
+The real config lives outside the repo; here it is checked that the repo only
+carries the example (valid JSON, fictitious paths) and that no versioned file
+slips in a real identifier (username, project name or absolute root).
 
-Regla del proyecto (este guard la aprendio a base de repetirla)
----------------------------------------------------------------
-**Cada gate se define con una excepcion, y la excepcion es el agujero.** Es la
-tercera iteracion del mismo error:
+Project rule (this guard learned it by repeating it)
+----------------------------------------------------
+**Every gate is defined with an exception, and the exception is the hole.** It
+is the third iteration of the same mistake:
 
-1. El primer guard buscaba subcadenas literales con backslash simple: se
-   escapaban ocho formas de escribir el mismo identificador.
-2. El guardian de escrituras dejaba fuera Bash y las heuristicas MCP.
-3. Este guard se auto-eximia del escaneo ("el fichero que DEFINE los
-   identificadores no se escanea a si mismo") y ademas solo miraba una lista
-   blanca de extensiones. La punta pasaba 5/5 mientras filtraba el usuario, los
-   proyectos y las rutas del autor, en el unico fichero exento.
+1. The first guard searched for literal substrings with a single backslash:
+   eight ways of writing the same identifier escaped it.
+2. The write guardian left out Bash and the MCP heuristics.
+3. This guard exempted itself from the scan ("the file that DEFINES the
+   identifiers is not scanned itself") and, on top of that, only looked at a
+   whitelist of extensions. The tip passed 5/5 while it leaked the author's
+   username, projects and paths, in the one exempt file.
 
-Cada arreglo consistio en QUITAR la excepcion, no en afinarla. Por eso ahora:
-el fichero se escanea como cualquier otro, se leen TODOS los ficheros de texto
-(lista negra de binarios, no lista blanca de textos), y un fichero que no se
-puede leer se REPORTA, no se salta.
+Each fix consisted of REMOVING the exception, not tuning it. That is why now:
+the file is scanned like any other, ALL text files are read (a blocklist of
+binaries, not a whitelist of texts), and a file that cannot be read is
+REPORTED, not skipped.
 
-Por que un simple `substring in texto` no basta
-------------------------------------------------
-Un identificador real puede aparecer de muchas formas que NO son la subcadena
-literal, y todas se escapaban:
+Why a plain `substring in text` is not enough
+---------------------------------------------
+A real identifier can appear in many forms that are NOT the literal substring,
+and they all escaped:
 
-1. Escapada:        ``C:\\\\Users\\\\usuario``   (doble backslash en el fuente)
-2. Barras:          ``C:/Users/usuario``
-3. URL / enlace:    ``file:///C:/Users/usuario``
-4. Codificada:      ``C:%5CUsers%5Cusuario``     (percent-encoding)
-5. Slug:            ``c--proyectos-usuario``      (separadores -> guiones)
-6. Partida:         una ruta larga envuelta por un salto de linea
-7. Mayusculas:      ``C:\\USERS\\USUARIO``
-8. Desnudo:         el usuario o el proyecto sin prefijo de ruta
-9. Concatenada:     ``"usu" + "ario"``            (literales de Python unidos)
+1. Escaped:         ``C:\\\\Users\\\\usuario``   (double backslash in the source)
+2. Slashes:         ``C:/Users/usuario``
+3. URL / link:      ``file:///C:/Users/usuario``
+4. Encoded:         ``C:%5CUsers%5Cusuario``     (percent-encoding)
+5. Slug:            ``c--proyectos-usuario``      (separators -> hyphens)
+6. Split:           a long path wrapped by a line break
+7. Uppercase:       ``C:\\USERS\\USUARIO``
+8. Bare:            the username or the project without a path prefix
+9. Concatenated:    ``"usu" + "ario"``            (joined Python literals)
 
-La defensa es canonizar antes de comparar: se descodifica el percent-encoding,
-se pasa a minusculas y se colapsa toda separacion, todo escape y la union de
-literales (barras, guion, guion bajo, espacios, saltos de linea, comillas y
-``+``). La forma 9 entra a proposito: no se puede declarar fuera de alcance
-justo la tecnica que un fix podria usar para esconder el identificador --y de
-hecho una version anterior de este fichero la usaba--.
+The defense is to canonicalize before comparing: percent-encoding is decoded,
+it is lowercased, and all separation, all escaping and the joining of literals
+are collapsed (slashes, hyphen, underscore, spaces, line breaks, quotes and
+``+``). Form 9 is included on purpose: you cannot declare out of scope exactly
+the technique a fix might use to hide the identifier --and in fact an earlier
+version of this file used it.
 
-Alcance (honesto): PUNTA, no historia
--------------------------------------
-Este gate recorre el ARBOL DE TRABAJO. `.git/` queda fuera del recorrido a
-proposito: la limpieza del HISTORIAL es un problema aparte (ver NO-PUBLICAR.md)
-y este test NO la cubre. Leer un verde aqui como "el repo entero esta limpio"
-seria, otra vez, tomar una excepcion por cobertura total.
+Scope (honest): TIP, not history
+---------------------------------
+This gate walks the WORKING TREE. `.git/` is left out of the walk on purpose:
+cleaning the HISTORY is a separate problem (see NO-PUBLICAR.md) and this test
+does NOT cover it. Reading a green here as "the whole repo is clean" would be,
+again, taking an exception for full coverage.
 
-Donde viven los identificadores reales
---------------------------------------
-NO en este fichero --eso los meteria en el repo, que es justo lo que se quiere
-evitar-- sino en un fichero FUERA de git, junto a la config de usuario
-(``identificadores_prohibidos.json``, al lado de ``proyectos.json``). Si falta,
-el test FALLA con instrucciones, nunca se salta: un skip verde es un guardian
-ciego, y de esos ya llevamos tres.
+Where the real identifiers live
+-------------------------------
+NOT in this file --that would put them in the repo, which is exactly what we
+want to avoid-- but in a file OUTSIDE git, next to the user config
+(``identificadores_prohibidos.json``, alongside ``proyectos.json``). If it is
+missing, the test FAILS with instructions, it never skips: a green skip is a
+blind guardian, and the project already has three of those.
 
-Por que DOS tests (mecanismo y datos) y no uno
+Why TWO tests (mechanism and data) and not one
 ----------------------------------------------
-La comprobacion se parte en un ``test_mechanism_*`` (verde en cualquier runner,
-con identificadores ficticios) y un ``test_real_data_*`` (marcado
-``real_data``, solo donde existe el fichero). La convencion general esta en
-la cabecera de ``tests/conftest.py``; aqui quedan escritas las tres razones de
-elegir esta separacion antes que excluir el test en CI o meter los datos en un
-secret:
+The check is split into a ``test_mechanism_*`` (green on any runner, with
+fictitious identifiers) and a ``test_real_data_*`` (marked ``real_data``, only
+where the file exists). The general convention is in the header of
+``tests/conftest.py``; here are written the three reasons for choosing this
+split over excluding the test in CI or putting the data in a secret:
 
-1. Es la misma separacion que el proyecto ya usa en todas partes: la LOGICA
-   vive en el repo, los DATOS de la maquina viven fuera. El guard era el ultimo
-   sitio donde faltaba aplicarla.
-2. Excluir el test en CI romperia la regla de arriba: seria la cuarta iteracion
-   del mismo fallo --un gate con una excepcion-- cometida a proposito tres dias
-   despues de escribirla.
-3. Meter los identificadores en un secret de GitHub devuelve a GitHub
-   exactamente lo que sacamos de GitHub. Un secret cifrado sigue siendo el
-   nombre y los proyectos del autor en infraestructura ajena.
+1. It is the same split the project already uses everywhere: the LOGIC lives in
+   the repo, the machine DATA lives outside. The guard was the last place where
+   it was still missing.
+2. Excluding the test in CI would break the rule above: it would be the fourth
+   iteration of the same failure --a gate with an exception-- committed on
+   purpose three days after writing it.
+3. Putting the identifiers in a GitHub secret returns to GitHub exactly what we
+   took out of GitHub. An encrypted secret is still the author's name and
+   projects on someone else's infrastructure.
 """
 
 import json
@@ -91,13 +90,13 @@ from claude_informes import config as cfg
 
 RAIZ = cfg.raiz_de_la_herramienta()
 
-# El fichero NO versionado con los identificadores reales, junto a proyectos.json.
+# The NON-versioned file with the real identifiers, next to proyectos.json.
 NOMBRE_LISTA = "identificadores_prohibidos.json"
 
-# Lo UNICO que no se escanea: binarios conocidos. Todo lo demas --tenga o no
-# extension-- se lee como texto. Invertir el criterio (lista negra de binarios,
-# no lista blanca de textos) cierra el hueco de un LICENSE sin extension o un
-# .yml de CI que la lista blanca dejaba pasar sin mirar.
+# The ONLY thing not scanned: known binaries. Everything else --with or without
+# an extension-- is read as text. Inverting the criterion (a blocklist of
+# binaries, not a whitelist of texts) closes the hole of a LICENSE without an
+# extension or a CI .yml that the whitelist let through without looking.
 BINARIOS = frozenset(
     {
         ".png", ".jpg", ".jpeg", ".gif", ".ico", ".bmp", ".webp", ".avif",
@@ -112,14 +111,14 @@ CARPETAS_FUERA = {".git", ".venv", "__pycache__", ".pytest_cache", "informes"}
 
 
 def _canon(texto: str) -> str:
-    """Forma canonica que colapsa las formas de evasion a una sola cadena.
+    """Canonical form that collapses the evasion forms to a single string.
 
-    1. Descodifica percent-encoding: ``%5C`` -> ``\\``, ``%3A`` -> ``:``.
-    2. Minusculas: ``C:\\Users\\USUARIO`` == ``c:\\users\\usuario``.
-    3. Quita toda separacion, escape y union de literales: barras (``\\`` y
-       ``/``), guion, guion bajo, espacios, saltos de linea, comillas (``"`` y
-       ``'``) y ``+``. Asi caen la escapada, las barras, el slug, la ruta
-       partida y la concatenacion de literales de Python (``"a" + "b"``).
+    1. Decodes percent-encoding: ``%5C`` -> ``\\``, ``%3A`` -> ``:``.
+    2. Lowercase: ``C:\\Users\\USUARIO`` == ``c:\\users\\usuario``.
+    3. Removes all separation, escaping and literal joining: slashes (``\\`` and
+       ``/``), hyphen, underscore, spaces, line breaks, quotes (``"`` and
+       ``'``) and ``+``. That is how the escaped, the slashes, the slug, the
+       split path and the joining of Python literals (``"a" + "b"``) all fall.
     """
     t = unquote(texto)
     t = t.lower()
@@ -127,7 +126,7 @@ def _canon(texto: str) -> str:
 
 
 def _contiene(texto: str, reales_canon: list[str]) -> bool:
-    """True si el texto contiene algun identificador (ya canonizado) buscado."""
+    """True if the text contains any of the (already canonicalized) identifiers."""
     canonico = _canon(texto)
     return any(real in canonico for real in reales_canon)
 
@@ -145,9 +144,9 @@ _COMO_CREAR = (
 
 
 def _cargar_reales_canon(exigir_fichero_de_datos) -> list[str]:
-    """Los identificadores reales, canonizados. La existencia del fichero la
-    resuelve el helper compartido `exigir_fichero_de_datos` (falla con
-    instrucciones si no esta); aqui solo se valida y canoniza el contenido.
+    """The real identifiers, canonicalized. The file's existence is resolved by
+    the shared helper `exigir_fichero_de_datos` (it fails with instructions if it
+    is missing); here only the content is validated and canonicalized.
     """
     ruta = _ruta_lista()
     crudo = exigir_fichero_de_datos(ruta, como_crearlo=_COMO_CREAR)
@@ -174,16 +173,16 @@ def _ficheros_a_escanear():
             yield os.path.join(actual, nombre)
 
 
-# --- el guard caza lo que antes se escapaba (identificadores FICTICIOS) ---
+# --- the guard catches what used to escape (FICTITIOUS identifiers) ---
 
 
 def test_mechanism_catches_the_nine_evasion_forms():
-    """Cada caso esconde un identificador de una forma que el patron de
-    subcadena literal dejaba pasar.
+    """Each case hides an identifier in a form that the literal-substring pattern
+    used to let through.
 
-    Se usan identificadores FICTICIOS a proposito: este fichero se escanea a si
-    mismo, asi que no puede contener ninguno real. Lo que se comprueba es la
-    canonizacion, no la lista real.
+    FICTITIOUS identifiers are used on purpose: this file scans itself, so it
+    cannot contain any real one. What is checked is the canonicalization, not the
+    real list.
     """
     reales = [_canon("usuariofalso"), _canon("proyectofalso"), _canon("z:\\raizfalsa")]
     casos = {
@@ -202,7 +201,7 @@ def test_mechanism_catches_the_nine_evasion_forms():
 
 
 def test_mechanism_a_fictitious_path_is_not_flagged():
-    """Las rutas y nombres ficticios no deben dar falso positivo."""
+    """Fictitious paths and names must not give a false positive."""
     reales = [_canon("usuariofalso"), _canon("proyectofalso")]
     ficticios = [
         "C:\\Users\\ejemplo\\proyectos\\alfa\\x.json",
@@ -213,7 +212,7 @@ def test_mechanism_a_fictitious_path_is_not_flagged():
         assert not _contiene(texto, reales), f"falso positivo en: {texto!r}"
 
 
-# --- el ejemplo ---
+# --- the example ---
 
 
 def test_mechanism_the_example_is_valid_json_with_the_right_shape():
@@ -230,17 +229,17 @@ def test_real_data_the_example_carries_no_identifier(exigir_fichero_de_datos):
     assert not _contiene(texto, reales), "el ejemplo contiene un identificador real"
 
 
-# --- todo el repo, este fichero incluido ---
+# --- the whole repo, this file included ---
 
 
 @pytest.mark.real_data
 def test_real_data_the_repo_contains_no_identifier(exigir_fichero_de_datos):
-    """Escanea TODOS los ficheros de texto de la punta, este incluido.
+    """Scans ALL the text files of the tip, this one included.
 
-    Un fichero que no se puede leer como utf-8 se REPORTA como hueco (o es texto
-    con encoding roto, o es binario y su extension va en BINARIOS): no se lee a
-    medias en silencio. Antes se leia con errors='ignore', que es un pase
-    disfrazado de lectura.
+    A file that cannot be read as utf-8 is REPORTED as a hole (either it is text
+    with a broken encoding, or it is binary and its extension goes in BINARIOS):
+    it is not read half-way in silence. It used to be read with errors='ignore',
+    which is a pass disguised as a read.
     """
     reales = _cargar_reales_canon(exigir_fichero_de_datos)
     ofensores = []
@@ -254,8 +253,8 @@ def test_real_data_the_repo_contains_no_identifier(exigir_fichero_de_datos):
         except OSError:
             continue
         if _contiene(texto, reales):
-            # Se reporta el fichero, no el identificador: el mensaje no debe
-            # reimprimir el dato real que se intenta mantener fuera.
+            # The file is reported, not the identifier: the message must not
+            # reprint the real datum we are trying to keep out.
             ofensores.append(os.path.relpath(ruta, RAIZ))
     assert not ilegibles, (
         "ficheros que el guard no pudo leer como utf-8; un fichero ilegible es un "

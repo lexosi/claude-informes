@@ -1,4 +1,4 @@
-"""El hook. Lo que se prueba aqui es sobre todo lo que NO debe pasar."""
+"""The hook. What is tested here is above all what must NOT happen."""
 
 import io
 import json
@@ -22,12 +22,12 @@ def hoy():
 
 
 def transcript_de(cwd):
-    """La ruta que Claude Code le daria a una sesion arrancada en `cwd`."""
+    """The path Claude Code would give to a session started in `cwd`."""
     return str(Path("C:/proyectos") / tr.slug_de_cwd(str(cwd)) / "sesion-1.jsonl")
 
 
 def payload(**cambios):
-    """Un turno normal: la sesion arranco donde dice `cwd`."""
+    """A normal turn: the session started where `cwd` says."""
     base = {
         "session_id": "sesion-1",
         "cwd": "",
@@ -41,7 +41,7 @@ def payload(**cambios):
 
 
 def ejecutar(datos, ruta_config, texto_crudo=None):
-    """Llama al hook como lo hace Claude Code: payload por stdin."""
+    """Calls the hook the way Claude Code does: payload via stdin."""
     crudo = texto_crudo if texto_crudo is not None else json.dumps(datos)
     return hk.main(entrada=io.StringIO(crudo), ruta_config=ruta_config)
 
@@ -51,7 +51,7 @@ def escritos(informes, proyecto="vigilado", fecha=None):
     return sorted(p.name for p in dia.glob("*.json")) if dia.is_dir() else []
 
 
-# --- camino normal ---
+# --- normal path ---
 
 
 def test_writes_a_report_when_everything_fits(proyecto_vigilado, informes):
@@ -71,7 +71,7 @@ def test_the_path_is_project_then_day_then_file(proyecto_vigilado, informes):
 
 
 def test_the_file_name_carries_neither_date_nor_project_prefix(proyecto_vigilado, informes):
-    """La ruta ya aporta proyecto y dia; el nombre no los repite."""
+    """The path already provides project and day; the name does not repeat them."""
     raiz, ruta_config = proyecto_vigilado
     ejecutar(payload(cwd=str(raiz)), ruta_config)
 
@@ -180,11 +180,11 @@ def test_both_directory_levels_are_created(proyecto_vigilado, informes):
 def test_a_session_opened_in_a_subdirectory_writes_into_the_same_folder(
     proyecto_vigilado, informes, tmp_path
 ):
-    """El slug de un subdirectorio es ambiguo, pero el transcript no lo es.
+    """A subdirectory's slug is ambiguous, but the transcript is not.
 
-    `e--proyectos-alfa-audit` tanto podria ser `alfa/audit` como
-    el proyecto hermano `alfa-audit`, asi que el slug no basta. El primer
-    registro del transcript lleva el cwd de arranque y zanja la duda.
+    `e--proyectos-alfa-audit` could be either `alfa/audit` or
+    the sibling project `alfa-audit`, so the slug is not enough. The first
+    record of the transcript carries the startup cwd and settles the doubt.
     """
     raiz, ruta_config = proyecto_vigilado
     hondo = raiz / "src" / "hondo"
@@ -204,7 +204,7 @@ def test_a_session_opened_in_a_subdirectory_writes_into_the_same_folder(
 def test_a_subdirectory_session_without_a_readable_transcript_is_not_archived(
     proyecto_vigilado, informes, tmp_path, log
 ):
-    """Sin poder leer el arranque, el slug ambiguo no se fuerza."""
+    """Without being able to read the startup, the ambiguous slug is not forced."""
     raiz, ruta_config = proyecto_vigilado
     hondo = raiz / "src" / "hondo"
     hondo.mkdir(parents=True)
@@ -223,7 +223,7 @@ def test_background_tasks_does_not_prevent_writing(proyecto_vigilado, informes):
     assert len(escritos(informes)) == 1
 
 
-# --- umbral ---
+# --- threshold ---
 
 
 def test_below_the_threshold_it_writes_nothing(proyecto_vigilado, informes):
@@ -251,7 +251,7 @@ def test_the_threshold_is_the_one_from_the_project_config(escribir_config, infor
     assert not Path(informes).exists()
 
 
-# --- lista blanca: LO IMPORTANTE ---
+# --- whitelist: THE IMPORTANT PART ---
 
 
 def test_a_cwd_outside_the_whitelist_writes_nothing(proyecto_vigilado, informes, tmp_path):
@@ -267,10 +267,10 @@ def test_a_cwd_outside_the_whitelist_writes_nothing(proyecto_vigilado, informes,
 def test_the_tools_own_cwd_now_does_write(
     escribir_config, informes, tmp_path
 ):
-    """El archivo vive fuera de la herramienta: no hay nada que proteger.
+    """The file lives outside the tool: there is nothing to protect.
 
-    La guardia que habia aqui se comio dos turnos de trabajo real el 28-ago,
-    y se habria comido todos los que se hicieran sobre la propia herramienta.
+    The guard that used to be here ate two turns of real work on 28-Aug,
+    and would have eaten every one done on the tool itself.
     """
     propia = cfg.raiz_de_la_herramienta()
     ruta_config = escribir_config(
@@ -325,7 +325,7 @@ def test_stop_hook_active_exits_without_writing(proyecto_vigilado, informes):
     assert not Path(informes).exists()
 
 
-# --- payloads corruptos: sale 0 y NO escribe ---
+# --- corrupt payloads: exits 0 and does NOT write ---
 
 
 BASURA = [
@@ -357,7 +357,7 @@ def test_a_corrupt_payload_exits_0_and_writes_nothing(
 
 @pytest.mark.parametrize("crudo", BASURA)
 def test_a_corrupt_payload_leaves_a_trace_in_the_log(crudo, proyecto_vigilado, log):
-    """Silencio en la consola no puede significar silencio en el log."""
+    """Silence in the console cannot mean silence in the log."""
     _, ruta_config = proyecto_vigilado
     ejecutar(None, ruta_config, texto_crudo=crudo)
 
@@ -400,9 +400,9 @@ def test_if_it_cannot_write_it_exits_0(proyecto_vigilado, informes, monkeypatch)
 def test_a_write_failure_identifies_the_turn_in_the_log(
     proyecto_vigilado, informes, log, monkeypatch
 ):
-    """Crear la carpeta caia al except generico y anotaba '- | ERROR | <exc>'
-    sin proyecto, ruta ni sesion: el fallo silencioso que el diseño dice
-    eliminar. Ahora cualquier fallo de escritura identifica el turno.
+    """Creating the folder fell into the generic except and logged '- | ERROR | <exc>'
+    with no project, path or session: the silent failure that the design says
+    to eliminate. Now any write failure identifies the turn.
     """
     raiz, ruta_config = proyecto_vigilado
 
@@ -410,7 +410,7 @@ def test_a_write_failure_identifies_the_turn_in_the_log(
     mkdir_real = Path.mkdir
 
     def mkdir_roto(self, *args, **kwargs):
-        # solo revienta la carpeta del informe, no la del log
+        # only blows up the report folder, not the log's
         if "vigilado" in str(self):
             raise PermissionError("disco de solo lectura")
         return mkdir_real(self, *args, **kwargs)
@@ -451,7 +451,7 @@ def test_the_hook_writes_to_neither_stdout_nor_stderr(proyecto_vigilado, capsys)
     assert capturado.err == ""
 
 
-# --- respaldo desde el transcript ---
+# --- fallback from the transcript ---
 
 
 def test_without_last_assistant_message_it_reads_from_the_transcript(
@@ -496,11 +496,11 @@ def test_procesar_reports_that_the_session_is_not_registered(tmp_path):
     assert resultado.ruta is None
 
 
-# --- raiz por proyecto ---
+# --- per-project root ---
 
 
 def test_each_project_writes_into_its_own_root(escribir_config, tmp_path):
-    """Lo sensible puede ir a un sitio y el resto a otro."""
+    """The sensitive can go to one place and the rest to another."""
     comun = tmp_path / "comun"
     cofre = tmp_path / "cofre"
     publico = tmp_path / "publico"
@@ -537,7 +537,7 @@ def test_without_its_own_root_it_writes_into_the_global_one(escribir_config, tmp
 
 
 def test_the_tool_with_its_own_root_archives_into_its_own_vault(escribir_config, tmp_path):
-    """La raiz por proyecto manda tambien cuando el proyecto es la herramienta."""
+    """The per-project root rules also when the project is the tool."""
     propia = cfg.raiz_de_la_herramienta()
     cofre = tmp_path / "cofre"
     ruta_config = escribir_config(

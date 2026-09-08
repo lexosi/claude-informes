@@ -1,4 +1,4 @@
-"""Lista blanca de proyectos y lectura de la configuracion."""
+"""Project whitelist and reading of the configuration."""
 
 from pathlib import Path
 
@@ -89,11 +89,11 @@ def test_an_invalid_threshold_falls_back_to_the_default(escribir_config, tmp_pat
     assert configuracion.proyectos[0].umbral_lineas == 5
 
 
-# --- el nombre del proyecto ---
+# --- the project name ---
 
 
 def test_the_name_comes_from_the_config_not_from_the_directory(escribir_config, tmp_path):
-    """Un rename del directorio no debe partir el historico."""
+    """A directory rename must not break the history."""
     configuracion = cfg.cargar(
         escribir_config(
             [{"nombre": "alfa", "cwd": str(tmp_path / "alfa-renombrado")}]
@@ -107,7 +107,7 @@ def test_without_a_name_the_directory_name_is_used(escribir_config, tmp_path):
     assert configuracion.proyectos[0].nombre == "mi-repo"
 
 
-# --- raiz de informes ---
+# --- reports root ---
 
 
 def test_the_reports_root_comes_from_the_config(escribir_config, tmp_path):
@@ -125,16 +125,16 @@ def test_the_default_root_lives_inside_the_tool():
     assert cfg.raiz_informes_por_defecto().parent == cfg.raiz_de_la_herramienta()
 
 
-# --- la propia herramienta: un proyecto mas ---
+# --- the tool itself: one more project ---
 
 
 def test_claude_informes_itself_can_be_a_watched_project(escribir_config):
-    """La guardia que lo impedia se retiro con su motivo.
+    """The guard that prevented it was removed along with its reason.
 
-    Mientras el archivo vivia dentro de `claude-informes/informes/`, un turno
-    suyo habria escrito en su propia carpeta de salida. Con el archivo en una
-    raiz propia fuera de todo repo, lo unico que hacia la guardia era tirar
-    los turnos de quien trabajaba en la herramienta.
+    While the archive lived inside `claude-informes/informes/`, a turn
+    of its own would have written into its own output folder. With the archive in a
+    root of its own outside every repo, all the guard did was throw away
+    the turns of whoever worked on the tool.
     """
     propia = cfg.raiz_de_la_herramienta()
     configuracion = cfg.cargar(
@@ -152,14 +152,14 @@ def test_a_subdirectory_of_the_tool_also_maps(escribir_config):
     assert cfg.buscar_proyecto(str(propia / "tests"), configuracion) is not None
 
 
-# Los tests que afirmaban sobre "la config real del repo" se retiraron: la
-# config real ya no vive en el repositorio (vive en la config de usuario del
-# SO). La invariante equivalente -que el EJEMPLO sea JSON valido y no lleve
-# rutas reales, y que el archivo caiga fuera de todo repo- se comprueba ahora
-# en test_publicable.py y test_config_ubicacion.py.
+# The tests that asserted about "the repo's real config" were removed: the
+# real config no longer lives in the repository (it lives in the OS user
+# config). The equivalent invariant -that the EXAMPLE is valid JSON and carries no
+# real paths, and that the archive falls outside every repo- is now checked
+# in test_publicable.py and test_config_ubicacion.py.
 
 
-# --- raiz por proyecto ---
+# --- per-project root ---
 
 
 def test_the_per_project_root_overrides_the_global_one(escribir_config, tmp_path):

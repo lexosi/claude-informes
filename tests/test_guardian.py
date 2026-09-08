@@ -1,4 +1,4 @@
-"""El guardian PreToolUse. Aqui lo grave es denegar de mas, no de menos."""
+"""The PreToolUse guardian. Here what's grave is denying too much, not too little."""
 
 import io
 import json
@@ -29,7 +29,7 @@ def payload(ruta, herramienta="Write", cwd="C:\\proyectos\\alfa", **extras):
 
 
 def ejecutar(datos, ruta_config, texto_crudo=None):
-    """Devuelve (codigo, lo que el hook escribe en stdout)."""
+    """Returns (code, what the hook writes to stdout)."""
     crudo = texto_crudo if texto_crudo is not None else json.dumps(datos)
     salida = io.StringIO()
     codigo = gd.main(
@@ -50,7 +50,7 @@ def razon(salida):
 
 @pytest.fixture
 def archivo(tmp_path, escribir_config, log):
-    """Config con raiz global, una raiz por proyecto, y el log."""
+    """Config with a global root, one root per project, and the log."""
     comun = tmp_path / "informes-claude"
     cofre = tmp_path / "informes-claude-privado"
     ruta_config = escribir_config(
@@ -67,7 +67,7 @@ def archivo(tmp_path, escribir_config, log):
     return comun, cofre, ruta_config
 
 
-# --- lo que hay que denegar ---
+# --- what must be denied ---
 
 
 def test_a_write_under_the_global_root_is_denied(archivo):
@@ -79,7 +79,7 @@ def test_a_write_under_the_global_root_is_denied(archivo):
 
 
 def test_a_write_under_a_per_project_root_is_denied(archivo):
-    """La raiz del proyecto no es la global y tambien esta protegida."""
+    """The project's root is not the global one and is also protected."""
     _, cofre, ruta_config = archivo
     codigo, salida = ejecutar(payload(cofre / "beta" / "2026-08-28" / "01-x.json"), ruta_config)
 
@@ -97,7 +97,7 @@ def test_a_write_to_the_log_file_is_denied(archivo, log):
 
 
 def test_a_relative_path_with_dot_dot_segments_is_resolved_and_denied(archivo, tmp_path):
-    """`..\\..\\informes-claude\\x.json` cae dentro igual."""
+    """`..\\..\\informes-claude\\x.json` falls inside all the same."""
     comun, _, ruta_config = archivo
     desde = tmp_path / "repos" / "alfa"
     desde.mkdir(parents=True)
@@ -146,7 +146,7 @@ def test_the_message_says_why_and_what_to_do_instead(archivo):
     assert "--proyecto alfa" in motivo
 
 
-# --- lo que NO se puede denegar ---
+# --- what must NOT be denied ---
 
 
 def test_a_normal_write_inside_a_repo_is_allowed(archivo):
@@ -162,7 +162,7 @@ def test_a_normal_write_inside_a_repo_is_allowed(archivo):
 
 
 def test_a_sibling_sharing_a_common_prefix_is_allowed(archivo, tmp_path):
-    """`informes-claude-otra-cosa` no esta dentro de `informes-claude`."""
+    """`informes-claude-otra-cosa` is not inside `informes-claude`."""
     comun, _, ruta_config = archivo
     vecino = comun.parent / (comun.name + "-otra-cosa") / "x.json"
 
@@ -177,7 +177,7 @@ def test_a_tool_that_does_not_write_files_is_allowed(archivo):
 
 
 def test_bash_is_not_intercepted_even_when_it_mentions_the_archive(archivo):
-    """Adivinar rutas dentro de una linea de shell da falsos positivos."""
+    """Guessing paths inside a shell line gives false positives."""
     comun, _, ruta_config = archivo
     datos = payload("x", herramienta="Bash")
     datos["tool_input"] = {"command": f"echo hola > {comun}\\x.json"}
@@ -185,7 +185,7 @@ def test_bash_is_not_intercepted_even_when_it_mentions_the_archive(archivo):
     assert ejecutar(datos, ruta_config)[1] == ""
 
 
-# --- falla abierto: lo contrario del hook Stop ---
+# --- fails open: the opposite of the Stop hook ---
 
 
 def test_a_missing_config_allows_and_records_it(tmp_path, log):
@@ -261,7 +261,7 @@ def test_it_never_returns_a_nonzero_exit_code(archivo, tmp_path):
         assert ejecutar(datos, config)[0] == 0
 
 
-# --- el log ---
+# --- the log ---
 
 
 def test_the_denial_is_recorded_in_the_log(archivo, log):
@@ -276,14 +276,14 @@ def test_the_denial_is_recorded_in_the_log(archivo, log):
 
 
 def test_an_allowed_write_does_not_clutter_the_log(archivo, log):
-    """Una linea por tool call llenaria el log de ruido."""
+    """One line per tool call would fill the log with noise."""
     _, _, ruta_config = archivo
     ejecutar(payload("C:\\proyectos\\alfa\\README.md"), ruta_config)
 
     assert reg.leer(log) == []
 
 
-# --- la lanzadera, tal cual la ejecuta Claude Code ---
+# --- the launcher, exactly as Claude Code runs it ---
 
 
 def lanzar(entrada):
@@ -299,10 +299,10 @@ def lanzar(entrada):
 def test_mechanism_the_launcher_denies_inside_the_archive(
     escribir_config, informes, log, tmp_path
 ):
-    """La lanzadera de verdad, en otro proceso, deniega una escritura dentro del
-    archivo. Config de FIXTURE: prueba el CABLEADO --lee la config, resuelve la
-    zona protegida, deniega-- y esta verde en cualquier runner. Su contraparte de
-    datos comprueba lo otro: que deniega sobre las rutas REALES.
+    """The real launcher, in another process, denies a write inside the
+    archive. FIXTURE config: it tests the WIRING --reads the config, resolves the
+    protected zone, denies-- and is green on any runner. Its data counterpart
+    checks the other thing: that it denies over the REAL paths.
     """
     ruta_config = escribir_config(
         [{"nombre": "vigilado", "cwd": str(tmp_path / "vigilado")}],
@@ -323,15 +323,15 @@ def test_mechanism_the_launcher_denies_inside_the_archive(
 
 @pytest.mark.real_data
 def test_real_data_the_launcher_denies_over_my_real_paths(exigir_fichero_de_datos):
-    """La lanzadera deniega sobre MIS rutas reales: la unica garantia que este
-    test existe para dar.
+    """The launcher denies over MY real paths: the only guarantee this
+    test exists to give.
 
-    Hermeticizarlo con una config de fixture comprobaria que el guardian deniega
-    EN GENERAL --y eso ya lo hace `test_mechanism_the_launcher_denies_inside_the
-    _archive`-- pero dejaria de comprobar que deniega sobre las rutas REALES del
-    archivo, que es lo unico que impide que alguien escriba a mano dentro de el.
-    Por eso el par: mecanismo y datos son dos preguntas distintas. Solo corre
-    donde existe la config real; si falta, FALLA con instrucciones, nunca skip.
+    Hermeticizing it with a fixture config would check that the guardian denies
+    IN GENERAL --and that's already done by `test_mechanism_the_launcher_denies_inside_the
+    _archive`-- but it would stop checking that it denies over the archive's REAL
+    paths, which is the only thing that stops someone from writing by hand inside it.
+    Hence the pair: mechanism and data are two different questions. It only runs
+    where the real config exists; if it's missing, it FAILS with instructions, never skips.
     """
     ruta_real = cfg.ruta_de_config() or cfg.ruta_config_usuario()
     exigir_fichero_de_datos(
@@ -368,7 +368,7 @@ def test_the_launcher_allows_with_a_broken_payload():
 def test_an_own_root_nested_inside_the_global_one_wins_over_the_global(
     escribir_config, tmp_path, log
 ):
-    """La zona mas especifica manda, y con ella el proyecto que se anota."""
+    """The most specific zone wins, and with it the project that gets recorded."""
     comun = tmp_path / "archivo"
     dentro = comun / "privado"
     ruta_config = escribir_config(
@@ -383,17 +383,17 @@ def test_an_own_root_nested_inside_the_global_one_wins_over_the_global(
 
 
 def test_an_unknown_folder_under_the_root_is_denied_without_a_project(archivo, log):
-    """No se adivina el proyecto, pero se deniega igual."""
+    """The project is not guessed, but it is denied all the same."""
     comun, _, ruta_config = archivo
     assert deniega(ejecutar(payload(comun / "quien-sabe" / "x.json"), ruta_config)[1])
     assert reg.leer(log)[0].proyecto == reg.SIN_PROYECTO
 
 
-# --- las fronteras del guardian, cruzadas por bytes ---
+# --- the guardian's boundaries, crossed by bytes ---
 
 
 def _lanzar_guardian(payload, ruta_config, log):
-    """El guardian de verdad, en otro proceso, hablando en bytes utf-8."""
+    """The real guardian, in another process, speaking in utf-8 bytes."""
     entorno = dict(os.environ)
     for variable in ("PYTHONUTF8", "PYTHONIOENCODING", "PYTHONLEGACYWINDOWSSTDIO"):
         entorno.pop(variable, None)
@@ -411,12 +411,12 @@ def _lanzar_guardian(payload, ruta_config, log):
 def test_it_denies_even_when_the_path_does_not_fit_the_console_encoding(
     escribir_config, informes, log, tmp_path
 ):
-    """La frontera con consecuencia de seguridad.
+    """The boundary with a security consequence.
 
-    Con `sys.stdout` heredado (cp1252), escribir una denegacion cuya ruta
-    lleve un caracter que no quepa reventaba el write, el guardian caia a su
-    `except`... y PERMITIA la escritura que tenia que denegar. Fallar abierto
-    por un fallo propio de codificacion no es fallar abierto: es no estar.
+    With an inherited `sys.stdout` (cp1252), writing a denial whose path
+    carries a character that doesn't fit blew up the write, the guardian fell to its
+    `except`... and ALLOWED the write it was supposed to deny. Failing open
+    because of an encoding failure of your own is not failing open: it's not being there.
     """
     ruta_config = escribir_config(
         [{"nombre": "vigilado", "cwd": str(tmp_path / "vigilado")}],
@@ -442,7 +442,7 @@ def test_it_denies_even_when_the_path_does_not_fit_the_console_encoding(
 
 
 def test_faced_with_invalid_json_it_keeps_failing_open(escribir_config, informes, log, tmp_path):
-    """Regla numero uno del guardian, comprobada DESPUES de tocar sus flujos."""
+    """The guardian's number-one rule, checked AFTER touching its streams."""
     ruta_config = escribir_config(
         [{"nombre": "vigilado", "cwd": str(tmp_path / "vigilado")}],
         raiz_informes=informes,

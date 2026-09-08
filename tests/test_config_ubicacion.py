@@ -1,8 +1,9 @@
-"""Donde vive la config y como se resuelve.
+"""Where the config lives and how it is resolved.
 
-La config REAL no esta en el repo: vive en la config de usuario del SO, o la
-apunta CLAUDE_INFORMES_CONFIG. El repo solo lleva el ejemplo. Aqui se fija el
-orden de resolucion, el mensaje cuando no hay ninguna, y el comando `init`.
+The REAL config is not in the repo: it lives in the OS user config, or
+CLAUDE_INFORMES_CONFIG points to it. The repo only carries the example. Here
+the resolution order is pinned down, the message when there is none, and the
+`init` command.
 """
 
 import json
@@ -22,7 +23,7 @@ def _escribir(ruta: Path, proyectos, raiz=None) -> Path:
     return ruta
 
 
-# --- orden de resolucion ---
+# --- resolution order ---
 
 
 def test_the_environment_variable_wins_over_the_user_config(tmp_path, monkeypatch):
@@ -75,7 +76,7 @@ def test_the_no_config_message_says_how_to_create_it_and_is_not_a_traceback(tmp_
     assert "Traceback" not in mensaje
 
 
-# --- ubicacion por sistema operativo ---
+# --- location by operating system ---
 
 
 def test_the_user_location_follows_the_convention_of_each_operating_system(monkeypatch):
@@ -97,7 +98,7 @@ def test_the_user_location_follows_the_convention_of_each_operating_system(monke
     assert mac.name == cfg.CARPETA_APP
 
 
-# --- el comando init ---
+# --- the init command ---
 
 
 def test_init_creates_the_config_from_the_bundled_example(tmp_path, monkeypatch, capsys):

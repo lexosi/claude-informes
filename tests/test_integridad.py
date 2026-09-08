@@ -1,6 +1,6 @@
-"""El unico requisito del sobre: llevar el markdown INTEGRO.
+"""The envelope's only requirement: carry the markdown INTACT.
 
-Estas comprobaciones son byte a byte, no a ojo.
+These checks are byte by byte, not by eye.
 """
 
 import io
@@ -69,12 +69,12 @@ def test_the_file_on_disk_is_valid_utf8(proyecto_vigilado, informes):
     _escribir_y_releer(entrada, raiz, ruta_config, informes)
 
     crudo = next(Path(informes).rglob("*.json")).read_bytes()
-    crudo.decode("utf-8")  # revienta si no lo es
+    crudo.decode("utf-8")  # blows up if it isn't
     assert not crudo.startswith(b"\xef\xbb\xbf"), "sin BOM al principio del fichero"
 
 
 def test_the_chunking_does_not_alter_the_original_markdown(proyecto_vigilado, informes):
-    """Las secciones y bloques son extras; el original queda intacto."""
+    """The sections and blocks are extras; the original stays intact."""
     raiz, ruta_config = proyecto_vigilado
     entrada = MUESTRAS["bloque_de_codigo"]
 
@@ -87,7 +87,7 @@ def test_the_chunking_does_not_alter_the_original_markdown(proyecto_vigilado, in
 
 
 def test_the_line_breaks_are_not_translated_when_writing(proyecto_vigilado, informes):
-    """En Windows nada debe convertir \\n en \\r\\n dentro del markdown."""
+    """On Windows nothing should convert \\n into \\r\\n inside the markdown."""
     raiz, ruta_config = proyecto_vigilado
     entrada = "# LF puro\n\nuno\ndos\ntres\ncuatro\ncinco\n"
 
@@ -108,7 +108,7 @@ def test_the_crlfs_from_the_input_are_preserved(proyecto_vigilado, informes):
 
 
 def test_the_file_on_disk_uses_lf_line_breaks(proyecto_vigilado, informes):
-    """El archivo entero en LF: si no, git y las herramientas ven ruido."""
+    """The whole file in LF: otherwise git and the tools see noise."""
     raiz, ruta_config = proyecto_vigilado
     _escribir_y_releer(MUESTRAS["crlf"], raiz, ruta_config, informes)
 

@@ -1,7 +1,7 @@
-"""Dar de alta un proyecto, y enterarse de lo que no se archivo.
+"""Register a project, and find out about what was not archived.
 
-Un olvido del registro no puede quedarse en silencio: las sesiones de arranque
-de un proyecto son las mas valiosas y son justo las que se pierden.
+A logging oversight cannot stay silent: a project's startup sessions
+are the most valuable and are exactly the ones that get lost.
 """
 
 import io
@@ -38,7 +38,7 @@ def transcript_de(raiz):
     return str(Path("C:/proyectos") / tr.slug_de_cwd(str(raiz)) / "sesion.jsonl")
 
 
-# --- `nuevo`: los tres pasos en uno ---
+# --- `nuevo`: the three steps in one ---
 
 
 def test_new_creates_the_folder_and_registers_it(tmp_path, escribir_config, informes):
@@ -54,7 +54,7 @@ def test_new_creates_the_folder_and_registers_it(tmp_path, escribir_config, info
 
 
 def test_what_new_registers_is_recognized_by_the_hook(tmp_path, escribir_config, informes):
-    """La prueba que importa: registrar y que el turno se archive."""
+    """The test that matters: register and have the turn archived."""
     ruta_config = escribir_config([], raiz_informes=informes)
     carpeta, _ = alta.registrar("recien-nacido", tmp_path / "proyectos", ruta_config)
 
@@ -134,7 +134,7 @@ def test_the_new_command_warns_about_a_duplicate(tmp_path, escribir_config, caps
     assert "ya hay un proyecto" in capsys.readouterr().err
 
 
-# --- el log recuerda lo que no se archivo ---
+# --- the log remembers what was not archived ---
 
 
 def test_the_skip_carries_the_transcript_and_the_name_it_would_have(

@@ -1,4 +1,4 @@
-"""El log del hook. Silencio en la consola, nunca silencio en el log."""
+"""The hook log. Silence on the console, never silence in the log."""
 
 import io
 import json
@@ -38,7 +38,7 @@ def ejecutar(datos, ruta_config, texto_crudo=None):
     return hk.main(entrada=io.StringIO(crudo), ruta_config=ruta_config)
 
 
-# --- formato ---
+# --- format ---
 
 
 def test_the_line_carries_timestamp_project_result_and_detail():
@@ -55,7 +55,7 @@ def test_the_line_carries_timestamp_project_result_and_detail():
 
 
 def test_the_detail_never_splits_the_line_into_two():
-    """Un motivo con saltos de linea no puede convertirse en dos anotaciones."""
+    """A reason with line breaks cannot turn into two log entries."""
     linea = reg.formatear(reg.ERROR, "x", "algo\nen dos\nlineas")
     assert "\n" not in linea
     assert reg.leer_linea(linea).detalle == "algo en dos lineas"
@@ -97,7 +97,7 @@ def test_the_default_path_is_a_sibling_of_the_archive_not_a_child():
     assert "informes-claude" not in ruta.parent.name
 
 
-# --- los cinco resultados ---
+# --- the five results ---
 
 
 def test_a_written_turn_is_logged_with_its_path(proyecto_vigilado, informes, log):
@@ -134,7 +134,7 @@ def test_a_foreign_cwd_is_logged_as_skipped_by_cwd(proyecto_vigilado, tmp_path, 
 def test_the_tools_own_cwd_is_logged_as_written(
     escribir_config, informes, log
 ):
-    """Retirada la guardia, un turno sobre la herramienta es un turno normal."""
+    """With the guard removed, a turn on the tool is a normal turn."""
     propia = cfg.raiz_de_la_herramienta()
     ruta_config = escribir_config(
         [{"nombre": "claude-informes", "cwd": str(propia)}], raiz_informes=informes
@@ -159,7 +159,7 @@ def test_a_broken_payload_is_logged_as_error(proyecto_vigilado, log):
 def test_the_five_results_all_fit_in_the_same_log(
     escribir_config, informes, tmp_path, log, monkeypatch
 ):
-    """Un log, un turno por linea, los cinco casos distinguibles."""
+    """One log, one turn per line, the five cases distinguishable."""
     raiz = tmp_path / "vigilado"
     raiz.mkdir()
     ruta_config = escribir_config(
@@ -190,7 +190,7 @@ def test_a_hook_reentry_also_leaves_a_line(proyecto_vigilado, log):
 
 
 def test_each_turn_leaves_exactly_one_line(proyecto_vigilado, log):
-    """Una linea por turno. La segunda solo aparece en el camino degradado."""
+    """One line per turn. The second appears only on the degraded path."""
     raiz, ruta_config = proyecto_vigilado
     for i in range(4):
         ejecutar(payload(cwd=str(raiz), last_assistant_message=RESPUESTA + str(i)), ruta_config)
@@ -198,13 +198,13 @@ def test_each_turn_leaves_exactly_one_line(proyecto_vigilado, log):
     assert len(reg.leer(log)) == 4
 
 
-# --- lo que no puede pasar ---
+# --- what must not happen ---
 
 
 def test_if_writing_the_report_fails_it_exits_0_and_stays_logged(
     proyecto_vigilado, informes, log, monkeypatch
 ):
-    """El fallo es invisible en consola, pero no en el log."""
+    """The failure is invisible on the console, but not in the log."""
     raiz, ruta_config = proyecto_vigilado
 
     def escritura_rota(*args, **kwargs):
@@ -256,7 +256,7 @@ def test_the_log_is_never_written_to_stdout(proyecto_vigilado, capsys):
     assert capturado.out == "" and capturado.err == ""
 
 
-# --- la orden `ultimo` ---
+# --- the `ultimo` command ---
 
 
 def escribir_config_con_proyecto(escribir_config, informes, tmp_path, nombre="vigilado"):
@@ -286,15 +286,15 @@ def test_last_gives_the_real_file_verified_on_disk(
 def test_last_reports_when_the_file_is_gone_without_alarming(
     escribir_config, informes, tmp_path, capsys
 ):
-    """El log registra un hecho pasado, no un indice de ficheros vivos.
+    """The log records a past fact, not an index of live files.
 
-    Borrar o mover un informe no convierte su linea `escrito` en mentira: sigue
-    describiendo lo que paso ese dia. `ultimo` lo reporta como informacion (sale
-    0, por stdout), no como alarma (antes: exit 1, stderr, 'NO EXISTE EN DISCO').
+    Deleting or moving a report does not turn its `escrito` line into a lie: it keeps
+    describing what happened that day. `ultimo` reports it as information (exits
+    0, via stdout), not as an alarm (before: exit 1, stderr, 'NO EXISTE EN DISCO').
     """
     raiz, ruta_config = escribir_config_con_proyecto(escribir_config, informes, tmp_path)
     ejecutar(payload(cwd=str(raiz)), ruta_config)
-    next(Path(informes).rglob("*.json")).unlink()  # su carpeta del dia sigue ahi
+    next(Path(informes).rglob("*.json")).unlink()  # its day folder is still there
 
     codigo = cli.main(["ultimo", "--config", str(ruta_config)])
 
@@ -309,13 +309,13 @@ def test_last_reports_when_the_file_is_gone_without_alarming(
 def test_last_distinguishes_when_the_whole_folder_disappears(
     escribir_config, informes, tmp_path, capsys
 ):
-    """La otra rama: no solo falta el fichero, falta su carpeta del dia."""
+    """The other branch: not only is the file missing, its day folder is missing."""
     raiz, ruta_config = escribir_config_con_proyecto(escribir_config, informes, tmp_path)
     ejecutar(payload(cwd=str(raiz)), ruta_config)
     escrito = next(Path(informes).rglob("*.json"))
     import shutil
 
-    shutil.rmtree(escrito.parent)  # se lleva la carpeta del dia entera
+    shutil.rmtree(escrito.parent)  # takes the whole day folder with it
 
     codigo = cli.main(["ultimo", "--config", str(ruta_config)])
     salida = capsys.readouterr().out

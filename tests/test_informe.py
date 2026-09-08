@@ -1,4 +1,4 @@
-"""El sobre, su ruta y su escritura en disco."""
+"""The envelope, its path and its writing to disk."""
 
 import json
 import os
@@ -26,7 +26,7 @@ def dia(informes, proyecto="repo", fecha="2026-08-28"):
     return Path(informes) / proyecto / fecha
 
 
-# --- estructura de carpetas ---
+# --- folder structure ---
 
 
 def test_the_path_is_root_then_project_then_day(tmp_path):
@@ -49,7 +49,7 @@ def test_an_existing_project_folder_is_reused(tmp_path):
 
 
 def test_no_case_variants_of_an_already_existing_folder_are_created(tmp_path):
-    """En Windows 'Repo' y 'repo' son la misma; se usa la que ya esta."""
+    """On Windows 'Repo' and 'repo' are the same; the one already there is used."""
     (tmp_path / "Repo").mkdir()
     destino = inf.escribir(tmp_path, "repo", sobre(cuando="2026-08-28T10:00:00Z"))
 
@@ -123,7 +123,7 @@ def test_two_reports_with_the_same_slug_do_not_overwrite_each_other(tmp_path):
 
 
 def test_an_already_reserved_name_is_not_overwritten(tmp_path):
-    """Simula el turno simultaneo: el ordinal libre ya no lo esta."""
+    """Simulates the simultaneous turn: the free ordinal is no longer free."""
     dia(tmp_path).mkdir(parents=True)
     ocupado = dia(tmp_path) / f"01-{SLUG}.json"
     ocupado.write_text("de otro turno", encoding="utf-8")
@@ -143,7 +143,7 @@ def test_unrelated_files_in_the_folder_do_not_get_in_the_way(tmp_path):
     assert destino.name.startswith("01-")
 
 
-# --- escritura ---
+# --- writing ---
 
 
 def test_no_temporary_file_is_left_behind(tmp_path):
@@ -158,7 +158,7 @@ def test_the_json_is_readable_and_indented(tmp_path):
     assert json.loads(texto)["respuesta_markdown"] == MARKDOWN
 
 
-# --- fecha y hora ---
+# --- date and time ---
 
 
 def test_a_utc_timestamp_is_converted_to_local_time():
@@ -188,15 +188,15 @@ def test_git_outside_a_repository_returns_none(tmp_path):
     assert inf.datos_git(str(tmp_path)) == (None, None)
 
 
-# --- la lanzadera, tal cual la ejecuta Claude Code ---
+# --- the launcher, exactly as Claude Code runs it ---
 
 
 def lanzar(entrada, ruta_config=None):
-    """La lanzadera en otro proceso.
+    """The launcher in another process.
 
-    `ruta_config` NO es opcional por comodidad: sin ella, la lanzadera lee la
-    config REAL y escribe en el archivo REAL. Un test que ejecute la
-    lanzadera y no la pase esta escribiendo en produccion.
+    `ruta_config` is NOT optional for convenience: without it, the launcher reads the
+    REAL config and writes to the REAL file. A test that runs the
+    launcher and does not pass it is writing to production.
     """
     entorno = dict(os.environ)
     if ruta_config is not None:
@@ -236,12 +236,12 @@ def test_the_launcher_exits_0_with_a_foreign_cwd(tmp_path):
 def test_the_launcher_archives_with_the_tools_own_cwd(
     tmp_path, escribir_config, informes
 ):
-    """Retirada la guardia, la herramienta se archiva como cualquier proyecto.
+    """With the guard removed, the tool is archived like any project.
 
-    Este test escribia en el archivo DE VERDAD: ejecutaba la lanzadera sin
-    pasarle config, con lo que leia la real. Pasaba porque miraba en
-    `claude-informes/informes/`, el destino viejo, que ya no existe. La
-    guardia lo tapaba; al retirarla, empezo a dejar informes de prueba en
+    This test used to write to the REAL file: it ran the launcher without
+    passing it config, so it read the real one. It passed because it looked in
+    `claude-informes/informes/`, the old destination, which no longer exists. The
+    guard covered it up; once removed, it began leaving test reports in
     `C:/informes-claude/claude-informes/`.
     """
     ruta_config = escribir_config(
@@ -270,11 +270,11 @@ def test_the_launcher_exits_0_with_empty_stdin():
     assert lanzar("").returncode == 0
 
 
-# --- el cerrojo: el .tmp reserva, el .json solo aparece al final ---
+# --- the lock: the .tmp reserves, the .json only appears at the end ---
 
 
 def test_the_json_does_not_exist_until_it_has_content(tmp_path, monkeypatch):
-    """Mientras se escribe hay `.tmp` y NO hay `.json`. Nunca uno a cero."""
+    """While writing there is `.tmp` and NO `.json`. Never a zero-byte one."""
     vistos = []
     real = inf.json.dumps
 
@@ -291,7 +291,7 @@ def test_the_json_does_not_exist_until_it_has_content(tmp_path, monkeypatch):
 
 
 def test_an_orphan_tmp_has_its_ordinal_taken(tmp_path):
-    """Si no se contaran los .tmp, el cerrojo no serviria de nada."""
+    """If the .tmp files were not counted, the lock would be useless."""
     dia(tmp_path).mkdir(parents=True)
     (dia(tmp_path) / "01-de-otro-turno.json.tmp").write_text("", encoding="utf-8")
 
@@ -301,7 +301,7 @@ def test_an_orphan_tmp_has_its_ordinal_taken(tmp_path):
 
 
 def test_eight_simultaneous_turns_do_not_repeat_an_ordinal(tmp_path):
-    """El O_EXCL sigue mandando ahora que el cerrojo es el .tmp."""
+    """O_EXCL still rules now that the lock is the .tmp."""
     errores = []
 
     def escribe():
@@ -323,13 +323,13 @@ def test_eight_simultaneous_turns_do_not_repeat_an_ordinal(tmp_path):
 
 
 def test_the_race_does_not_reuse_an_already_published_ordinal(tmp_path, monkeypatch):
-    """Perdida de datos real: `os.replace` libera el `.tmp` al renombrarlo, y un
-    hilo rezagado que habia elegido ese mismo ordinal lo reserva de nuevo y su
-    `os.replace` machaca el `.json` que otro turno ya habia escrito.
+    """Real data loss: `os.replace` frees the `.tmp` when renaming it, and a
+    lagging thread that had chosen that same ordinal reserves it again and its
+    `os.replace` clobbers the `.json` that another turn had already written.
 
-    Se ensancha a proposito la ventana entre elegir el ordinal y reservarlo para
-    que la carrera sea determinista: sin el fix, algun turno se pierde en cada
-    tanda; con el fix, los N informes conviven siempre.
+    The window between choosing the ordinal and reserving it is widened on purpose so
+    that the race is deterministic: without the fix, some turn is lost in each
+    batch; with the fix, the N reports always coexist.
     """
     import time
 
@@ -365,10 +365,10 @@ def test_the_race_does_not_reuse_an_already_published_ordinal(tmp_path, monkeypa
 
 
 def test_a_failure_creating_the_folder_is_a_write_failure(tmp_path):
-    """mkdir y la reserva del .tmp estaban fuera del try, asi que su fallo salia
-    crudo en vez de FalloDeEscritura y perdia la ruta del turno. Ahora todo el
-    cuerpo de escribir esta envuelto: crear la carpeta del dia sobre un fichero
-    (no una carpeta) da FalloDeEscritura, y su ruta identifica adonde iba.
+    """mkdir and the .tmp reservation were outside the try, so their failure came out
+    raw instead of FalloDeEscritura and lost the turn's path. Now the whole
+    body of escribir is wrapped: creating the day folder over a file
+    (not a folder) gives FalloDeEscritura, and its path identifies where it was going.
     """
     (tmp_path / "repo").write_text("soy un fichero, no una carpeta", encoding="utf-8")
 
@@ -379,7 +379,7 @@ def test_a_failure_creating_the_folder_is_a_write_failure(tmp_path):
 
 
 def test_if_the_write_fails_nothing_is_left_on_disk(tmp_path, monkeypatch):
-    """Los tres informes a cero de produccion eran exactamente esto."""
+    """The three zero-byte production reports were exactly this."""
 
     def revienta(*args, **kwargs):
         raise UnicodeEncodeError("utf-8", "x", 0, 1, "de mentira")

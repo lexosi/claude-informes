@@ -1,9 +1,9 @@
-"""De donde sale el proyecto: de la SESION, no de donde este la shell.
+"""Where the project comes from: from the SESSION, not from where the shell is.
 
-El `cwd` del payload sigue a los `cd` que se hagan durante el turno. Archivar
-por el falla en las dos direcciones: mete turnos de un proyecto no vigilado en
-la carpeta de uno vigilado, y pierde turnos de uno vigilado cuando la shell se
-ha ido. Un archivo del que no te puedes fiar no sirve de nada.
+The payload's `cwd` follows the `cd`s done during the turn. Archiving by it
+fails in both directions: it puts turns from an unwatched project into the
+folder of a watched one, and loses turns from a watched one when the shell has
+gone. An archive you can't trust is worthless.
 """
 
 import io
@@ -24,7 +24,7 @@ def hoy():
 
 
 def transcript_de(raiz_de_arranque):
-    """Donde Claude Code pone el transcript de una sesion abierta ahi."""
+    """Where Claude Code puts the transcript of a session opened there."""
     return str(
         Path("C:/proyectos") / tr.slug_de_cwd(str(raiz_de_arranque)) / "sesion.jsonl"
     )
@@ -49,13 +49,13 @@ def escritos(informes, proyecto, fecha=None):
     return sorted(p.name for p in dia.glob("*.json")) if dia.is_dir() else []
 
 
-# --- el mapeo del slug al proyecto ---
+# --- the mapping from slug to project ---
 
 
 def test_the_directory_slug_maps_to_the_name_declared_in_the_config(
     escribir_config, informes, tmp_path
 ):
-    """`e--proyectos-alfa` -> `alfa`, via el cwd declarado."""
+    """`e--proyectos-alfa` -> `alfa`, via the declared cwd."""
     configuracion = cfg.cargar(
         escribir_config(
             [{"nombre": "alfa", "cwd": "C:\\proyectos\\alfa"}],
@@ -71,7 +71,7 @@ def test_the_directory_slug_maps_to_the_name_declared_in_the_config(
 def test_the_mapping_does_not_depend_on_the_directory_name_but_on_the_cwd(
     escribir_config, informes, tmp_path
 ):
-    """El nombre de carpeta puede no parecerse al slug: manda el cwd."""
+    """The folder name may not resemble the slug: the cwd rules."""
     configuracion = cfg.cargar(
         escribir_config(
             [{"nombre": "informes-del-curro", "cwd": "C:\\proyectos\\beta"}],
@@ -87,8 +87,8 @@ def test_the_mapping_does_not_depend_on_the_directory_name_but_on_the_cwd(
 def test_a_sibling_slug_is_not_mistaken_for_a_subdirectory(
     escribir_config, informes
 ):
-    """`alfa-audit` es otro proyecto, no `alfa/audit`. Sin exactitud,
-    no hay mapeo: el slug es ambiguo y no se intenta deshacer."""
+    """`alfa-audit` is another project, not `alfa/audit`. Without an exact
+    match there is no mapping: the slug is ambiguous and no attempt is made to undo it."""
     configuracion = cfg.cargar(
         escribir_config(
             [{"nombre": "alfa", "cwd": "C:\\proyectos\\alfa"}],
@@ -112,13 +112,13 @@ def test_a_deactivated_project_is_not_mapped(escribir_config, informes):
     assert hk.proyecto_del_transcript(ruta, configuracion) is None
 
 
-# --- el fallo original, en sus dos direcciones ---
+# --- the original bug, in its two directions ---
 
 
 def test_two_turns_with_a_different_cwd_go_to_the_same_project(
     escribir_config, informes, tmp_path, log
 ):
-    """El caso real: entre turno y turno, la shell se movio."""
+    """The real case: between one turn and the next, the shell moved."""
     raiz = tmp_path / "alfa"
     raiz.mkdir()
     ruta_config = escribir_config(
@@ -138,7 +138,7 @@ def test_two_turns_with_a_different_cwd_go_to_the_same_project(
 def test_a_turn_from_an_unwatched_session_is_not_archived_even_when_the_cwd_is_watched(
     escribir_config, informes, tmp_path, log
 ):
-    """La direccion peligrosa: la shell dentro de alfa, la sesion no."""
+    """The dangerous direction: the shell inside alfa, the session not."""
     vigilado = tmp_path / "alfa"
     vigilado.mkdir()
     ruta_config = escribir_config(
@@ -157,7 +157,7 @@ def test_a_turn_from_an_unwatched_session_is_not_archived_even_when_the_cwd_is_w
 def test_a_turn_from_a_watched_session_is_not_lost_because_of_a_cd(
     escribir_config, informes, tmp_path
 ):
-    """La otra direccion: la sesion en alfa, la shell fuera."""
+    """The other direction: the session in alfa, the shell outside."""
     vigilado = tmp_path / "alfa"
     vigilado.mkdir()
     ruta_config = escribir_config(
@@ -170,7 +170,7 @@ def test_a_turn_from_a_watched_session_is_not_lost_because_of_a_cd(
     assert len(escritos(informes, "alfa")) == 1
 
 
-# --- camino degradado: cae al cwd, pero se ve ---
+# --- degraded path: falls back to the cwd, but it shows ---
 
 
 def test_without_a_transcript_path_it_falls_back_to_the_cwd_and_is_logged(
@@ -195,10 +195,10 @@ def test_without_a_transcript_path_it_falls_back_to_the_cwd_and_is_logged(
 def test_a_slug_that_does_not_map_does_not_archive_and_is_logged(
     escribir_config, informes, tmp_path, log
 ):
-    """Con transcript, manda el transcript: no se cae al cwd.
+    """With a transcript, the transcript rules: it does not fall back to the cwd.
 
-    Caer al cwd aqui reabriria el agujero, porque una shell dentro de un
-    proyecto vigilado volveria a archivar turnos de otra sesion.
+    Falling back to the cwd here would reopen the hole, because a shell inside
+    a watched project would again archive turns from another session.
     """
     raiz = tmp_path / "alfa"
     raiz.mkdir()
@@ -217,7 +217,7 @@ def test_a_slug_that_does_not_map_does_not_archive_and_is_logged(
 def test_the_warning_only_appears_when_the_degraded_path_actually_archives(
     escribir_config, informes, tmp_path, log
 ):
-    """Si el cwd tampoco vale, no hay nada que avisar: una sola linea."""
+    """If the cwd is no good either, there is nothing to warn about: a single line."""
     ruta_config = escribir_config(
         [{"nombre": "alfa", "cwd": str(tmp_path / "alfa")}],
         raiz_informes=informes,
@@ -242,13 +242,13 @@ def test_an_unreadable_transcript_path_does_not_blow_up(escribir_config, informe
         assert ejecutar(datos, ruta_config) == 0
 
 
-# --- lo que no cambia ---
+# --- what does not change ---
 
 
 def test_a_turn_from_the_tool_itself_is_archived_like_any_other(
     escribir_config, informes
 ):
-    """La herramienta dejo de ser un caso aparte cuando el archivo se mudo."""
+    """The tool stopped being a special case when the archiving moved."""
     propia = cfg.raiz_de_la_herramienta()
     ruta_config = escribir_config(
         [{"nombre": "claude-informes", "cwd": str(propia)}], raiz_informes=informes

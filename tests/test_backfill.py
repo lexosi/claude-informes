@@ -1,4 +1,4 @@
-"""Backfill: reconstruir informes de turnos pasados desde un transcript."""
+"""Backfill: reconstruct reports for past turns from a transcript."""
 
 import json
 from pathlib import Path
@@ -22,7 +22,7 @@ SLUG_C = "03-tercer-turno-cerrado.json"
 
 
 def fecha_local(marca):
-    """La fecha que la herramienta asignara a esa marca de tiempo."""
+    """The date the tool will assign to that timestamp."""
     return inf.construir("x", session_id=None, cwd=None, cuando=marca)["fecha"]
 
 
@@ -46,7 +46,7 @@ def turno(texto, *, marca="2026-08-28T10:00:00Z", uuid="u1", cwd="C:\\repo", ses
 
 
 def ruido():
-    """Registros que el backfill debe ignorar."""
+    """Records that the backfill must ignore."""
     return [
         {"type": "user", "message": {"content": "hola"}},
         {"type": "attachment", "payload": {}},
@@ -105,7 +105,7 @@ def nombres(raiz, proyecto="repo", fecha=None):
     return sorted(p.name for p in dia.glob("*.json")) if dia.is_dir() else []
 
 
-# --- lectura del transcript ---
+# --- reading the transcript ---
 
 
 def test_only_closed_turns_with_text_are_collected(transcripcion):
@@ -117,10 +117,10 @@ def test_broken_lines_do_not_bring_down_the_reading(transcripcion):
 
 
 def test_a_non_string_text_block_does_not_bring_down_the_reading(tmp_path):
-    """Un `text` que no es cadena (numero, null, lista) daba TypeError en
-    _texto_de y tumbaba la lectura entera --y con ella el backfill de la CLI, con
-    traceback crudo--. Ahora ese bloque se salta como uno que no aporta texto:
-    un turno con solo bloques asi se omite, y uno mixto conserva su parte string.
+    """A `text` that is not a string (number, null, list) gave TypeError in
+    _texto_de and brought down the entire reading --and with it the CLI backfill, with
+    a raw traceback--. Now that block is skipped as one that contributes no text:
+    a turn with only blocks like that is omitted, and a mixed one keeps its string part.
     """
     malo = {
         "type": "assistant", "uuid": "malo", "timestamp": "2026-08-28T09:30:00Z",
@@ -150,9 +150,9 @@ def test_a_non_string_text_block_does_not_bring_down_the_reading(tmp_path):
 
 
 def test_the_backfill_does_not_blow_up_with_a_malformed_turn(tmp_path):
-    """El backfill leia el transcript con tr.turnos, asi que el mismo TypeError
-    lo mataba con traceback y exit 1. Ahora reconstruye los turnos buenos y salta
-    el malo sin lanzar."""
+    """The backfill read the transcript with tr.turnos, so the same TypeError
+    killed it with a traceback and exit 1. Now it reconstructs the good turns and skips
+    the bad one without raising."""
     malo = {
         "type": "assistant", "uuid": "malo", "timestamp": "2026-08-28T09:30:00Z",
         "sessionId": "s", "cwd": "C:\\repo", "gitBranch": "main",
@@ -178,7 +178,7 @@ def test_the_last_turn_is_the_last_one_in_the_file(transcripcion):
     assert tr.ultimo_turno(transcripcion)["uuid"] == "d"
 
 
-# --- reconstruccion ---
+# --- reconstruction ---
 
 
 def test_one_file_is_written_per_turn(transcripcion, tmp_path):
@@ -279,7 +279,7 @@ def test_two_different_projects_do_not_get_mixed_together(transcripcion, tmp_pat
 
 
 def test_a_second_pass_is_idempotent(transcripcion, tmp_path):
-    """Reejecutar el mismo backfill no duplica: cada turno ya archivado se salta."""
+    """Re-running the same backfill does not duplicate: each already-archived turn is skipped."""
     raiz = tmp_path / "archivo"
     bf.reconstruir(transcripcion, raiz, "repo")
     segunda = bf.reconstruir(transcripcion, raiz, "repo")
@@ -291,10 +291,10 @@ def test_a_second_pass_is_idempotent(transcripcion, tmp_path):
 
 
 def test_fills_a_gap_without_duplicating_what_is_already_there(transcripcion, tmp_path):
-    """Si falta un informe, se reescribe; los presentes no se duplican."""
+    """If a report is missing, it is rewritten; the present ones are not duplicated."""
     raiz = tmp_path / "archivo"
     bf.reconstruir(transcripcion, raiz, "repo")
-    (raiz / "repo" / HOY / SLUG_B).unlink()  # se pierde el segundo turno
+    (raiz / "repo" / HOY / SLUG_B).unlink()  # the second turn is lost
 
     bf.reconstruir(transcripcion, raiz, "repo")
 
@@ -305,7 +305,7 @@ def test_fills_a_gap_without_duplicating_what_is_already_there(transcripcion, tm
 
 
 def test_the_backfill_records_in_the_log_and_ultimo_finds_it(transcripcion, tmp_path):
-    """Sin linea de log, `ultimo` es ciego a lo backfilleado. Con ella, lo ve."""
+    """Without a log line, `ultimo` is blind to what was backfilled. With it, it sees it."""
     raiz = tmp_path / "archivo"
     log = tmp_path / "hook.log"
     bf.reconstruir(transcripcion, raiz, "repo", ruta_log=log)
@@ -338,10 +338,10 @@ def test_the_simulation_writes_nothing(transcripcion, tmp_path):
 
 
 def test_the_simulation_predicts_the_real_ordinals(transcripcion, tmp_path):
-    """Un dry-run que numera todo 01 miente sobre el resultado y no sirve.
+    """A dry-run that numbers everything 01 lies about the result and is useless.
 
-    Tres turnos del mismo dia deben salir 01, 02, 03 en la simulacion, igual que
-    saldrian en la pasada real (SLUG_A/B/C ya llevan ese ordinal).
+    Three turns of the same day must come out 01, 02, 03 in the simulation, just as
+    they would come out in the real pass (SLUG_A/B/C already carry that ordinal).
     """
     raiz = tmp_path / "archivo"
     simulados = [
@@ -354,12 +354,12 @@ def test_the_simulation_predicts_the_real_ordinals(transcripcion, tmp_path):
 
 
 def test_the_simulation_continues_the_ordinal_of_what_is_already_there(transcripcion, tmp_path):
-    """Si el dia ya tiene otros ficheros, la simulacion sigue por donde toca.
+    """If the day already has other files, the simulation continues where it should.
 
-    Se siembra el dia con tres informes AJENOS (otro contenido): la simulacion
-    de los tres turnos del transcript, que no coinciden con ninguno, continua en
-    04, 05, 06. (Reejecutar el MISMO transcript daria 'ya archivado', no ordinal
-    nuevo: eso lo cubre test_una_segunda_pasada_es_idempotente.)
+    The day is seeded with three FOREIGN reports (other content): the simulation
+    of the three transcript turns, which match none of them, continues at
+    04, 05, 06. (Re-running the SAME transcript would give 'ya archivado', not a new
+    ordinal: that is covered by test_a_second_pass_is_idempotent.)
     """
     raiz = tmp_path / "archivo"
     dia = raiz / "repo" / HOY
@@ -382,7 +382,7 @@ def test_the_backfill_threshold_is_configurable(transcripcion, tmp_path):
     assert len(nombres(raiz)) == 4
 
 
-# --- localizacion del transcript ---
+# --- locating the transcript ---
 
 
 def test_the_transcript_is_located_by_session_id(tmp_path):
@@ -410,7 +410,7 @@ def test_when_there_is_no_transcript_none_is_returned(tmp_path):
     assert tr.localizar(cwd="C:\\ninguno", raiz=tmp_path) is None
 
 
-# --- la orden de consola ---
+# --- the console command ---
 
 
 def test_the_command_writes_to_the_indicated_root(transcripcion, tmp_path, capsys):
