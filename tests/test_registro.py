@@ -207,7 +207,7 @@ def test_each_turn_leaves_exactly_one_line(proyecto_vigilado, log):
 
 
 def test_if_writing_the_report_fails_it_exits_0_and_stays_logged(
-    proyecto_vigilado, informes, log, monkeypatch
+    proyecto_vigilado, informes, log, monkeypatch, capsys
 ):
     """The failure is invisible on the console, but not in the log."""
     raiz, ruta_config = proyecto_vigilado
@@ -219,6 +219,10 @@ def test_if_writing_the_report_fails_it_exits_0_and_stays_logged(
 
     assert ejecutar(payload(cwd=str(raiz)), ruta_config) == 0
     assert not Path(informes).exists()
+
+    # invisible on the console: not a byte to stdout or stderr
+    capturado = capsys.readouterr()
+    assert capturado.out == "" and capturado.err == ""
 
     (anotacion,) = reg.leer(log)
     assert anotacion.resultado == reg.ERROR
