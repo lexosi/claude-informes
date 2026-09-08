@@ -1,27 +1,27 @@
-# Entorno y caches
+# Environment and caches
 .venv/
 __pycache__/
 *.pyc
 .pytest_cache/
 *.egg-info/
 
-# Temporales de escritura atomica (nunca deberian sobrevivir a un turno)
+# Atomic-write temporaries (they should never survive a turn)
 *.json.tmp
 
-# La configuracion REAL no se versiona: vive fuera del repo, en la config de
-# usuario del SO (ver README, "Por que la config vive fuera del repo"). El repo
-# solo lleva config/proyectos.ejemplo.json. Esta linea es un cinturon extra por
-# si alguien crea el fichero dentro del repo a mano.
+# The REAL configuration is not versioned: it lives outside the repo, in the OS
+# per-user config (see README, "Why the config lives outside the repo"). The repo
+# only carries config/proyectos.ejemplo.json. This line is an extra belt in case
+# someone creates the file inside the repo by hand.
 config/proyectos.json
 
-# El archivo de informes NO se versiona y no vive aqui: va a una raiz fuera de
-# todo repositorio git. Esta linea es el segundo cinturon, por si algun dia
-# raiz_informes vuelve a apuntar dentro: los informes llevan texto integro de
-# sesiones de trabajo.
+# The report archive is NOT versioned and does not live here: it goes to a root
+# outside any git repository. This line is the second belt, in case one day
+# raiz_informes points inside again: the reports carry the full text of work
+# sessions.
 informes/
 
-# El log del hook es un artefacto de runtime, igual que la config: se genera al
-# ejecutar, cambia en cada maquina, y no pinta nada en un repo publico. Su sitio
-# real es el hermano del archivo (fuera de git); esta linea cubre el caso en que
-# se genere aqui por caer a la config por defecto.
+# The hook's log is a runtime artifact, like the config: it is generated on run,
+# changes on every machine, and has no business in a public repo. Its real place
+# is the sibling of the archive (outside git); this line covers the case where it
+# is generated here by falling back to the default config.
 informes.log

@@ -1,7 +1,7 @@
 [project]
 name = "claude-informes"
 version = "1.0.0"
-description = "Un JSON por turno de Claude Code, escrito por un hook Stop"
+description = "One JSON per Claude Code turn, written by a Stop hook"
 requires-python = ">=3.10"
 dependencies = []
 

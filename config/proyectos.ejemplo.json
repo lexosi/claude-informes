@@ -1,7 +1,7 @@
 {
-  "_comentario": "EJEMPLO. No es la config real. Copialo a tu config de usuario con 'python -m claude_informes init' y sustituye estas rutas ficticias por las tuyas. Este fichero, versionado en el repo, NO debe contener ninguna ruta real de nadie.",
-  "_donde_va_la_config_real": "Windows: %APPDATA%/claude-informes/proyectos.json | macOS: ~/Library/Application Support/claude-informes/proyectos.json | Linux: $XDG_CONFIG_HOME/claude-informes/proyectos.json (o ~/.config/claude-informes/proyectos.json)",
-  "_raiz_informes": "Raiz global del archivo. DEBE vivir FUERA de cualquier repositorio git: los informes llevan texto integro de sesiones y no deben acabar versionados ni en un remoto. Cada proyecto puede declarar la suya y anular esta.",
+  "_comment": "EXAMPLE. This is not the real config. Copy it to your user config with 'python -m claude_informes init' and replace these fictitious paths with your own. This file, versioned in the repo, MUST NOT contain any real path of anyone.",
+  "_where_the_real_config_lives": "Windows: %APPDATA%/claude-informes/proyectos.json | macOS: ~/Library/Application Support/claude-informes/proyectos.json | Linux: $XDG_CONFIG_HOME/claude-informes/proyectos.json (or ~/.config/claude-informes/proyectos.json)",
+  "_raiz_informes": "Global root of the archive. It MUST live OUTSIDE any git repository: the reports carry the full text of sessions and must not end up versioned or on a remote. Each project can declare its own and override this one.",
   "raiz_informes": "/ruta/absoluta/fuera/de/todo/repo/informes-claude",
   "proyectos": [
     {
@@ -11,7 +11,7 @@
       "umbral_lineas": 5
     },
     {
-      "_nota": "un proyecto sensible puede archivarse en una raiz aparte",
+      "_note": "a sensitive project can be archived under a separate root",
       "nombre": "proyecto-privado",
       "cwd": "/ruta/absoluta/a/proyecto-privado",
       "activo": false,
