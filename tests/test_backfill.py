@@ -403,6 +403,7 @@ def test_the_backfilled_envelope_carries_the_source_uuid_and_the_project(transcr
         "instante",
         "fecha",
         "hora",
+        "ordinal",
         "proyecto",
         "session_id",
         "cwd",
@@ -415,6 +416,7 @@ def test_the_backfilled_envelope_carries_the_source_uuid_and_the_project(transcr
         "casillas",
     ]
     assert sobre["proyecto"] == "repo"
+    assert sobre["ordinal"] == 1  # first turn of the day, matches the filename NN
     assert sobre["turno_uuid"]  # present, from the transcript turn
 
 

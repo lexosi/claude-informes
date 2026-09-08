@@ -250,6 +250,26 @@ class FalloDeEscritura(Exception):
         self.causa = causa
 
 
+def _con_ordinal(sobre: dict, destino: Path) -> dict:
+    """Return the envelope with `ordinal` (the turn's position in the day) added.
+
+    `ordinal` is the NN of the final filename, inserted right after `hora`. It is
+    computed HERE, not in `construir`, because the ordinal is only known once the
+    `.tmp` is reserved --computing it earlier, before the atomic reservation,
+    would be a race. So an isolated JSON can still say which turn of the day it is.
+    """
+    m = _PATRON_ORDINAL.match(destino.name)
+    if m is None:
+        return sobre
+    ordinal = int(m.group(1))
+    nuevo: dict = {}
+    for clave, valor in sobre.items():
+        nuevo[clave] = valor
+        if clave == "hora":
+            nuevo["ordinal"] = ordinal
+    return nuevo
+
+
 def _barrer_tmp_huerfanos(directorio: Path) -> list[str]:
     """Remove `.json.tmp` files old enough that no live writer could hold them.
 
@@ -314,6 +334,7 @@ def escribir(
             pass
         temporal = _reservar(directorio, md.nombre_desde_markdown(sobre["respuesta_markdown"]))
         destino = temporal.with_name(temporal.name[: -len(".tmp")])
+        sobre = _con_ordinal(sobre, destino)
         texto = json.dumps(sobre, ensure_ascii=False, indent=2) + "\n"
         # newline="\n": on Windows, write_text would convert the line breaks to
         # CRLF and the file would end up with two different formats depending on

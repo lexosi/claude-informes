@@ -100,6 +100,7 @@ def test_the_envelope_carries_exactly_the_agreed_schema(proyecto_vigilado, infor
         "instante",
         "fecha",
         "hora",
+        "ordinal",
         "proyecto",
         "session_id",
         "cwd",
@@ -111,6 +112,7 @@ def test_the_envelope_carries_exactly_the_agreed_schema(proyecto_vigilado, infor
         "casillas",
     ]
     assert sobre["version_esquema"] == 1
+    assert sobre["ordinal"] == 1  # first (and only) turn of the day
     assert sobre["proyecto"] == "vigilado"
     assert datetime.fromisoformat(sobre["instante"]).tzinfo is not None  # carries the offset
     assert "turno_uuid" not in sobre  # the hook path carries no source uuid

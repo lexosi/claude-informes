@@ -460,3 +460,22 @@ def test_the_sweep_leaves_its_own_line_in_the_log(tmp_path):
     assert barridos, "the sweep must leave a line in the log"
     assert "05-viejo.json.tmp" in barridos[0].detalle
     assert barridos[0].proyecto == "repo"
+
+
+# --- position in the day (C-1) ---
+
+
+def test_the_envelope_carries_its_position_in_the_day(tmp_path):
+    """An isolated JSON must know its own position in the day: `ordinal` inside
+    the file equals the NN in its name.
+    """
+    primero = inf.escribir(tmp_path, "repo", sobre(cuando="2026-08-28T10:00:00"))
+    segundo = inf.escribir(
+        tmp_path, "repo", sobre(markdown="# Otro turno\n\na\nb\nc\nd", cuando="2026-08-28T10:05:00")
+    )
+
+    s1 = json.loads(primero.read_text("utf-8"))
+    s2 = json.loads(segundo.read_text("utf-8"))
+    assert s1["ordinal"] == 1
+    assert s2["ordinal"] == 2
+    assert s2["ordinal"] == int(segundo.name[:2])  # matches the NN in the filename

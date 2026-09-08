@@ -111,6 +111,7 @@ markdown; there is no semantic structure at all.
   "instante": "2026-08-28T13:35:17+02:00",
   "fecha": "2026-08-28",
   "hora": "13:35:17",
+  "ordinal": 8,
   "proyecto": "alfa",
   "session_id": "a6e5a399-f600-4b6a-a258-e7f1bcae90f8",
   "cwd": "/ruta/a/proyectos/alfa",
@@ -137,8 +138,9 @@ markdown, for the convenience of whoever consumes it. The original rules.
 > So **within v1 the set of fields can grow over time**, and a consumer must
 > treat every field as **optional**: read it if present, never assume a fixed
 > set. The fields added after v1 first shipped — `version_herramienta`,
-> `instante`, `proyecto` — are simply absent from older v1 reports (and from the
-> pre-version ones). `turno_uuid` is present **only** when the source is a
+> `instante`, `proyecto`, `ordinal` — are simply absent from older v1 reports
+> (and from the pre-version ones). `ordinal` is the turn's position in the day
+> (the `NN` of the filename, inside the file too, so an isolated report knows it). `turno_uuid` is present **only** when the source is a
 > transcript turn (the backfill); the Stop hook's payload does not carry one, so
 > it is **omitted, not null** — absent means "this path does not provide it",
 > which is different from a null "known to have none". `instante` is the same
