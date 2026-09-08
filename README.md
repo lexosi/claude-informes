@@ -1,5 +1,7 @@
 # claude-informes
 
+[![tests](https://github.com/lexosi/claude-informes/actions/workflows/tests.yml/badge.svg)](https://github.com/lexosi/claude-informes/actions/workflows/tests.yml)
+
 > ⛔ **DO NOT PUBLISH yet.** The git history contains the author's real data;
 > the tip is clean but the past is not. Before making this repo public, read and
 > resolve [NO-PUBLICAR.md](NO-PUBLICAR.md).

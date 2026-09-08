@@ -125,9 +125,23 @@ def _canon(texto: str) -> str:
     return re.sub(r"[\\/\-_\s\"'+]+", "", t)
 
 
-def _contiene(texto: str, reales_canon: list[str]) -> bool:
-    """True if the text contains any of the (already canonicalized) identifiers."""
+def _contiene(
+    texto: str, reales_canon: list[str], permitidas_canon: tuple[str, ...] = ()
+) -> bool:
+    """True if the text contains a forbidden identifier, public addresses aside.
+
+    The public addresses (the repo's own GitHub URL, say) are removed from the
+    canonical text FIRST, so an identifier that appears only inside one of them
+    does not count: the owner in ``https://github.com/<user>/...`` is the repo's
+    public address --visible in anyone's browser bar-- not private data. This is
+    a rule about the TEXT, not an exemption for a file: the same ``<user>`` in
+    ``C:\\Users\\<user>`` is not a public address, survives the stripping, and is
+    still caught. Stripping in canonical space covers every form of the address
+    at once (with or without ``https``, slashes, case).
+    """
     canonico = _canon(texto)
+    for permitida in permitidas_canon:
+        canonico = canonico.replace(permitida, "")
     return any(real in canonico for real in reales_canon)
 
 
@@ -139,26 +153,43 @@ _COMO_CREAR = (
     "Without it this guard cannot assert that the repo does not leak real data,\n"
     "and a push would publish exactly what it should catch.\n\n"
     "Create the file (outside git, next to your proyectos.json) like this:\n"
-    '    {"identificadores": ["your-user", "your-project", "e:\\\\your\\\\root"]}'
+    '    {"identificadores": ["your-user", "your-project", "e:\\\\your\\\\root"],\n'
+    '     "publicas": ["github.com/your-user"]}\n\n'
+    "`publicas` (optional) lists PUBLIC ADDRESSES that must not count as a leak\n"
+    "even though they contain an identifier: the repo's own GitHub URL is its\n"
+    "public address, visible in anyone's browser bar and unchanged whether the\n"
+    "repo is private or public, not private data. Each is stripped from the text\n"
+    "before scanning, so the SAME identifier inside a private form --a home path\n"
+    "like C:\\\\Users\\\\your-user-- is still caught."
 )
 
 
-def _cargar_reales_canon(exigir_fichero_de_datos) -> list[str]:
-    """The real identifiers, canonicalized. The file's existence is resolved by
-    the shared helper `exigir_fichero_de_datos` (it fails with instructions if it
-    is missing); here only the content is validated and canonicalized.
+def _cargar_listas(exigir_fichero_de_datos) -> tuple[list[str], tuple[str, ...]]:
+    """The forbidden identifiers and the allowed public addresses, canonicalized.
+
+    The file's existence is resolved by the shared helper
+    `exigir_fichero_de_datos` (it fails with instructions if it is missing); here
+    only the content is validated and canonicalized. `identificadores` is
+    required; `publicas` is optional --its absence means no public address is
+    declared, which is the previous behaviour.
     """
     ruta = _ruta_lista()
     crudo = exigir_fichero_de_datos(ruta, como_crearlo=_COMO_CREAR)
     try:
-        ids = json.loads(crudo)["identificadores"]
+        datos = json.loads(crudo)
+        ids = datos["identificadores"]
     except Exception as error:  # noqa: BLE001
         pytest.fail(f"unreadable identifier list ({ruta}): {error}")
     if not isinstance(ids, list) or not ids or not all(
         isinstance(x, str) and x.strip() for x in ids
     ):
         pytest.fail(f"the list must be a non-empty list of strings: {ruta}")
-    return [_canon(x) for x in ids]
+    publicas = datos.get("publicas", [])
+    if not isinstance(publicas, list) or not all(
+        isinstance(x, str) and x.strip() for x in publicas
+    ):
+        pytest.fail(f"'publicas' must be a list of non-empty strings: {ruta}")
+    return [_canon(x) for x in ids], tuple(_canon(x) for x in publicas)
 
 
 def _ficheros_a_escanear():
@@ -212,6 +243,50 @@ def test_mechanism_a_fictitious_path_is_not_flagged():
         assert not _contiene(texto, reales), f"false positive on: {texto!r}"
 
 
+def test_mechanism_the_public_repo_url_is_not_flagged():
+    """A repo's own GitHub URL is its public address, not private data.
+
+    Declared in `publicas`, it does not count as a leak --with or without the
+    https scheme, because both name the same public address (the owner + repo,
+    unchanged whether the repo is private or public). This is a rule about the
+    TEXT --the address is stripped before scanning-- not a per-file exemption.
+    """
+    reales = [_canon("usuariofalso")]
+    permitidas = (_canon("github.com/usuariofalso"),)
+    con_https = (
+        "[![tests](https://github.com/usuariofalso/proj/actions/workflows/"
+        "tests.yml/badge.svg)](https://github.com/usuariofalso/proj/actions)"
+    )
+    sin_https = "clone it from github.com/usuariofalso/proj"
+    assert not _contiene(con_https, reales, permitidas), "the public https URL must be allowed"
+    assert not _contiene(sin_https, reales, permitidas), (
+        "the same address without https is the same public address"
+    )
+
+
+def test_mechanism_the_home_path_is_still_flagged_even_with_a_public_url():
+    """Allowing the public URL must not blind the guard to the home path.
+
+    The identifier that is public inside ``github.com/<user>`` is private inside
+    ``C:\\Users\\<user>``: the home path must still fire in all its forms, and the
+    bare identifier outside any public address too. Otherwise removing it from
+    the forbidden list to let the badge through --the tempting shortcut-- would
+    reopen the very hole this file exists to close.
+    """
+    reales = [_canon("usuariofalso")]
+    permitidas = (_canon("github.com/usuariofalso"),)
+    formas = [
+        "C:\\Users\\usuariofalso\\algo",
+        "C:/Users/usuariofalso/algo",
+        "file:///C:/Users/usuariofalso",
+        "C:%5CUsers%5Cusuariofalso",
+        "C:\\USERS\\USUARIOFALSO",
+        "el usuario se llama usuariofalso",
+    ]
+    for texto in formas:
+        assert _contiene(texto, reales, permitidas), f"leak not caught in form: {texto!r}"
+
+
 # --- the example ---
 
 
@@ -224,9 +299,9 @@ def test_mechanism_the_example_is_valid_json_with_the_right_shape():
 
 @pytest.mark.real_data
 def test_real_data_the_example_carries_no_identifier(exigir_fichero_de_datos):
-    reales = _cargar_reales_canon(exigir_fichero_de_datos)
+    reales, permitidas = _cargar_listas(exigir_fichero_de_datos)
     texto = cfg.ruta_de_ejemplo().read_text(encoding="utf-8")
-    assert not _contiene(texto, reales), "the example contains a real identifier"
+    assert not _contiene(texto, reales, permitidas), "the example contains a real identifier"
 
 
 # --- the whole repo, this file included ---
@@ -241,7 +316,7 @@ def test_real_data_the_repo_contains_no_identifier(exigir_fichero_de_datos):
     it is not read half-way in silence. It used to be read with errors='ignore',
     which is a pass disguised as a read.
     """
-    reales = _cargar_reales_canon(exigir_fichero_de_datos)
+    reales, permitidas = _cargar_listas(exigir_fichero_de_datos)
     ofensores = []
     ilegibles = []
     for ruta in _ficheros_a_escanear():
@@ -252,7 +327,7 @@ def test_real_data_the_repo_contains_no_identifier(exigir_fichero_de_datos):
             continue
         except OSError:
             continue
-        if _contiene(texto, reales):
+        if _contiene(texto, reales, permitidas):
             # The file is reported, not the identifier: the message must not
             # reprint the real datum we are trying to keep out.
             ofensores.append(os.path.relpath(ruta, RAIZ))
