@@ -158,16 +158,35 @@ def _reservar(directorio: Path, slug: str) -> Path:
     pueden quedarse con el MISMO NOMBRE, porque gana quien logre el O_EXCL y
     el otro prueba con el siguiente ordinal. Para que siga siendo cierta,
     `siguiente_ordinal` cuenta tambien los `.tmp`.
+
+    El O_EXCL del `.tmp` NO basta por si solo: `os.replace` lo renombra al
+    `.json` final y libera su nombre, asi que un turno rezagado que eligio ese
+    mismo ordinal antes de la liberacion volveria a lograr el O_EXCL y su
+    `os.replace` machacaria el `.json` ya escrito --perdida de datos silenciosa,
+    sin excepcion--. La liberacion del `.tmp` y la aparicion del `.json` final
+    son el MISMO `os.replace` atomico: por eso, tras lograr el `.tmp`, si el
+    `.json` de este ordinal ya existe, el ordinal esta tomado; se suelta el
+    `.tmp` y se sube. Mientras tengamos el `.tmp` (O_EXCL) nadie mas puede
+    crear ese `.json`, asi que la comprobacion no tiene ventana de carrera.
     """
     ordinal = siguiente_ordinal(directorio)
     for _ in range(1000):
         temporal = directorio / f"{ordinal:02d}-{slug}.json.tmp"
         try:
             descriptor = os.open(temporal, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
-        except FileExistsError:
+        except (FileExistsError, PermissionError):
+            # FileExistsError: otro turno tiene ese `.tmp`. PermissionError: en
+            # Windows, un `.tmp` recien soltado queda en "pending delete" y su
+            # nombre da EACCES, no FileExistsError; en ambos casos el ordinal
+            # esta tomado y se prueba el siguiente. Un directorio de verdad sin
+            # permiso agota los 1000 intentos y termina en el OSError de abajo.
             ordinal += 1
             continue
         os.close(descriptor)
+        if (directorio / f"{ordinal:02d}-{slug}.json").exists():
+            os.unlink(temporal)
+            ordinal += 1
+            continue
         return temporal
     raise OSError(f"no hay ordinal libre en {directorio}")
 

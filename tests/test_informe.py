@@ -322,6 +322,48 @@ def test_ocho_turnos_a_la_vez_no_repiten_ordinal(tmp_path):
     assert sorted(n[:2] for n in nombres) == [f"{i:02d}" for i in range(1, 9)]
 
 
+def test_la_carrera_no_reusa_un_ordinal_ya_publicado(tmp_path, monkeypatch):
+    """Perdida de datos real: `os.replace` libera el `.tmp` al renombrarlo, y un
+    hilo rezagado que habia elegido ese mismo ordinal lo reserva de nuevo y su
+    `os.replace` machaca el `.json` que otro turno ya habia escrito.
+
+    Se ensancha a proposito la ventana entre elegir el ordinal y reservarlo para
+    que la carrera sea determinista: sin el fix, algun turno se pierde en cada
+    tanda; con el fix, los N informes conviven siempre.
+    """
+    import time
+
+    real = inf.siguiente_ordinal
+
+    def con_ventana(directorio):
+        ordinal = real(directorio)
+        time.sleep(0.02)
+        return ordinal
+
+    monkeypatch.setattr(inf, "siguiente_ordinal", con_ventana)
+
+    N = 8
+    for ronda in range(15):
+        raiz = tmp_path / f"ronda-{ronda}"
+        errores = []
+
+        def escribe():
+            try:
+                inf.escribir(raiz, "repo", sobre(cuando="2026-08-28T10:00:00Z"))
+            except Exception as error:  # noqa: BLE001
+                errores.append(error)
+
+        hilos = [threading.Thread(target=escribe) for _ in range(N)]
+        for hilo in hilos:
+            hilo.start()
+        for hilo in hilos:
+            hilo.join()
+
+        assert errores == []
+        nombres = sorted(p.name for p in dia(raiz).iterdir())
+        assert len(nombres) == N, f"ronda {ronda}: {len(nombres)} de {N} informes; uno machacado"
+
+
 def test_si_la_escritura_falla_no_queda_nada_en_disco(tmp_path, monkeypatch):
     """Los tres informes a cero de produccion eran exactamente esto."""
 
