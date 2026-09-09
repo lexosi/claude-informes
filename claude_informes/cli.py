@@ -1,12 +1,13 @@
-"""Command-line entry point: `hook`, `nuevo`, `ultimo`, `pendientes` and `backfill`."""
+"""Command-line entry point: `hook`, `ultimo`, `pendientes` and `backfill`."""
 
 from __future__ import annotations
 
 import argparse
+import fnmatch
+import json
 import sys
 from pathlib import Path
 
-from . import registration
 from . import backfill as bf
 from . import config as cfg
 from . import streams
@@ -45,17 +46,8 @@ def _construir_parser() -> argparse.ArgumentParser:
     p_ult.add_argument("--proyecto", default=None, help="by default, any")
     p_ult.add_argument("--config", default=None)
 
-    p_new = subs.add_parser("nuevo", help="create the project folder and register it")
-    p_new.add_argument("nombre")
-    p_new.add_argument(
-        "--en", default=None, help="where to create the folder; by default, next to this tool"
-    )
-    p_new.add_argument("--umbral", type=int, default=cfg.UMBRAL_POR_DEFECTO)
-    p_new.add_argument("--raiz-informes", default=None, help="archive this project separately")
-    p_new.add_argument("--config", default=None)
-
     p_pen = subs.add_parser(
-        "pendientes", help="turns not archived because the project is unregistered"
+        "pendientes", help="sessions the hook saw but did not archive, and what to do"
     )
     p_pen.add_argument("--config", default=None)
 
@@ -248,65 +240,63 @@ def _ejecutar_ultimo(args) -> int:
     return 0
 
 
-def _ejecutar_nuevo(args) -> int:
-    """The three startup steps in one, and in the correct order."""
-    ruta_config = Path(args.config) if args.config else (
-        cfg.ruta_de_config() or cfg.ruta_config_usuario()
-    )
-    donde = Path(args.en) if args.en else cfg.raiz_de_la_herramienta().parent
-    try:
-        carpeta, destino = registration.registrar(
-            args.nombre,
-            donde,
-            ruta_config,
-            umbral_lineas=args.umbral,
-            raiz_informes=args.raiz_informes,
-        )
-    except registration.YaExiste as choque:
-        print(f"Not registered: {choque}", file=sys.stderr)
-        return 3
-    except Exception as error:  # noqa: BLE001
-        print(f"Could not register: {error}", file=sys.stderr)
-        return 4
+def _patrones_que_casan(ruta: str, patrones: list[str]) -> list[str]:
+    """Which exclusion globs match a path (fnmatch normalizes case on its own)."""
+    return [p for p in patrones if fnmatch.fnmatch(ruta, p)]
 
-    print(f"folder    : {carpeta}")
-    print(f"registered: {destino}")
-    print(f"You can now open the CLI there:  cd {carpeta}")
-    return 0
+
+def _detalle_como_dict(detalle: str) -> dict[str, str]:
+    """Parse the log detail `nombre=..; arranque=..; transcript=..` into a dict."""
+    return dict(
+        trozo.split("=", 1) for trozo in detalle.split("; ") if "=" in trozo
+    )
 
 
 def _ejecutar_pendientes(args) -> int:
-    """What the log knows about the turns that were not archived."""
+    """Sessions the hook saw but did not archive, and the exact fix for each.
+
+    Two cases, both actionable: a startup outside every watched root (says the
+    line to add to the config), and a project filtered by an exclusion (says
+    which pattern, so it can be removed). A startup AT a bare root is left out:
+    it is self-correcting -- open the CLI inside a project subdirectory.
+    """
     if _sin_config(args):
         print(cfg.mensaje_sin_config(), file=sys.stderr)
         return 2
     configuracion = cfg.cargar(args.config)
-    # C1c: follow the label flip (the old OMITIDO_SESION is now FUERA_DE_RAICES).
-    # C2 rewrites this command's OUTPUT for the watched-roots model (say which
-    # root to add, tell apart outside-the-roots from excluded-by-pattern).
-    anotaciones = [
-        a for a in reg.leer(configuracion.ruta_log) if a.resultado == reg.FUERA_DE_RAICES
-    ]
+    interesan = (reg.FUERA_DE_RAICES, reg.EXCLUIDO_PATRON)
+    anotaciones = [a for a in reg.leer(configuracion.ruta_log) if a.resultado in interesan]
     if not anotaciones:
-        print("No unarchived turns from an unregistered project.")
+        print("No sessions seen outside the watched roots or filtered by a pattern.")
         return 0
 
-    por_proyecto: dict[tuple[str, str], int] = {}
+    grupos: dict[tuple[str, str, str, str], int] = {}
     for anotacion in anotaciones:
-        datos = dict(
-            trozo.split("=", 1)
-            for trozo in anotacion.detalle.split("; ")
-            if "=" in trozo
+        datos = _detalle_como_dict(anotacion.detalle)
+        clave = (
+            anotacion.resultado,
+            datos.get("nombre", "?"),
+            datos.get("arranque", "?"),
+            datos.get("transcript", "?"),
         )
-        clave = (datos.get("nombre", "?"), datos.get("transcript", "?"))
-        por_proyecto[clave] = por_proyecto.get(clave, 0) + 1
+        grupos[clave] = grupos.get(clave, 0) + 1
 
-    for (nombre, transcripcion), cuantos in sorted(por_proyecto.items()):
-        print(f"{cuantos} turn(s) unarchived from an unregistered project: {nombre}")
-        print(f"   transcript: {transcripcion}")
-        print(f"   register  : python -m claude_informes nuevo {nombre}")
+    for (etiqueta, nombre, arranque, transcripcion), cuantos in sorted(grupos.items()):
+        if etiqueta == reg.FUERA_DE_RAICES:
+            entrada = json.dumps({"name": nombre, "path": arranque}, ensure_ascii=False)
+            print(f"{cuantos} turn(s) not archived: {arranque} is under no watched root.")
+            print('   to archive this subtree as one project, add to "projects":')
+            print(f"       {entrada}")
+            print('   or, to watch each child of a directory, add the parent to "roots".')
+        else:  # EXCLUIDO_PATRON
+            casantes = _patrones_que_casan(arranque, configuracion.exclusions)
+            print(f"{cuantos} turn(s) not archived: {arranque} is filtered by an exclusion.")
+            if casantes:
+                print(f'   matched by {", ".join(casantes)}; remove it from "exclusions" to archive it.')
+            else:
+                print('   no current exclusion matches it; it will archive from now on.')
         print(
-            f"   recover   : python -m claude_informes backfill "
+            f"   recover what was lost:  python -m claude_informes backfill "
             f'--transcript "{transcripcion}" --proyecto {nombre} '
             f'--salida "{configuracion.raiz_informes}"'
         )
@@ -328,8 +318,6 @@ def main(argv: list[str] | None = None) -> int:
     args = _construir_parser().parse_args(argumentos)
     if args.modo == "ultimo":
         return _ejecutar_ultimo(args)
-    if args.modo == "nuevo":
-        return _ejecutar_nuevo(args)
     if args.modo == "pendientes":
         return _ejecutar_pendientes(args)
     if args.modo == "init":

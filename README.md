@@ -38,33 +38,30 @@ One turn, one file (trimmed here; the full shape is in [The envelope](#the-envel
 
 ```sh
 python -m claude_informes init                # create your config (once)
-python -m claude_informes nuevo mi-proyecto   # register a project, open the CLI there
-# then wire the Stop hook once (see INSTALACION.md); from then on that project's turns are archived automatically
+# add a watched root to the config, then wire the Stop hook once (see
+# INSTALACION.md); from then on every project under that root is archived.
 ```
 
-## Starting a new project
+## Watching your projects
 
-**Order matters.** The project is derived from where the session **starts**, not
-from where the shell is: the `cd` commands within a turn change nothing.
+**The project is derived from where the session STARTS**, not from where the
+shell is: the `cd` commands within a turn change nothing.
 
-1. Create the project folder wherever you keep your repos.
-2. Register it in the claude-informes config (name + cwd).
-3. **Open the CLI inside that folder**, not in the parent.
+You do not register projects one by one. You declare **watched roots** in your
+config, and every project under a root is archived automatically. The config has
+two ways to say what to watch, and the more specific one wins:
 
-Steps 1 and 2 are a single command (the example paths are fictitious; on your own
-machine you will see yours):
+- **`roots`** — a container whose every immediate child directory is a project.
+  With `"roots": ["/work/proyectos"]`, a session started in
+  `/work/proyectos/alfa/src` is archived under `alfa`.
+- **`projects`** — a path that is itself one project (optionally with its own
+  threshold or report root). With a `projects` entry at `/work/standalone-tool`,
+  any session inside it, at any depth, is archived under `standalone-tool`.
 
-```sh
-python -m claude_informes nuevo mi-proyecto
-# folder    : /ruta/a/proyectos/mi-proyecto
-# registered: <tu config de usuario>/proyectos.json
-# You can now open the CLI there:  cd /ruta/a/proyectos/mi-proyecto
-```
-
-> **If you open the CLI in the parent directory, that session is NOT archived.**
-> And it is precisely the startup sessions that are worth the most: the whole
-> construction of the project is there. It is not recoverable on the fly, but it
-> is afterwards: see [Recovering what was not archived](#recovering-what-was-not-archived).
+> A session started OUTSIDE every watched root is not archived, and neither is
+> one whose project matches an `exclusions` glob. `pendientes` lists both and
+> prints the exact fix; see
+> [Recovering what was not archived](#recovering-what-was-not-archived).
 
 ## What it does
 
@@ -446,16 +443,19 @@ records an extra line, `proyecto-por-cwd`, so the degraded path is visible.
 
 ```sh
 python -m claude_informes pendientes
-# 9 turn(s) unarchived from an unregistered project: claude-informes
-#    transcript: ~/.claude/projects/--proyectos-claude-informes/978e2c78-....jsonl
-#    register  : python -m claude_informes nuevo claude-informes
-#    recover   : python -m claude_informes backfill --transcript "..." \
-#                --proyecto claude-informes --salida "<raiz_informes>"
+# 3 turn(s) not archived: /work/demo is under no watched root.
+#    to archive this subtree as one project, add to "projects":
+#        {"name": "demo", "path": "/work/demo"}
+#    or, to watch each child of a directory, add the parent to "roots".
+#    recover what was lost:  python -m claude_informes backfill --transcript "..." \
+#        --proyecto demo --salida "<reports_root>"
 ```
 
-`pendientes` exits with 1 when there is something to recover, so it is noticed.
-The backfill reconstructs the whole session from the transcript, even if the
-project was never registered: the JSONL stores the turns all the same.
+`pendientes` exits with 1 when there is something to act on. It reports two
+cases, each with its exact fix: a startup outside every watched root (the line
+to add), and a project filtered by an `exclusions` glob (it names the pattern to
+remove). The backfill then reconstructs the whole session from the transcript,
+even for a project that was never watched: the JSONL stores the turns all the same.
 
 ## Backfill mode
 

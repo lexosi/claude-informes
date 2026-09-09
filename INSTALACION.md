@@ -15,12 +15,12 @@ repository. Replace it with yours.
 **The project is derived from where the session STARTS, not from where the shell
 is.** The `cd` commands within a turn do not change the archive.
 
-That is why, for a new project, the order is: create the folder, register it, and
-**then** open the CLI inside it. `python -m claude_informes nuevo <nombre>` does
-the first two steps at once.
+So a session is archived only when its startup directory falls under a watched
+root declared in your config. You declare the roots once (see the config
+section); there is nothing to register per project.
 
-If you open the CLI in the parent directory, that session is not archived. It can
-be recovered afterwards with `pendientes` and `backfill`, but not on the fly.
+If the session starts outside every watched root, it is not archived. It can be
+recovered afterwards with `pendientes` and `backfill`, but not on the fly.
 
 ## 1. The config
 
