@@ -49,6 +49,11 @@ def test_an_existing_project_folder_is_reused(tmp_path):
     assert [p.name for p in (tmp_path / "repo").iterdir()] == ["2026-08-28"]
 
 
+@pytest.mark.skipif(
+    os.path.normcase("A") == "A",
+    reason="reuse-by-case only exists on a case-insensitive filesystem (Windows/macOS); "
+    "on a case-sensitive one 'Repo' and 'repo' are genuinely two folders",
+)
 def test_no_case_variants_of_an_already_existing_folder_are_created(tmp_path):
     """On Windows 'Repo' and 'repo' are the same; the one already there is used."""
     (tmp_path / "Repo").mkdir()

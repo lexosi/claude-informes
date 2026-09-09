@@ -49,14 +49,16 @@ def ejecutar(datos, ruta_config):
 
 
 def test_the_name_it_would_have_comes_from_the_startup_not_the_cwd():
-    transcripcion = "C:\\p\\C--proyectos-claude-informes\\s.jsonl"
-    assert hk.nombre_que_tendria(transcripcion, "C:\\proyectos\\claude-informes") == (
-        "claude-informes"
-    )
+    # Paths built with Path so `.name` works on any OS. The transcript folder
+    # slug would parse to "informes"; the startup's basename is "claude-informes".
+    # The result proves the startup won, not the transcript folder.
+    transcripcion = str(Path("/p") / "C--proyectos-claude-informes" / "s.jsonl")
+    arranque = str(Path("/proyectos") / "claude-informes")
+    assert hk.nombre_que_tendria(transcripcion, arranque) == "claude-informes"
 
 
 def test_without_a_readable_startup_the_name_comes_from_the_slug():
-    transcripcion = "C:\\p\\C--proyectos-alfa\\s.jsonl"
+    transcripcion = str(Path("/p") / "C--proyectos-alfa" / "s.jsonl")
     assert hk.nombre_que_tendria(transcripcion, None) == "alfa"
 
 

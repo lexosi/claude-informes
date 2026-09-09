@@ -5,6 +5,8 @@ path field name are standardized. That's why detection here is
 heuristic and only serves to deny better. Allowing stays guaranteed.
 """
 
+import os
+
 import pytest
 
 from claude_informes import guardian as gd
@@ -108,7 +110,9 @@ def test_a_relative_path_from_an_mcp_is_also_resolved(archivo, tmp_path):
     desde.mkdir(parents=True)
     datos = mcp(
         "mcp__x__write_file",
-        {"path": f"..\\..\\{comun.name}\\alfa\\x.json"},
+        # built with the OS separator, so the `..` segments resolve on Linux too;
+        # a literal backslash is not a separator off Windows and left this unresolved.
+        {"path": os.path.join("..", "..", comun.name, "alfa", "x.json")},
         cwd=str(desde),
     )
 
