@@ -19,6 +19,7 @@ from . import streams
 from . import report as inf
 from . import markdown as md
 from . import journal as reg
+from . import resolution as res
 from . import transcript as tr
 
 
@@ -34,67 +35,45 @@ class Resultado:
     """(result, detail) of an extra line recorded BEFORE its own."""
 
 
-def proyecto_del_transcript(
-    ruta_transcript: str, configuracion: cfg.Configuracion
-) -> cfg.Proyecto | None:
-    """Maps the transcript's directory to the config's project.
-
-    The mapping is explicit and checkable: the directory name is compared with
-    the slug that each project's declared `cwd` produces. There is no attempt to
-    undo the slug, which is an ambiguous operation (`e--proyectos-alfa-audit`
-    could be either a subdirectory of `alfa` or the sibling project
-    `alfa-audit`). Without an exact match, there is no mapping.
-    """
-    carpeta = os.path.normcase(Path(ruta_transcript).parent.name)
-    for proyecto in configuracion.proyectos:
-        if not proyecto.activo:
-            continue
-        if os.path.normcase(tr.slug_de_cwd(proyecto.raiz)) == carpeta:
-            return proyecto
-    return None
-
-
 def proyecto_del_turno(
     payload: dict, configuracion: cfg.Configuracion
 ) -> tuple[cfg.Proyecto | None, str, tuple[str, str] | None]:
     """The project comes from the SESSION, not from the directory the shell is in.
 
     The payload's `cwd` follows the `cd` commands made during the turn, so
-    archiving by it puts turns in the wrong folder and loses others. The
-    `transcript_path` identifies the session and does not move.
+    archiving by it puts turns in the wrong folder and loses others. The session's
+    startup directory --the first record of the transcript-- identifies the
+    session and does not move.
 
-    When there is a `transcript_path`, it **rules**: if it does not map to any
-    project in the config, the session is not watched and is not archived.
-    Falling back to cwd here would reopen the same hole, because a shell strolling
-    through a watched project would archive turns that are not its own again.
+    When there is a `transcript_path`, it **rules**: its startup directory is
+    resolved against the watched roots, and if it lands under none (or under an
+    excluded one, or AT a bare root), the session is not archived. Falling back
+    to the cwd here would reopen the hole, because a shell strolling through a
+    watched project would archive turns that are not its own.
 
     The cwd only comes into play when there is no transcript to trust.
 
     Returns (project, degradation reason, omission). The omission, when there is
-    one, is a `(label, detail)` pair so the RIGHT reason reaches the log: a
-    transcript that cannot be read or whose format drifted is not the same as a
-    project that is simply not registered --logging the wrong one is worse than
-    not logging, because the log is the only way to find out.
+    one, is a `(label, detail)` pair so the RIGHT reason reaches the log: an
+    unreadable or drifted transcript is not the same as a startup outside the
+    roots, and the resolver's own label (fuera-de-raices / raiz-desnuda /
+    excluido-patron) is not the same as either.
     """
     ruta = payload.get("transcript_path")
     if isinstance(ruta, str) and ruta.strip():
-        proyecto = proyecto_del_transcript(ruta, configuracion)
-        if proyecto is not None:
-            return proyecto, "", None
-        # The folder slug did not map. Read the transcript ONCE: its first record
-        # carries the startup cwd without the slug's ambiguity, and reading also
-        # tells us whether the file is unreadable or its format drifted --neither
-        # of which is "project not registered".
+        # Read the transcript ONCE: its first record carries the startup cwd,
+        # and reading also tells whether the file is unreadable or its format
+        # drifted --neither of which is "outside the roots".
         lectura = tr.leer(ruta)
         if lectura.estado == tr.ILEGIBLE:
             return None, "", (reg.TRANSCRIPT_ILEGIBLE, f"transcript ilegible ({lectura.detalle}); transcript={ruta}")
         if lectura.estado == tr.DERIVA:
             return None, "", (reg.DERIVA_FORMATO, f"{lectura.detalle}; transcript={ruta}")
-        proyecto = cfg.buscar_proyecto(lectura.arranque, configuracion)
+        proyecto, etiqueta = res.resolver_proyecto(lectura.arranque, configuracion)
         if proyecto is not None:
             return proyecto, "", None
-        return None, "", (reg.OMITIDO_SESION, motivo_de_omision(ruta, lectura.arranque))
-    proyecto = cfg.buscar_proyecto(payload.get("cwd"), configuracion)
+        return None, "", (etiqueta, motivo_de_omision(ruta, lectura.arranque))
+    proyecto, _etiqueta = res.resolver_proyecto(payload.get("cwd"), configuracion)
     return proyecto, "sin transcript_path", None
 
 
@@ -107,10 +86,14 @@ def nombre_que_tendria(ruta_transcript: str, arranque: str | None) -> str:
 
 
 def motivo_de_omision(ruta_transcript: str, arranque: str | None) -> str:
-    """What is needed to be able to recover the turn later."""
+    """What is needed to recover the turn later, and to point at what to declare.
+
+    The WHY is in the log label (fuera-de-raices / raiz-desnuda / excluido-patron);
+    this detail carries the durable facts: the startup directory, the name the
+    project would have, and the transcript that holds the turn.
+    """
     return (
-        "proyecto no registrado"
-        f"; nombre={nombre_que_tendria(ruta_transcript, arranque)}"
+        f"nombre={nombre_que_tendria(ruta_transcript, arranque)}"
         f"; arranque={arranque or '?'}"
         f"; transcript={ruta_transcript}"
     )

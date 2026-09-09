@@ -469,7 +469,7 @@ def test_the_command_writes_to_the_indicated_root(transcripcion, tmp_path, capsy
     assert "3 report(s) written" in capsys.readouterr().out
 
 
-def test_the_command_respects_the_whitelist(transcripcion, tmp_path, capsys):
+def test_the_command_respects_the_watched_roots(transcripcion, tmp_path, capsys):
     codigo = cli.main(
         [
             "backfill",
@@ -480,7 +480,7 @@ def test_the_command_respects_the_whitelist(transcripcion, tmp_path, capsys):
         ]
     )
     assert codigo == 3
-    assert "is not in the list" in capsys.readouterr().err
+    assert "under no watched root" in capsys.readouterr().err
     assert list(tmp_path.glob("**/*.json")) == []
 
 

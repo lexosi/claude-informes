@@ -11,8 +11,8 @@ from . import backfill as bf
 from . import config as cfg
 from . import streams
 from . import hook as hk
-from . import markdown as md
 from . import journal as reg
+from . import resolution as res
 from . import transcript as tr
 
 
@@ -132,13 +132,13 @@ def _ejecutar_backfill(args) -> int:
         return 1
 
     turnos = lectura.turnos
-    cwd_transcript = args.cwd or turnos[-1].get("cwd") or ""
-    proyecto = cfg.buscar_proyecto(cwd_transcript, configuracion)
+    arranque = args.cwd or lectura.arranque or (turnos[-1].get("cwd") if turnos else "") or ""
+    proyecto, _etiqueta = res.resolver_proyecto(arranque, configuracion)
     umbral = args.umbral
 
     if proyecto is None and not args.salida:
         print(
-            f"{cwd_transcript!r} is not in the list of projects. "
+            f"{arranque!r} is under no watched root. "
             "Use --salida to write elsewhere.",
             file=sys.stderr,
         )
@@ -148,7 +148,7 @@ def _ejecutar_backfill(args) -> int:
         proyecto.raiz_informes if proyecto else configuracion.raiz_informes
     )
     nombre = args.proyecto or (
-        proyecto.nombre if proyecto else md.slug_llano(Path(cwd_transcript).name)
+        proyecto.nombre if proyecto else Path(arranque).name
     )
     if not nombre:
         print("Could not deduce the project name. Use --proyecto.", file=sys.stderr)
@@ -281,8 +281,11 @@ def _ejecutar_pendientes(args) -> int:
         print(cfg.mensaje_sin_config(), file=sys.stderr)
         return 2
     configuracion = cfg.cargar(args.config)
+    # C1c: follow the label flip (the old OMITIDO_SESION is now FUERA_DE_RAICES).
+    # C2 rewrites this command's OUTPUT for the watched-roots model (say which
+    # root to add, tell apart outside-the-roots from excluded-by-pattern).
     anotaciones = [
-        a for a in reg.leer(configuracion.ruta_log) if a.resultado == reg.OMITIDO_SESION
+        a for a in reg.leer(configuracion.ruta_log) if a.resultado == reg.FUERA_DE_RAICES
     ]
     if not anotaciones:
         print("No unarchived turns from an unregistered project.")

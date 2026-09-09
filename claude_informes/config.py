@@ -6,6 +6,7 @@ The code knows no specific path.
 
 from __future__ import annotations
 
+import glob
 import json
 import os
 import sys
@@ -73,18 +74,38 @@ def _canonizar_entrada(entrada):
 def _canonizar(crudo):
     """Translate a raw config to the English keys the parser reads.
 
-    A single uniform alias pass, applied at the top level and to each entry;
-    no per-key special case. A bare list of entries (a legacy shape) is mapped
-    entry by entry.
+    A single uniform alias pass, applied at the top level and to each entry; no
+    per-key special case. A bare list of entries (a legacy shape) is wrapped as
+    ``{"projects": [...]}`` so the rest is uniform.
+
+    A legacy ``active: false`` entry (the old way of turning a project off
+    without deleting its line) is TRANSITIONALLY translated to an exclusion: its
+    path is escaped into ``exclusions`` and the entry is dropped, so a config
+    written before the rename keeps NOT archiving that project -- the only change
+    is the log label, which becomes the more precise ``excluido-patron``. The
+    model itself has no ``active``; this translation dies with the aliases in
+    2.0.0.
     """
     if isinstance(crudo, list):
-        return [_canonizar_entrada(e) for e in crudo]
+        crudo = {"projects": crudo}
     if not isinstance(crudo, dict):
         return crudo
     d = dict(crudo)
     _renombrar(d, _ALIAS_SUPERIOR)
-    if isinstance(d.get("projects"), list):
-        d["projects"] = [_canonizar_entrada(e) for e in d["projects"]]
+    entradas = d.get("projects")
+    if isinstance(entradas, list):
+        vivas, excluidas = [], []
+        for entrada in entradas:
+            canonica = _canonizar_entrada(entrada)
+            if isinstance(canonica, dict) and not bool(canonica.get("active", True)):
+                ruta = canonica.get("path")
+                if isinstance(ruta, str) and ruta.strip():
+                    excluidas.append(glob.escape(ruta))
+                continue
+            vivas.append(canonica)
+        d["projects"] = vivas
+        if excluidas:
+            d["exclusions"] = list(d.get("exclusions") or []) + excluidas
     return d
 
 
@@ -127,7 +148,6 @@ def ruta_de_ejemplo() -> Path:
 class Proyecto:
     nombre: str
     raiz: str
-    activo: bool
     umbral_lineas: int
     raiz_informes: Path
     """Where THIS project is archived. By default, the global root."""
@@ -283,7 +303,6 @@ def cargar_estricto(ruta: str | os.PathLike[str] | None = None) -> Configuracion
             Proyecto(
                 nombre=_nombre_de(entrada, raiz),
                 raiz=str(Path(raiz)),
-                activo=bool(entrada.get("active", True)),
                 umbral_lineas=umbral,
                 raiz_informes=Path(propia),
             )
@@ -295,35 +314,3 @@ def cargar_estricto(ruta: str | os.PathLike[str] | None = None) -> Configuracion
         roots=roots,
         exclusions=exclusions,
     )
-
-
-def _esta_dentro(candidato: str, raiz: str) -> bool:
-    if candidato == raiz:
-        return True
-    return candidato.startswith(raiz.rstrip(os.sep) + os.sep)
-
-
-def buscar_proyecto(cwd: str | None, configuracion: Configuracion) -> Proyecto | None:
-    """Allowlist: the cwd must be the root of an active project or hang off it.
-
-    Returns None for any cwd outside the list. On a tie, the longest root wins.
-
-    The tool is no longer a special case. It was while `raiz_informes` pointed
-    inside `claude-informes/informes/`: back then one of its own turns would have
-    written into its own output folder, inside a repo. Since the archive lives in
-    its own root, outside any git tree, that premise does not exist, and the guard
-    only served to throw away the turns of whoever was working on the tool
-    itself. What it really protected --that no archive destination falls inside
-    the tool or any repository-- is asserted by the tests of the real config.
-    """
-    if not isinstance(cwd, str) or not cwd.strip():
-        return None
-    objetivo = normalizar(cwd)
-    candidatos = [
-        p
-        for p in configuracion.proyectos
-        if p.activo and _esta_dentro(objetivo, normalizar(p.raiz))
-    ]
-    if not candidatos:
-        return None
-    return max(candidatos, key=lambda p: len(normalizar(p.raiz)))

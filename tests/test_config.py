@@ -1,61 +1,12 @@
-"""Project whitelist and reading of the configuration."""
+"""Reading of the configuration.
 
-from pathlib import Path
+How a resolved project is matched against the watched roots is in
+test_resolution.py; this file only checks that the config PARSES into the right
+shape. The two were a single concern while the config was an allowlist; under
+the watched-roots model they are separate.
+"""
 
 from claude_informes import config as cfg
-
-
-def test_only_projects_in_the_config_are_matched(escribir_config, tmp_path):
-    dentro = tmp_path / "dentro"
-    fuera = tmp_path / "fuera"
-    configuracion = cfg.cargar(escribir_config([{"cwd": str(dentro), "activo": True}]))
-
-    assert cfg.buscar_proyecto(str(dentro), configuracion) is not None
-    assert cfg.buscar_proyecto(str(fuera), configuracion) is None
-
-
-def test_a_deactivated_project_is_not_matched(escribir_config, tmp_path):
-    raiz = tmp_path / "pausado"
-    configuracion = cfg.cargar(escribir_config([{"cwd": str(raiz), "activo": False}]))
-    assert cfg.buscar_proyecto(str(raiz), configuracion) is None
-
-
-def test_subdirectories_of_the_project_are_matched(escribir_config, tmp_path):
-    raiz = tmp_path / "repo"
-    configuracion = cfg.cargar(escribir_config([{"cwd": str(raiz), "activo": True}]))
-    encontrado = cfg.buscar_proyecto(str(raiz / "src" / "hondo"), configuracion)
-    assert encontrado is not None and encontrado.raiz == str(raiz)
-
-
-def test_a_sibling_with_a_common_prefix_is_not_matched(escribir_config, tmp_path):
-    raiz = tmp_path / "repo"
-    hermano = tmp_path / "repo-otro"
-    configuracion = cfg.cargar(escribir_config([{"cwd": str(raiz), "activo": True}]))
-    assert cfg.buscar_proyecto(str(hermano), configuracion) is None
-
-
-def test_the_most_specific_root_wins(escribir_config, tmp_path):
-    padre = tmp_path / "monorepo"
-    hijo = padre / "paquetes" / "uno"
-    configuracion = cfg.cargar(
-        escribir_config(
-            [
-                {"nombre": "padre", "cwd": str(padre), "activo": True},
-                {"nombre": "hijo", "cwd": str(hijo), "activo": True},
-            ]
-        )
-    )
-    encontrado = cfg.buscar_proyecto(str(hijo), configuracion)
-    assert encontrado is not None and encontrado.nombre == "hijo"
-
-
-def test_an_absent_or_nonsensical_cwd_is_not_matched(escribir_config, tmp_path):
-    configuracion = cfg.cargar(
-        escribir_config([{"cwd": str(tmp_path / "x"), "activo": True}])
-    )
-    assert cfg.buscar_proyecto(None, configuracion) is None
-    assert cfg.buscar_proyecto("", configuracion) is None
-    assert cfg.buscar_proyecto("   ", configuracion) is None
 
 
 def test_a_nonexistent_config_leaves_no_projects(tmp_path):
@@ -78,7 +29,6 @@ def test_junk_entries_are_discarded_one_by_one(escribir_config, tmp_path):
 
 def test_default_values_are_applied(escribir_config, tmp_path):
     configuracion = cfg.cargar(escribir_config([{"cwd": str(tmp_path / "r")}]))
-    assert configuracion.proyectos[0].activo is True
     assert configuracion.proyectos[0].umbral_lineas == 5
 
 
@@ -123,33 +73,6 @@ def test_without_a_declared_root_the_tools_own_root_is_used(escribir_config, tmp
 
 def test_the_default_root_lives_inside_the_tool():
     assert cfg.raiz_informes_por_defecto().parent == cfg.raiz_de_la_herramienta()
-
-
-# --- the tool itself: one more project ---
-
-
-def test_claude_informes_itself_can_be_a_watched_project(escribir_config):
-    """The guard that prevented it was removed along with its reason.
-
-    While the archive lived inside `claude-informes/informes/`, a turn
-    of its own would have written into its own output folder. With the archive in a
-    root of its own outside every repo, all the guard did was throw away
-    the turns of whoever worked on the tool.
-    """
-    propia = cfg.raiz_de_la_herramienta()
-    configuracion = cfg.cargar(
-        escribir_config([{"nombre": "claude-informes", "cwd": str(propia)}])
-    )
-    encontrado = cfg.buscar_proyecto(str(propia), configuracion)
-    assert encontrado is not None
-    assert encontrado.nombre == "claude-informes"
-
-
-def test_a_subdirectory_of_the_tool_also_maps(escribir_config):
-    propia = cfg.raiz_de_la_herramienta()
-    configuracion = cfg.cargar(escribir_config([{"cwd": str(propia)}]))
-    assert cfg.buscar_proyecto(str(propia / "claude_informes"), configuracion) is not None
-    assert cfg.buscar_proyecto(str(propia / "tests"), configuracion) is not None
 
 
 # The tests that asserted about "the repo's real config" were removed: the

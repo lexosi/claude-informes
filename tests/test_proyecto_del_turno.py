@@ -1,13 +1,19 @@
-"""Where the project comes from: from the SESSION, not from where the shell is.
+"""Which project a turn belongs to, under the watched-roots model.
 
-The payload's `cwd` follows the `cd`s done during the turn. Archiving by it
-fails in both directions: it puts turns from an unwatched project into the
-folder of a watched one, and loses turns from a watched one when the shell has
-gone. An archive you can't trust is worthless.
+The project comes from where the session STARTS, not from the directory the
+shell wanders into during the turn. The startup directory is read from the
+transcript (its first record), so here the transcript is a real file, as in
+production; its startup cwd is resolved against the watched roots.
+
+The pure resolution rule (segment below a root, most-specific match, borders)
+lives in test_resolution.py. This file checks the HOOK's behavior around it:
+which label reaches the log, the degraded no-transcript fallback, and that an
+unreadable or drifted transcript is told apart from a startup outside the roots.
 """
 
 import io
 import json
+import tempfile
 from datetime import datetime
 from pathlib import Path
 
@@ -18,23 +24,43 @@ from claude_informes import transcript as tr
 
 RESPUESTA = "# Informe de la prueba diaria\n\nlinea 1\nlinea 2\nlinea 3\nlinea 4\n"
 
+_TRANSCRIPTS = Path(tempfile.mkdtemp(prefix="ci-pdt-transcripts-"))
+
 
 def hoy():
     return datetime.now().strftime("%Y-%m-%d")
 
 
-def transcript_de(raiz_de_arranque):
-    """Where Claude Code puts the transcript of a session opened there."""
-    return str(
-        Path("C:/proyectos") / tr.slug_de_cwd(str(raiz_de_arranque)) / "sesion.jsonl"
-    )
+def transcript_real(cwd, *, deriva=False):
+    """A real transcript for a session started in `cwd`.
+
+    With `deriva`, it carries an assistant line that does NOT produce a turn (a
+    renamed `stop_reason`), which is the format-drift case.
+    """
+    destino = _TRANSCRIPTS / tr.slug_de_cwd(str(cwd)) / "s.jsonl"
+    destino.parent.mkdir(parents=True, exist_ok=True)
+    lineas = [json.dumps({"type": "user", "cwd": str(cwd)})]
+    if deriva:
+        lineas.append(
+            json.dumps(
+                {
+                    "type": "assistant",
+                    "message": {
+                        "stopReason": "end_turn",  # renamed -> never recognized as a turn
+                        "content": [{"type": "text", "text": "# t\n\na\nb\nc\nd\n"}],
+                    },
+                }
+            )
+        )
+    destino.write_text("\n".join(lineas) + "\n", encoding="utf-8")
+    return str(destino)
 
 
-def turno(cwd, transcript, texto=RESPUESTA):
+def turno(cwd, transcript=None, texto=RESPUESTA):
     return {
         "session_id": "s",
         "cwd": str(cwd),
-        "transcript_path": transcript,
+        "transcript_path": transcript if transcript is not None else transcript_real(cwd),
         "stop_hook_active": False,
         "last_assistant_message": texto,
     }
@@ -49,67 +75,8 @@ def escritos(informes, proyecto, fecha=None):
     return sorted(p.name for p in dia.glob("*.json")) if dia.is_dir() else []
 
 
-# --- the mapping from slug to project ---
-
-
-def test_the_directory_slug_maps_to_the_name_declared_in_the_config(
-    escribir_config, informes, tmp_path
-):
-    """`C--proyectos-alfa` -> `alfa`, via the declared cwd."""
-    configuracion = cfg.cargar(
-        escribir_config(
-            [{"nombre": "alfa", "cwd": "C:\\proyectos\\alfa"}],
-            raiz_informes=informes,
-        )
-    )
-    ruta = "C:\\p\\C--proyectos-alfa\\abc.jsonl"
-
-    proyecto = hk.proyecto_del_transcript(ruta, configuracion)
-    assert proyecto is not None and proyecto.nombre == "alfa"
-
-
-def test_the_mapping_does_not_depend_on_the_directory_name_but_on_the_cwd(
-    escribir_config, informes, tmp_path
-):
-    """The folder name may not resemble the slug: the cwd rules."""
-    configuracion = cfg.cargar(
-        escribir_config(
-            [{"nombre": "work-reports", "cwd": "C:\\proyectos\\beta"}],
-            raiz_informes=informes,
-        )
-    )
-    ruta = "C:\\p\\C--proyectos-beta\\abc.jsonl"
-
-    proyecto = hk.proyecto_del_transcript(ruta, configuracion)
-    assert proyecto is not None and proyecto.nombre == "work-reports"
-
-
-def test_a_sibling_slug_is_not_mistaken_for_a_subdirectory(
-    escribir_config, informes
-):
-    """`alfa-audit` is another project, not `alfa/audit`. Without an exact
-    match there is no mapping: the slug is ambiguous and no attempt is made to undo it."""
-    configuracion = cfg.cargar(
-        escribir_config(
-            [{"nombre": "alfa", "cwd": "C:\\proyectos\\alfa"}],
-            raiz_informes=informes,
-        )
-    )
-    ruta = "C:\\p\\C--proyectos-alfa-audit\\abc.jsonl"
-
-    assert hk.proyecto_del_transcript(ruta, configuracion) is None
-
-
-def test_a_deactivated_project_is_not_mapped(escribir_config, informes):
-    configuracion = cfg.cargar(
-        escribir_config(
-            [{"nombre": "alfa", "cwd": "C:\\proyectos\\alfa", "activo": False}],
-            raiz_informes=informes,
-        )
-    )
-    ruta = "C:\\p\\C--proyectos-alfa\\abc.jsonl"
-
-    assert hk.proyecto_del_transcript(ruta, configuracion) is None
+def config_con_raiz(escribir_config, informes, raiz, **kwargs):
+    return escribir_config([], raiz_informes=informes, roots=[raiz], **kwargs)
 
 
 # --- the original bug, in its two directions ---
@@ -118,16 +85,15 @@ def test_a_deactivated_project_is_not_mapped(escribir_config, informes):
 def test_two_turns_with_a_different_cwd_go_to_the_same_project(
     escribir_config, informes, tmp_path, log
 ):
-    """The real case: between one turn and the next, the shell moved."""
-    raiz = tmp_path / "alfa"
-    raiz.mkdir()
-    ruta_config = escribir_config(
-        [{"nombre": "alfa", "cwd": str(raiz)}], raiz_informes=informes
-    )
-    transcript = transcript_de(raiz)
+    """The real case: between one turn and the next, the shell moved. The session
+    (its startup) is what decides the project, so all three land in `alfa`."""
+    raiz = tmp_path / "work"
+    (raiz / "alfa").mkdir(parents=True)
+    ruta_config = config_con_raiz(escribir_config, informes, raiz)
+    transcript = transcript_real(raiz / "alfa")
 
-    ejecutar(turno(raiz, transcript, RESPUESTA + "A"), ruta_config)
-    ejecutar(turno(raiz / "subdir" / "hondo", transcript, RESPUESTA + "B"), ruta_config)
+    ejecutar(turno(raiz / "alfa", transcript, RESPUESTA + "A"), ruta_config)
+    ejecutar(turno(raiz / "alfa" / "sub" / "deep", transcript, RESPUESTA + "B"), ruta_config)
     ejecutar(turno("C:\\otro\\sitio\\del\\todo", transcript, RESPUESTA + "C"), ruta_config)
 
     assert len(escritos(informes, "alfa")) == 3
@@ -135,124 +101,108 @@ def test_two_turns_with_a_different_cwd_go_to_the_same_project(
     assert all(a.resultado == reg.ESCRITO for a in reg.leer(log))
 
 
-def test_a_turn_from_an_unwatched_session_is_not_archived_even_when_the_cwd_is_watched(
-    escribir_config, informes, tmp_path, log
-):
-    """The dangerous direction: the shell inside alfa, the session not.
-
-    The transcript is a REAL file whose startup cwd is not watched --so the
-    omission is genuinely 'project not registered', not an unreadable file.
-    """
-    vigilado = tmp_path / "alfa"
-    vigilado.mkdir()
-    ruta_config = escribir_config(
-        [{"nombre": "alfa", "cwd": str(vigilado)}], raiz_informes=informes
-    )
-    ajeno = tmp_path / "proyectos"
-    transcripcion = tmp_path / "projects" / tr.slug_de_cwd(str(ajeno)) / "s.jsonl"
-    transcripcion.parent.mkdir(parents=True)
-    transcripcion.write_text(
-        json.dumps({"type": "user", "cwd": str(ajeno)}) + "\n", encoding="utf-8"
-    )
-
-    datos = turno(vigilado, str(transcripcion))
-    assert ejecutar(datos, ruta_config) == 0
-
-    assert not Path(informes).exists(), "the session rules over the cwd"
-    (anotacion,) = reg.leer(log)
-    assert anotacion.resultado == reg.OMITIDO_SESION
-    assert "proyecto no registrado" in anotacion.detalle
-
-
 def test_a_turn_from_a_watched_session_is_not_lost_because_of_a_cd(
     escribir_config, informes, tmp_path
 ):
-    """The other direction: the session in alfa, the shell outside."""
-    vigilado = tmp_path / "alfa"
-    vigilado.mkdir()
-    ruta_config = escribir_config(
-        [{"nombre": "alfa", "cwd": str(vigilado)}], raiz_informes=informes
-    )
+    """The session starts under the root; the shell has wandered out. Archived."""
+    raiz = tmp_path / "work"
+    (raiz / "alfa").mkdir(parents=True)
+    ruta_config = config_con_raiz(escribir_config, informes, raiz)
 
-    datos = turno("C:\\donde\\sea", transcript_de(vigilado))
-    ejecutar(datos, ruta_config)
+    ejecutar(turno("C:\\donde\\sea", transcript_real(raiz / "alfa")), ruta_config)
 
     assert len(escritos(informes, "alfa")) == 1
 
 
-# --- degraded path: falls back to the cwd, but it shows ---
+def test_a_turn_whose_startup_is_outside_the_roots_is_not_archived(
+    escribir_config, informes, tmp_path, log
+):
+    """The dangerous direction: the shell inside a watched root, the session not."""
+    raiz = tmp_path / "work"
+    raiz.mkdir()
+    ajeno = tmp_path / "ajeno"
+    ruta_config = config_con_raiz(escribir_config, informes, raiz)
+
+    # payload cwd is inside the watched root, but the SESSION started in `ajeno`
+    ejecutar(turno(raiz / "alfa", transcript_real(ajeno)), ruta_config)
+
+    assert not Path(informes).exists(), "the session rules over the cwd"
+    (anotacion,) = reg.leer(log)
+    assert anotacion.resultado == reg.FUERA_DE_RAICES
+    assert str(ajeno) in anotacion.detalle
+
+
+# --- the three distinct no-project labels ---
+
+
+def test_a_startup_at_a_bare_root_is_logged_as_bare_root(
+    escribir_config, informes, tmp_path, log
+):
+    raiz = tmp_path / "work"
+    raiz.mkdir()
+    ruta_config = config_con_raiz(escribir_config, informes, raiz)
+
+    ejecutar(turno(raiz, transcript_real(raiz)), ruta_config)
+
+    assert not Path(informes).exists()
+    (anotacion,) = reg.leer(log)
+    assert anotacion.resultado == reg.RAIZ_DESNUDA
+
+
+def test_a_startup_in_an_excluded_project_is_logged_as_excluded(
+    escribir_config, informes, tmp_path, log
+):
+    raiz = tmp_path / "work"
+    (raiz / "alfa-audit").mkdir(parents=True)
+    ruta_config = config_con_raiz(escribir_config, informes, raiz, exclusions=["*-audit*"])
+
+    ejecutar(turno(raiz / "alfa-audit", transcript_real(raiz / "alfa-audit")), ruta_config)
+
+    assert not Path(informes).exists()
+    (anotacion,) = reg.leer(log)
+    assert anotacion.resultado == reg.EXCLUIDO_PATRON
+
+
+# --- degraded path: no transcript, falls back to the cwd, but it shows ---
 
 
 def test_without_a_transcript_path_it_falls_back_to_the_cwd_and_is_logged(
     escribir_config, informes, tmp_path, log
 ):
-    raiz = tmp_path / "alfa"
-    raiz.mkdir()
-    ruta_config = escribir_config(
-        [{"nombre": "alfa", "cwd": str(raiz)}], raiz_informes=informes
-    )
+    raiz = tmp_path / "work"
+    (raiz / "alfa").mkdir(parents=True)
+    ruta_config = config_con_raiz(escribir_config, informes, raiz)
 
-    ejecutar(turno(raiz, ""), ruta_config)
+    ejecutar(turno(raiz / "alfa", transcript=""), ruta_config)
 
     assert len(escritos(informes, "alfa")) == 1, "it is archived all the same"
     aviso, escrito = reg.leer(log)
     assert aviso.resultado == reg.PROYECTO_POR_CWD
     assert "sin transcript_path" in aviso.detalle
-    assert str(raiz) in aviso.detalle
     assert escrito.resultado == reg.ESCRITO
-
-
-def test_a_slug_that_does_not_map_does_not_archive_and_is_logged(
-    escribir_config, informes, tmp_path, log
-):
-    """With a transcript, the transcript rules: it does not fall back to the cwd.
-
-    Falling back to the cwd here would reopen the hole, because a shell inside
-    a watched project would again archive turns from another session.
-    """
-    raiz = tmp_path / "alfa"
-    raiz.mkdir()
-    ruta_config = escribir_config(
-        [{"nombre": "alfa", "cwd": str(raiz)}], raiz_informes=informes
-    )
-    transcripcion = tmp_path / "p" / "slug-de-otra-cosa" / "abc.jsonl"
-    transcripcion.parent.mkdir(parents=True)
-    transcripcion.write_text(
-        json.dumps({"type": "user", "cwd": "C:\\otro\\sitio"}) + "\n", encoding="utf-8"
-    )
-
-    ejecutar(turno(raiz, str(transcripcion)), ruta_config)
-
-    assert not Path(informes).exists()
-    (anotacion,) = reg.leer(log)
-    assert anotacion.resultado == reg.OMITIDO_SESION
-    assert "slug-de-otra-cosa" in anotacion.detalle
 
 
 def test_the_warning_only_appears_when_the_degraded_path_actually_archives(
     escribir_config, informes, tmp_path, log
 ):
     """If the cwd is no good either, there is nothing to warn about: a single line."""
-    ruta_config = escribir_config(
-        [{"nombre": "alfa", "cwd": str(tmp_path / "alfa")}],
-        raiz_informes=informes,
-    )
+    raiz = tmp_path / "work"
+    raiz.mkdir()
+    ruta_config = config_con_raiz(escribir_config, informes, raiz)
 
-    ejecutar(turno("C:\\nada\\que\\ver", ""), ruta_config)
+    ejecutar(turno("C:\\nada\\que\\ver", transcript=""), ruta_config)
 
     (anotacion,) = reg.leer(log)
     assert anotacion.resultado == reg.OMITIDO_CWD
 
 
 def test_an_unreadable_transcript_path_does_not_blow_up(escribir_config, informes, tmp_path):
-    raiz = tmp_path / "alfa"
-    raiz.mkdir()
-    ruta_config = escribir_config(
-        [{"nombre": "alfa", "cwd": str(raiz)}], raiz_informes=informes
-    )
+    raiz = tmp_path / "work"
+    (raiz / "alfa").mkdir(parents=True)
+    ruta_config = config_con_raiz(escribir_config, informes, raiz)
 
     for basura in [None, 42, [], "   "]:
-        datos = turno(raiz, "x")
+        datos = turno(raiz / "alfa")
         datos["transcript_path"] = basura
         assert ejecutar(datos, ruta_config) == 0
 
@@ -260,84 +210,51 @@ def test_an_unreadable_transcript_path_does_not_blow_up(escribir_config, informe
 # --- a wrong label is worse than no label: the log is the only way to find out ---
 
 
-def test_an_unreadable_transcript_is_logged_as_ilegible_not_unregistered(
+def test_an_unreadable_transcript_is_logged_as_ilegible_not_outside(
     escribir_config, informes, tmp_path, log
 ):
-    """A transcript that cannot be read is not 'project not registered'. Logging
-    OMITIDO_SESION here would be a lie in the one place meant to catch it.
-    """
-    ruta_config = escribir_config(
-        [{"nombre": "alfa", "cwd": str(tmp_path / "alfa")}], raiz_informes=informes
-    )
-    # folder does not map AND the file does not exist -> ILEGIBLE
-    ejecutar(turno(tmp_path / "x", str(tmp_path / "p" / "no-mapea" / "s.jsonl")), ruta_config)
+    """A transcript that cannot be read is not 'outside the roots'. Logging
+    FUERA_DE_RAICES here would be a lie in the one place meant to catch it."""
+    raiz = tmp_path / "work"
+    raiz.mkdir()
+    ruta_config = config_con_raiz(escribir_config, informes, raiz)
+
+    # a transcript path that does not exist -> ILEGIBLE
+    ejecutar(turno(raiz / "alfa", str(tmp_path / "no" / "existe.jsonl")), ruta_config)
 
     (anotacion,) = reg.leer(log)
     assert anotacion.resultado == reg.TRANSCRIPT_ILEGIBLE
-    assert anotacion.resultado != reg.OMITIDO_SESION
+    assert anotacion.resultado != reg.FUERA_DE_RAICES
 
 
-def test_a_drifted_transcript_in_the_mapping_path_is_logged_as_drift(
+def test_a_drifted_transcript_is_logged_as_drift(
     escribir_config, informes, tmp_path, log
 ):
     """Assistant lines but no extractable turn while resolving the project: the
-    format drifted. Logged as drift, not as 'project not registered'.
-    """
-    ruta_config = escribir_config(
-        [{"nombre": "alfa", "cwd": str(tmp_path / "alfa")}], raiz_informes=informes
-    )
-    transcripcion = tmp_path / "p" / "no-mapea" / "s.jsonl"
-    transcripcion.parent.mkdir(parents=True)
-    transcripcion.write_text(
-        json.dumps(
-            {
-                "type": "assistant",
-                "message": {
-                    "stopReason": "end_turn",  # renamed -> never recognized as a turn
-                    "content": [{"type": "text", "text": "# t\n\na\nb\nc\nd\n"}],
-                },
-            }
-        )
-        + "\n",
-        encoding="utf-8",
-    )
+    format drifted. Logged as drift, not as 'outside the roots'."""
+    raiz = tmp_path / "work"
+    raiz.mkdir()
+    ruta_config = config_con_raiz(escribir_config, informes, raiz)
 
-    ejecutar(turno(tmp_path / "x", str(transcripcion)), ruta_config)
+    ejecutar(turno(raiz / "alfa", transcript_real(tmp_path / "x", deriva=True)), ruta_config)
 
     (anotacion,) = reg.leer(log)
     assert anotacion.resultado == reg.DERIVA_FORMATO
 
 
-def test_a_mapped_turn_whose_transcript_drifted_is_drift_not_no_text(
+def test_a_resolved_turn_whose_transcript_drifted_is_drift_not_no_text(
     escribir_config, informes, tmp_path, log
 ):
-    """The project maps, but there is no `last_assistant_message` and the
-    fallback to the transcript hits a drift: logged as drift, not 'no text'.
-    """
-    vigilado = tmp_path / "alfa"
-    vigilado.mkdir()
-    ruta_config = escribir_config(
-        [{"nombre": "alfa", "cwd": str(vigilado)}], raiz_informes=informes
-    )
-    transcripcion = tmp_path / "projects" / tr.slug_de_cwd(str(vigilado)) / "s.jsonl"
-    transcripcion.parent.mkdir(parents=True)
-    transcripcion.write_text(
-        json.dumps(
-            {
-                "type": "assistant",
-                "message": {
-                    "stopReason": "end_turn",
-                    "content": [{"type": "text", "text": "# t\n\na\nb\nc\nd\n"}],
-                },
-            }
-        )
-        + "\n",
-        encoding="utf-8",
-    )
+    """The startup resolves, but there is no `last_assistant_message` and the
+    fallback to the transcript hits a drift: logged as drift, not 'no text'."""
+    raiz = tmp_path / "work"
+    (raiz / "alfa").mkdir(parents=True)
+    ruta_config = config_con_raiz(escribir_config, informes, raiz)
+    transcripcion = transcript_real(raiz / "alfa", deriva=True)
     datos = {
         "session_id": "s",
-        "cwd": str(vigilado),
-        "transcript_path": str(transcripcion),
+        "cwd": str(raiz / "alfa"),
+        "transcript_path": transcripcion,
         "stop_hook_active": False,
         # no last_assistant_message on purpose: forces the transcript fallback
     }
@@ -352,21 +269,21 @@ def test_a_mapped_turn_whose_transcript_drifted_is_drift_not_no_text(
 
 
 def test_a_turn_from_the_tool_itself_is_archived_like_any_other(
-    escribir_config, informes
+    escribir_config, informes, tmp_path
 ):
-    """The tool stopped being a special case when the archiving moved."""
+    """The tool is a project like any other: declared as its own project root."""
     propia = cfg.raiz_de_la_herramienta()
     ruta_config = escribir_config(
         [{"nombre": "claude-informes", "cwd": str(propia)}], raiz_informes=informes
     )
 
-    ejecutar(turno(propia, transcript_de(propia)), ruta_config)
+    ejecutar(turno(propia, transcript_real(propia)), ruta_config)
 
     dia = Path(informes) / "claude-informes" / hoy()
     assert [p.name for p in dia.iterdir()] == ["01-informe-prueba-diaria.json"]
 
 
-def test_the_threshold_stays_the_one_from_the_mapped_project(
+def test_the_threshold_comes_from_an_explicit_project_entry(
     escribir_config, informes, tmp_path, log
 ):
     raiz = tmp_path / "exigente"
@@ -376,7 +293,7 @@ def test_the_threshold_stays_the_one_from_the_mapped_project(
         raiz_informes=informes,
     )
 
-    ejecutar(turno("C:\\otro\\sitio", transcript_de(raiz)), ruta_config)
+    ejecutar(turno(raiz, transcript_real(raiz)), ruta_config)
 
     assert not Path(informes).exists()
     assert reg.leer(log)[0].resultado == reg.OMITIDO_UMBRAL

@@ -74,7 +74,6 @@ def _descubierto(raiz_real: str, segmento: str, configuracion: cfg.Configuracion
     return cfg.Proyecto(
         nombre=nombre,
         raiz=directorio,
-        activo=True,
         umbral_lineas=cfg.UMBRAL_POR_DEFECTO,
         raiz_informes=configuracion.raiz_informes,
     )

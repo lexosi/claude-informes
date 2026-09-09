@@ -6,6 +6,7 @@ are the most valuable and are exactly the ones that get lost.
 
 import io
 import json
+import tempfile
 from pathlib import Path
 
 import pytest
@@ -18,6 +19,8 @@ from claude_informes import journal as reg
 from claude_informes import transcript as tr
 
 RESPUESTA = "# Informe de la prueba diaria\n\nlinea 1\nlinea 2\nlinea 3\nlinea 4\n"
+
+_TRANSCRIPTS = Path(tempfile.mkdtemp(prefix="ci-alta-transcripts-"))
 
 
 def turno(cwd, transcript):
@@ -35,7 +38,13 @@ def ejecutar(datos, ruta_config):
 
 
 def transcript_de(raiz):
-    return str(Path("C:/proyectos") / tr.slug_de_cwd(str(raiz)) / "sesion.jsonl")
+    """A real transcript for a session started in `raiz` (startup cwd inside it)."""
+    destino = _TRANSCRIPTS / tr.slug_de_cwd(str(raiz)) / "sesion.jsonl"
+    destino.parent.mkdir(parents=True, exist_ok=True)
+    destino.write_text(
+        json.dumps({"type": "user", "cwd": str(raiz)}) + "\n", encoding="utf-8"
+    )
+    return str(destino)
 
 
 # --- `nuevo`: the three steps in one ---
@@ -154,7 +163,7 @@ def test_the_skip_carries_the_transcript_and_the_name_it_would_have(
     ejecutar(turno(sin_registrar, transcripcion), ruta_config)
 
     (anotacion,) = reg.leer(log)
-    assert anotacion.resultado == reg.OMITIDO_SESION
+    assert anotacion.resultado == reg.FUERA_DE_RAICES
     assert "nombre=claude-informes" in anotacion.detalle
     assert f"transcript={transcripcion}" in anotacion.detalle
     assert f"arranque={sin_registrar}" in anotacion.detalle

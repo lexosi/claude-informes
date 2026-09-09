@@ -2,6 +2,7 @@
 
 import io
 import json
+import tempfile
 from datetime import datetime
 from pathlib import Path
 
@@ -16,14 +17,24 @@ from claude_informes import transcript as tr
 RESPUESTA = "# Informe de la prueba diaria\n\nlinea 1\nlinea 2\nlinea 3\nlinea 4\n"
 SLUG = "informe-prueba-diaria"
 
+# The project is resolved from the session's startup directory, which the hook
+# reads from the transcript, so the transcript must be a real file. A single
+# record with the startup cwd is enough; the turn text comes from the payload.
+_TRANSCRIPTS = Path(tempfile.mkdtemp(prefix="ci-hook-transcripts-"))
+
 
 def hoy():
     return datetime.now().strftime("%Y-%m-%d")
 
 
 def transcript_de(cwd):
-    """The path Claude Code would give to a session started in `cwd`."""
-    return str(Path("C:/proyectos") / tr.slug_de_cwd(str(cwd)) / "sesion-1.jsonl")
+    """A real transcript for a session started in `cwd`."""
+    destino = _TRANSCRIPTS / tr.slug_de_cwd(str(cwd)) / "sesion-1.jsonl"
+    destino.parent.mkdir(parents=True, exist_ok=True)
+    destino.write_text(
+        json.dumps({"type": "user", "cwd": str(cwd)}) + "\n", encoding="utf-8"
+    )
+    return str(destino)
 
 
 def payload(**cambios):
@@ -404,11 +415,13 @@ def test_stdin_that_blows_up_on_read_exits_0(proyecto_vigilado, informes):
 def test_if_it_cannot_write_it_exits_0(proyecto_vigilado, informes, monkeypatch):
     raiz, ruta_config = proyecto_vigilado
 
+    datos = payload(cwd=str(raiz))
+
     def mkdir_roto(*args, **kwargs):
         raise PermissionError("disco de solo lectura")
 
     monkeypatch.setattr(Path, "mkdir", mkdir_roto)
-    assert ejecutar(payload(cwd=str(raiz)), ruta_config) == 0
+    assert ejecutar(datos, ruta_config) == 0
     assert not Path(informes).exists()
 
 
@@ -420,18 +433,18 @@ def test_a_write_failure_identifies_the_turn_in_the_log(
     to eliminate. Now any write failure identifies the turn.
     """
     raiz, ruta_config = proyecto_vigilado
+    datos = payload(cwd=str(raiz))
 
-    fallos = {"activo": False}
     mkdir_real = Path.mkdir
 
     def mkdir_roto(self, *args, **kwargs):
         # only blows up the report folder, not the log's
-        if "vigilado" in str(self):
+        if "archivo" in str(self):
             raise PermissionError("disco de solo lectura")
         return mkdir_real(self, *args, **kwargs)
 
     monkeypatch.setattr(Path, "mkdir", mkdir_roto)
-    assert ejecutar(payload(cwd=str(raiz)), ruta_config) == 0
+    assert ejecutar(datos, ruta_config) == 0
 
     linea = reg.leer(log)[-1]
     assert linea.resultado == reg.ERROR
@@ -504,10 +517,10 @@ def test_a_nonexistent_transcript_does_not_blow_up(proyecto_vigilado, informes, 
     assert not Path(informes).exists()
 
 
-def test_procesar_reports_that_the_session_is_not_registered(tmp_path):
+def test_procesar_reports_a_startup_outside_the_roots(tmp_path):
     configuracion = cfg.cargar(tmp_path / "no-existe.json")
-    # A REAL transcript (as in production) whose startup cwd is not registered:
-    # that is 'not registered', distinct from an unreadable transcript.
+    # A REAL transcript (as in production) whose startup cwd is under no watched
+    # root: that is 'outside the roots', distinct from an unreadable transcript.
     transcripcion = tmp_path / "projects" / tr.slug_de_cwd(str(tmp_path)) / "s.jsonl"
     transcripcion.parent.mkdir(parents=True)
     transcripcion.write_text(
@@ -516,7 +529,7 @@ def test_procesar_reports_that_the_session_is_not_registered(tmp_path):
     resultado = hk.procesar(
         payload(cwd=str(tmp_path), transcript_path=str(transcripcion)), configuracion
     )
-    assert resultado.resultado == reg.OMITIDO_SESION
+    assert resultado.resultado == reg.FUERA_DE_RAICES
     assert resultado.ruta is None
 
 
@@ -594,10 +607,11 @@ def test_if_the_root_cannot_be_created_it_exits_0(escribir_config, tmp_path, mon
     ruta_config = escribir_config(
         [{"nombre": "repo", "cwd": str(raiz), "raiz_informes": lejos}]
     )
+    datos = payload(cwd=str(raiz))
 
     def mkdir_roto(*args, **kwargs):
         raise OSError("unidad no disponible")
 
     monkeypatch.setattr(Path, "mkdir", mkdir_roto)
-    assert ejecutar(payload(cwd=str(raiz)), ruta_config) == 0
+    assert ejecutar(datos, ruta_config) == 0
     assert not lejos.exists()

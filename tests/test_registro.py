@@ -2,6 +2,7 @@
 
 import io
 import json
+import tempfile
 from datetime import datetime
 from pathlib import Path
 
@@ -17,6 +18,21 @@ from claude_informes import transcript as tr
 RESPUESTA = "# Informe de la prueba diaria\n\nlinea 1\nlinea 2\nlinea 3\nlinea 4\n"
 CORTA = "1\n2\n3"
 
+# The project is resolved from the session's STARTUP directory, which the hook
+# reads from the transcript. So the transcript has to be a real file: a single
+# record carrying the startup cwd is enough (the turn's text comes from the
+# payload's last_assistant_message).
+_TRANSCRIPTS = Path(tempfile.mkdtemp(prefix="ci-registro-transcripts-"))
+
+
+def transcript_real(cwd):
+    destino = _TRANSCRIPTS / tr.slug_de_cwd(str(cwd)) / "s.jsonl"
+    destino.parent.mkdir(parents=True, exist_ok=True)
+    destino.write_text(
+        json.dumps({"type": "user", "cwd": str(cwd)}) + "\n", encoding="utf-8"
+    )
+    return str(destino)
+
 
 def payload(**cambios):
     base = {
@@ -27,9 +43,7 @@ def payload(**cambios):
     }
     base.update(cambios)
     if "transcript_path" not in base:
-        base["transcript_path"] = str(
-            Path("C:/proyectos") / tr.slug_de_cwd(str(base["cwd"])) / "s.jsonl"
-        )
+        base["transcript_path"] = transcript_real(base["cwd"])
     return base
 
 
@@ -121,7 +135,7 @@ def test_a_short_turn_is_logged_as_skipped_by_threshold(proyecto_vigilado, log):
     assert "3 lineas" in anotacion.detalle and "umbral 5" in anotacion.detalle
 
 
-def test_a_foreign_cwd_is_logged_as_skipped_by_cwd(proyecto_vigilado, tmp_path, log):
+def test_a_startup_outside_the_roots_is_logged_as_such(proyecto_vigilado, tmp_path, log):
     _, ruta_config = proyecto_vigilado
     beta = tmp_path / "beta"
     transcripcion = tmp_path / "projects" / tr.slug_de_cwd(str(beta)) / "s.jsonl"
@@ -132,7 +146,7 @@ def test_a_foreign_cwd_is_logged_as_skipped_by_cwd(proyecto_vigilado, tmp_path, 
     ejecutar(payload(cwd=str(beta), transcript_path=str(transcripcion)), ruta_config)
 
     (anotacion,) = reg.leer(log)
-    assert anotacion.resultado == reg.OMITIDO_SESION
+    assert anotacion.resultado == reg.FUERA_DE_RAICES
     assert anotacion.proyecto == reg.SIN_PROYECTO
     assert "beta" in anotacion.detalle
 
@@ -188,7 +202,7 @@ def test_the_five_results_all_fit_in_the_same_log(
     assert [a.resultado for a in reg.leer(log)] == [
         reg.ESCRITO,
         reg.OMITIDO_UMBRAL,
-        reg.OMITIDO_SESION,
+        reg.FUERA_DE_RAICES,
         reg.OMITIDO_REENTRADA,
         reg.ERROR,
     ]
@@ -264,9 +278,12 @@ def test_if_the_log_fails_it_exits_0_and_stays_silent(proyecto_vigilado, informe
 
 def test_if_both_the_log_and_the_report_fail_it_still_exits_0(proyecto_vigilado, log, monkeypatch, capsys):
     raiz, ruta_config = proyecto_vigilado
+    # Build the payload (which writes the startup transcript) BEFORE breaking
+    # mkdir, so it is the report/log write that fails, not the test's own setup.
+    datos = payload(cwd=str(raiz))
     monkeypatch.setattr(Path, "mkdir", lambda *a, **k: (_ for _ in ()).throw(OSError("nada")))
 
-    assert ejecutar(payload(cwd=str(raiz)), ruta_config) == 0
+    assert ejecutar(datos, ruta_config) == 0
     assert capsys.readouterr().out == ""
 
 
