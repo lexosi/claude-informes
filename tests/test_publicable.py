@@ -330,8 +330,9 @@ def test_mechanism_these_shapes_are_not_private_paths():
 def test_mechanism_the_example_is_valid_json_with_the_right_shape():
     datos = json.loads(cfg.ruta_de_ejemplo().read_text(encoding="utf-8"))
     assert isinstance(datos, dict)
-    assert isinstance(datos.get("proyectos"), list) and datos["proyectos"], "it must bring sample projects"
-    assert "raiz_informes" in datos
+    assert isinstance(datos.get("roots"), list) and datos["roots"], "it must show a watched root"
+    assert isinstance(datos.get("projects"), list) and datos["projects"], "and a sample project entry"
+    assert "reports_root" in datos
 
 
 @pytest.mark.real_data

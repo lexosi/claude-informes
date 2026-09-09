@@ -1,7 +1,8 @@
-"""Per-project configuration. Lives OUTSIDE the watched repositories.
+"""Configuration. Lives OUTSIDE the watched repositories.
 
-Adding a project means adding an entry to the config JSON.
-The code knows no specific path.
+The config declares WHERE to watch: `roots` (containers whose children are
+projects) and, optionally, `projects` (explicit project roots with overrides)
+and `exclusions` (globs not to archive). The code knows no specific path.
 """
 
 from __future__ import annotations

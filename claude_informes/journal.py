@@ -16,7 +16,6 @@ from pathlib import Path
 ESCRITO = "escrito"
 OMITIDO_UMBRAL = "omitido-umbral"
 OMITIDO_CWD = "omitido-cwd"
-OMITIDO_SESION = "omitido-sesion"
 FUERA_DE_RAICES = "fuera-de-raices"
 EXCLUIDO_PATRON = "excluido-patron"
 RAIZ_DESNUDA = "raiz-desnuda"

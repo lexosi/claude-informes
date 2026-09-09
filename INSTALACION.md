@@ -119,7 +119,7 @@ python <claude-informes>/guardian_informes.py < escritura.json
 ```
 
 What is really worth looking at is the log, because everything ends up there. Its
-default path is the sibling of the report root (`<raiz_informes>.log`). To check
+default path is the sibling of the report root (`<reports_root>.log`). To check
 the log against the disk:
 
 ```sh
@@ -135,6 +135,6 @@ the environment variable `CLAUDE_INFORMES_LOG`.
 Remove the two entries you added to the `"hooks"` block of
 `~/.claude/settings.json` (or restore your previous copy of that file).
 
-To turn off only the writing without touching the Claude Code settings, it is
-enough to set `"activo": false` in the config. The guardian can be removed on its
-own, by deleting its `PreToolUse` entry.
+To stop archiving one project without touching the Claude Code settings, add its
+path to `"exclusions"` in the config. The guardian can be removed on its own, by
+deleting its `PreToolUse` entry.

@@ -1,22 +1,26 @@
 {
   "_comment": "EXAMPLE. This is not the real config. Copy it to your user config with 'python -m claude_informes init' and replace these fictitious paths with your own. This file, versioned in the repo, MUST NOT contain any real path of anyone.",
   "_where_the_real_config_lives": "Windows: %APPDATA%/claude-informes/proyectos.json | macOS: ~/Library/Application Support/claude-informes/proyectos.json | Linux: $XDG_CONFIG_HOME/claude-informes/proyectos.json (or ~/.config/claude-informes/proyectos.json)",
-  "_raiz_informes": "Global root of the archive. It MUST live OUTSIDE any git repository: the reports carry the full text of sessions and must not end up versioned or on a remote. Each project can declare its own and override this one.",
-  "raiz_informes": "/ruta/absoluta/fuera/de/todo/repo/informes-claude",
-  "proyectos": [
+  "_keys_are_english": "English is the only supported spelling. The old Castilian keys (proyectos, cwd, nombre, activo, umbral_lineas, raiz_informes, ruta_log) are still read as TRANSITIONAL compatibility aliases and will be removed in 2.0.0. Do not write them in a new config.",
+  "_reports_root": "Global archive root. It MUST live OUTSIDE any git repository: the reports carry the full text of sessions and must not end up versioned or on a remote. Each project can override it.",
+  "reports_root": "/ruta/absoluta/fuera/de/todo/repo/informes-claude",
+  "_roots": "Watched containers: every immediate child directory is a project. A session started in <root>/alfa/src is archived under 'alfa'. Most projects need nothing more than this.",
+  "roots": ["/ruta/absoluta/a/proyectos"],
+  "_exclusions": "Glob patterns. A resolved project whose path (or bare name) matches one is NOT archived. '*-audit*' keeps audit clones out of the archive.",
+  "exclusions": ["*-audit*"],
+  "_projects": "OPTIONAL. An entry is needed only to override a default, or to name a standalone project that does not hang off a watched root. A project discovered under a root needs no entry.",
+  "projects": [
     {
-      "nombre": "mi-proyecto",
-      "cwd": "/ruta/absoluta/a/mi-proyecto",
-      "activo": true,
-      "umbral_lineas": 5
+      "_note": "A standalone project (not under any root): the whole subtree is one project. Here with a higher line_threshold than the global 5, so it is an override: only longer turns are archived.",
+      "name": "standalone-tool",
+      "path": "/ruta/absoluta/a/standalone-tool",
+      "line_threshold": 20
     },
     {
-      "_note": "a sensitive project can be archived under a separate root",
-      "nombre": "proyecto-privado",
-      "cwd": "/ruta/absoluta/a/proyecto-privado",
-      "activo": false,
-      "raiz_informes": "/ruta/absoluta/fuera/de/todo/repo/informes-privado",
-      "umbral_lineas": 5
+      "_note": "A sensitive project archived to its own root, OUTSIDE the global one.",
+      "name": "privado",
+      "path": "/ruta/absoluta/a/privado",
+      "reports_root": "/ruta/absoluta/fuera/de/todo/repo/informes-privado"
     }
   ]
 }

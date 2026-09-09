@@ -78,7 +78,7 @@ def proyecto_del_turno(
 
 
 def nombre_que_tendria(ruta_transcript: str, arranque: str | None) -> str:
-    """What the project would be called if you registered it right now."""
+    """What the project would be called if you watched it right now."""
     if isinstance(arranque, str) and arranque.strip():
         return md.slug_llano(Path(arranque).name) or "sin-nombre"
     tramo = Path(ruta_transcript).parent.name.rsplit("-", 1)[-1]
@@ -139,7 +139,7 @@ def procesar(payload: dict, configuracion: cfg.Configuracion) -> Resultado:
     if proyecto is None:
         return Resultado(
             reg.OMITIDO_CWD,
-            detalle=f"{degradacion}; cwd fuera de la lista: {cwd!r}",
+            detalle=f"{degradacion}; cwd bajo ninguna raiz vigilada: {cwd!r}",
         )
 
     # A warning is only issued when the degraded path does archive something: it

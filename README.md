@@ -66,21 +66,21 @@ two ways to say what to watch, and the more specific one wins:
 ## What it does
 
 - **One JSON per turn.** Several turns never accumulate in a single file.
-- Only acts on the projects listed in its configuration. Anywhere else it does
-  absolutely nothing.
+- Only acts on sessions that start under a **watched root** in its configuration.
+  Anywhere else it does absolutely nothing.
 - Only writes if the response has **more than 5 lines of raw markdown**.
 
 ## Where it writes
 
 Everything goes to a central archive that lives **outside any git repository**,
-under the root declared by `raiz_informes` (for example `~/informes-claude`):
+under the root declared by `reports_root` (for example `~/informes-claude`):
 
 ```
-<raiz_informes>/<proyecto>/<AAAA-MM-DD>/<NN>-<slug>.json
+<reports_root>/<proyecto>/<AAAA-MM-DD>/<NN>-<slug>.json
 ```
 
 ```
-<raiz_informes>/
+<reports_root>/
 └── alfa/
     └── 2026-08-28/
         ├── 01-readme-extracto-gate-e-infraestructura-informes.json
@@ -91,8 +91,8 @@ under the root declared by `raiz_informes` (for example `~/informes-claude`):
 Finding a report means entering the project folder, then the day folder, and
 there you have only the reports of that day.
 
-- `<proyecto>` comes from the `nombre` field of the config, **not** from the
-  directory name: renaming the repository does not split the history.
+- `<proyecto>` is the project's real on-disk directory name (or the `name` of a
+  `projects` entry, if it declares one). It is never slugged.
 - A folder that already exists is reused. A variant or a suffix is never created,
   not even if it differs in case.
 - `<NN>` starts at `01` in each day folder. The name does not repeat the date or
@@ -101,10 +101,10 @@ there you have only the reports of that day.
 The archive is deliberately outside any git tree. It stores the full text of work
 sessions of all watched projects, and that must not be able to reach a
 `git add -A`, a `git clean -xdf` or a remote by accident. `informes/` is also in
-this repository's `.gitignore` as a second belt, in case `raiz_informes` ever
+this repository's `.gitignore` as a second belt, in case `reports_root` ever
 points inside again.
 
-Each project can declare its own `raiz_informes` and be archived separately, to
+Each project can declare its own `reports_root` and be archived separately, to
 keep the sensitive apart from the rest. If it does not declare one, it inherits
 the global one.
 
@@ -222,24 +222,24 @@ already exists. Afterwards you edit it by hand and put in the real paths.
 
 ### Shape of the file
 
-Adding a project means adding an entry; the code knows no specific path. On
-Windows paths use `\` (doubled in JSON: `"C:\\proyectos\\..."`); on macOS and
-Linux, `/`.
+You declare WHERE to watch; the code knows no specific path. On Windows paths use
+`\` (doubled in JSON: `"C:\\proyectos\\..."`); on macOS and Linux, `/`.
 
 ```json
 {
-  "raiz_informes": "/ruta/absoluta/fuera/de/git/informes-claude",
-  "proyectos": [
+  "reports_root": "/ruta/absoluta/fuera/de/git/informes-claude",
+  "roots": ["/ruta/absoluta/a/proyectos"],
+  "exclusions": ["*-audit*"],
+  "projects": [
     {
-      "nombre": "alfa",
-      "cwd": "/ruta/absoluta/a/alfa",
-      "activo": true,
-      "umbral_lineas": 5
+      "name": "standalone-tool",
+      "path": "/ruta/absoluta/a/standalone-tool",
+      "line_threshold": 20
     },
     {
-      "nombre": "beta",
-      "cwd": "/ruta/absoluta/a/beta",
-      "raiz_informes": "/ruta/absoluta/fuera/de/git/informes-privado"
+      "name": "privado",
+      "path": "/ruta/absoluta/a/privado",
+      "reports_root": "/ruta/absoluta/fuera/de/git/informes-privado"
     }
   ]
 }
@@ -247,15 +247,24 @@ Linux, `/`.
 
 | Key | Default | What it does |
 | --- | --- | --- |
-| `ruta_log` | sibling of the archive | The hook's log. |
-| `raiz_informes` (global) | this tool's `informes/` | Root inherited by the projects. |
-| `raiz_informes` (per project) | the global one | Archives THAT project separately. |
-| `nombre` | the directory's | Project folder inside the archive. |
-| `cwd` | required | Project root. Its subdirectories also count. |
-| `activo` | `true` | `false` turns it off without deleting the line. |
-| `umbral_lineas` | `5` | Written with **more** than this many lines. |
+| `roots` | none | Watched containers: each immediate child directory is a project. |
+| `exclusions` | none | Globs; a resolved project matching one is not archived. |
+| `projects` | none | OPTIONAL. A standalone project root, and/or overrides for one. |
+| `reports_root` (global) | this tool's `informes/` | Root inherited by every project. |
+| `log_path` | sibling of the archive | The hook's log. |
+| `name` (per project) | the directory's | Project folder inside the archive. |
+| `path` (per project) | required in an entry | The project root. Its subdirectories also count. |
+| `reports_root` (per project) | the global one | Archives THAT project separately. |
+| `line_threshold` (per project) | `5` | Written with **more** than this many lines. |
 
-If the config is missing or broken, the tool behaves as if the list were empty:
+> **The keys are in English, and that is the only supported spelling.** The old
+> Castilian keys (`proyectos`, `cwd`, `nombre`, `activo`, `umbral_lineas`,
+> `raiz_informes`, `ruta_log`) are still read as **transitional compatibility
+> aliases** so a config written before the rename keeps working; they are
+> **slated for removal in 2.0.0**. `activo` is gone from the model: to stop
+> archiving a project, add its path to `exclusions`.
+
+If the config is missing or broken, the tool behaves as if nothing were watched:
 it writes nowhere.
 
 ## Security
@@ -265,7 +274,7 @@ ever.
 
 - The whole hook mode is wrapped in `try/except`. Any exception exits 0 silently.
 - It never writes to `stdout` or `stderr`.
-- `cwd` outside the list: exits 0 without touching anything.
+- A session whose startup is under no watched root: exits 0 without touching anything.
 - `stop_hook_active`: exits 0 without touching anything, so as not to re-enter.
 - If the output directory does not exist, it creates it; if it cannot, it exits 0.
 - The file name is reserved with `O_CREAT|O_EXCL`: two turns at once cannot take
@@ -287,16 +296,33 @@ Exiting silently avoids breaking sessions, but it would turn any failure into
 something invisible. That is why **every turn leaves a line**, no matter what:
 
 ```
-2026-08-28T16:50:38 | alfa  | escrito         | <raiz_informes>/alfa/2026-08-28/08-....json
-2026-08-28T16:50:38 | alfa  | omitido-umbral  | 2 lineas, umbral 5
-2026-08-28T16:50:38 | -         | omitido-cwd     | cwd fuera de la lista: '/ruta/a/beta'
-2026-08-28T16:50:38 | -         | omitido-sesion  | proyecto no registrado; nombre=...; arranque=...
-2026-08-28T16:50:38 | alfa  | ERROR           | UnicodeEncodeError: ...; ruta=.../14-....json; sesion=abc123
+2026-08-28T16:50:38 | alfa  | escrito          | <reports_root>/alfa/2026-08-28/08-....json
+2026-08-28T16:50:38 | alfa  | omitido-umbral   | 2 lineas, umbral 5
+2026-08-28T16:50:38 | -     | fuera-de-raices  | nombre=demo; arranque=/work/demo; transcript=...
+2026-08-28T16:50:38 | alfa  | ERROR            | UnicodeEncodeError: ...; ruta=.../14-....json; sesion=abc123
 ```
 
-`timestamp | project | result | path or reason`, append-only, and in LF. There
-are two more results so that no turn is left without a line: `omitido-reentrada`
-(`stop_hook_active`) and `omitido-sin-texto`.
+`timestamp | project | result | path or reason`, append-only, and in LF. Every
+result it can record:
+
+| Result | Meaning |
+| --- | --- |
+| `escrito` | The report was written. The line carries its path. |
+| `omitido-umbral` | Fewer lines than the project's threshold. Not archived. |
+| `fuera-de-raices` | The startup is under no watched root. Not archived. |
+| `excluido-patron` | The project matches an `exclusions` glob. Not archived. |
+| `raiz-desnuda` | The startup IS a watched container, with no project below it. Not archived. |
+| `omitido-sin-texto` | The turn carried no response text. |
+| `omitido-reentrada` | `stop_hook_active`: a re-entry, skipped so as not to loop. |
+| `deriva-formato` | Assistant lines but no extractable turn: the transcript format may have drifted. |
+| `transcript-ilegible` | The transcript could not be read (gone, permissions, IO). |
+| `omitido-cwd` | Degraded path only (no `transcript_path`): the `cwd` is under no root. |
+| `proyecto-por-cwd` | Degraded path: archived by `cwd` because there was no transcript. A warning, paired with `escrito`. |
+| `tmp-barrido` | A stale `.json.tmp` orphan from a hard kill was swept. |
+| `denegado-escritura` | The guardian denied a hand write inside the archive. |
+| `permitido-por-error` | The guardian allowed because it could not decide (it fails open). |
+| `permitido-sin-ruta` | An MCP write tool declared no path: allowed, but recorded so the blind spot shows. |
+| `ERROR` | Something failed. On a turn that had a project, the line names the project, path and session. |
 
 The `ERROR` line of a turn that did get a project says **which** one, what path
 the report was going to have and which session it belonged to. Without those
@@ -309,8 +335,8 @@ the disk, and the failure remains silent in practice.
 > [CONTRIBUTING.md](CONTRIBUTING.md#what-is-not-translated-and-why).
 
 It lives outside the report folders and outside any repository. By default it is
-the sibling of the archive: with `raiz_informes` at `~/informes-claude`, the log
-is `~/informes-claude.log`. It can be fixed with `ruta_log` in the config, or with
+the sibling of the archive: with `reports_root` at `~/informes-claude`, the log
+is `~/informes-claude.log`. It can be fixed with `log_path` in the config, or with
 the environment variable `CLAUDE_INFORMES_LOG`, which takes precedence over both.
 
 Writing the log also goes inside the `try/except`. If the log fails, the hook
@@ -332,7 +358,7 @@ python -m claude_informes ultimo --proyecto alfa
 ```
 project  : alfa
 report   : 08-prueba-humo-hook.json
-path     : <raiz_informes>/alfa/2026-08-28/08-prueba-humo-hook.json
+path     : <reports_root>/alfa/2026-08-28/08-prueba-humo-hook.json
 recorded : 2026-08-28T16:50:38
 status   : still on disk, 453 bytes
 ```
@@ -379,8 +405,8 @@ breaks other people's sessions through a fault of its own.
 The message says why and what to do instead:
 
 ```
-claude-informes: <raiz_informes>/alfa/2026-08-28/99-x.json is inside
-the report archive (archive: <raiz_informes>).
+claude-informes: <reports_root>/alfa/2026-08-28/99-x.json is inside
+the report archive (archive: <reports_root>).
 The reports are written by the Stop hook at the end of the turn; they are not
 written or edited by hand.
 To find out which was the last one and check that it really exists:
@@ -418,26 +444,43 @@ best-effort; the only thing guaranteed is that nothing breaks.
 
 To the **session**, not to the shell. The `cwd` of the payload follows every `cd`
 made during the turn, and archiving by it fails in both directions: it puts turns
-of an unregistered project into a registered one's folder, and loses turns of a
-registered one when the shell has gone elsewhere. An archive you cannot trust is
-worthless.
+of an unwatched project into a watched one's folder, and loses turns of a watched
+one when the shell has gone elsewhere. An archive you cannot trust is worthless.
 
-The `transcript_path` identifies the session and does not move:
+So the project comes from where the session **started**. The `transcript_path`
+identifies the session and does not move; its first record carries the startup
+directory. That directory is resolved against the watched places declared in the
+config --the `roots` and the `projects`-- and the **most specific** one that
+contains it wins:
 
-1. The transcript's directory is compared with the slug that each project's
-   declared `cwd` produces. The mapping is explicit and checkable; there is no
-   attempt to undo the slug, which is ambiguous (`--proyectos-alfa-audit` could be
-   either `alfa/audit` or the sibling project `alfa-audit`).
-2. If there is no exact match, the **first record** of the transcript is read,
-   which carries the startup `cwd` without ambiguity. That resolves sessions
-   opened in a subdirectory.
-3. If that does not work either, the session is not registered: **it is not
-   archived**, and the log line carries the transcript and the name the project
-   would have.
+1. If the winner is a `projects` entry, the whole subtree is that one project.
+2. If the winner is a `roots` container, the project is the **first path segment**
+   below the root. `<root>/alfa/src/lib` is archived under `alfa`.
+3. If nothing contains the startup, the session is **not archived**, and the log
+   says why: `fuera-de-raices`, or `excluido-patron` if the project it resolved to
+   matches an exclusion, or `raiz-desnuda` if the startup IS a bare container.
 
-Falling back to `cwd` in step 3 would reopen the hole, so it is only used when
-there is no `transcript_path` to trust. In that case it archives by `cwd` and
-records an extra line, `proyecto-por-cwd`, so the degraded path is visible.
+There is no leaf/container flag: a `projects` entry is longer than the container
+it hangs off, so it wins on its own subtree by the same most-specific rule, with
+no special case.
+
+Falling back to `cwd` would reopen the hole, so it is only used when there is no
+`transcript_path` to trust. In that case it archives by `cwd` and records an
+extra `proyecto-por-cwd` line, so the degraded path is visible.
+
+### The borders, and how each is resolved
+
+The project name is the directory's **real on-disk basename** (a valid folder
+name already; it is never slugged), which settles (e) and (f) together.
+
+| # | Case | Behavior |
+| --- | --- | --- |
+| a | Startup AT a watched root itself | No segment below it: not archived, logged `raiz-desnuda`. |
+| b | Nested roots (`/work` and `/work/clients`) | The most specific wins: a startup in `/work/clients/acme` is `acme`, not `clients`. |
+| c | A root that is also a git repo | Resolved like any other; the guardian, not the resolver, keeps the archive out of a repo. |
+| d | A root that IS the project (a standalone tool) | Declared as a `projects` entry; any session inside it, at any depth, is that one project. |
+| e | Case-only difference (`/Work` vs `/work`) | Matched case-insensitively on Windows/macOS; the folder takes the real on-disk casing. |
+| f | Symlink or junction into a watched root | Resolved to its real target before matching. |
 
 ### Recovering what was not archived
 
@@ -480,14 +523,14 @@ python -m claude_informes backfill --transcript ruta/sesion.jsonl --dry-run
 | `--transcript` | Path to the `.jsonl`. |
 | `--session` | Session id; looks for the `.jsonl` under `~/.claude/projects/`. |
 | `--cwd` | Project: takes its most recent transcript and resolves its config. |
-| `--salida` | Root of the archive. Skips the allowlist (it is manual). |
+| `--salida` | Root of the archive. Skips the watched-roots check (it is manual). |
 | `--proyecto` | Project folder; by default, the config's. |
 | `--umbral` | Minimum lines; by default, the project's. |
 | `--limite` | Only the last N turns. |
 | `--dry-run` | Says what it would write, without writing. |
 
-Without `--salida`, the backfill respects the allowlist and exits with code 3 if
-the project is not in it.
+Without `--salida`, the backfill respects the watched roots and exits with code 3
+if the startup is under none of them.
 
 ## Installing the hook
 
