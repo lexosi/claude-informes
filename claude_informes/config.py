@@ -26,6 +26,67 @@ UMBRAL_POR_DEFECTO = 5
 CARPETA_APP = "claude-informes"
 NOMBRE_CONFIG = "proyectos.json"
 
+# --- Config keys: English is the only valid form; the Castilian keys are
+# TRANSITIONAL compatibility aliases, not a second supported spelling. They are
+# read so that a config written before the rename keeps working, and they are
+# slated for removal in 2.0.0. A config should be written in English; the
+# example and the README show only the English keys. When both spellings appear
+# on the same object, the English one wins and the alias is dropped.
+_ALIAS_SUPERIOR = {
+    "proyectos": "projects",
+    "raiz_informes": "reports_root",
+    "ruta_log": "log_path",
+}
+_ALIAS_ENTRADA = {
+    "nombre": "name",
+    "umbral_lineas": "line_threshold",
+    "activo": "active",
+    "raiz_informes": "reports_root",
+}
+
+
+def _renombrar(destino: dict, alias: dict) -> None:
+    """Apply one alias map in place: English wins, the Castilian alias is dropped."""
+    for viejo, nuevo in alias.items():
+        if viejo in destino and nuevo not in destino:
+            destino[nuevo] = destino.pop(viejo)
+        else:
+            destino.pop(viejo, None)
+
+
+def _canonizar_entrada(entrada):
+    """One project entry with its keys in English. `cwd`/`raiz` both map to `path`."""
+    if not isinstance(entrada, dict):
+        return entrada
+    d = dict(entrada)
+    if "path" not in d:
+        if isinstance(d.get("cwd"), str):
+            d["path"] = d["cwd"]
+        elif isinstance(d.get("raiz"), str):
+            d["path"] = d["raiz"]
+    d.pop("cwd", None)
+    d.pop("raiz", None)
+    _renombrar(d, _ALIAS_ENTRADA)
+    return d
+
+
+def _canonizar(crudo):
+    """Translate a raw config to the English keys the parser reads.
+
+    A single uniform alias pass, applied at the top level and to each entry;
+    no per-key special case. A bare list of entries (a legacy shape) is mapped
+    entry by entry.
+    """
+    if isinstance(crudo, list):
+        return [_canonizar_entrada(e) for e in crudo]
+    if not isinstance(crudo, dict):
+        return crudo
+    d = dict(crudo)
+    _renombrar(d, _ALIAS_SUPERIOR)
+    if isinstance(d.get("projects"), list):
+        d["projects"] = [_canonizar_entrada(e) for e in d["projects"]]
+    return d
+
 
 def raiz_de_la_herramienta() -> Path:
     """The directory of the claude-informes package itself (the repo root)."""
@@ -152,7 +213,7 @@ def mensaje_sin_config() -> str:
 
 def _nombre_de(entrada: dict, raiz: str) -> str:
     """The name comes from the config; renaming the directory does not split the history."""
-    declarado = entrada.get("nombre")
+    declarado = entrada.get("name")
     if isinstance(declarado, str) and declarado.strip():
         return declarado.strip()
     return md.slug_llano(Path(raiz).name) or "sin-nombre"
@@ -175,15 +236,15 @@ def cargar_estricto(ruta: str | os.PathLike[str] | None = None) -> Configuracion
     destino = Path(ruta) if ruta is not None else ruta_de_config()
     if destino is None:
         raise FileNotFoundError("no claude-informes configuration")
-    crudo = json.loads(destino.read_text(encoding="utf-8"))
+    crudo = _canonizar(json.loads(destino.read_text(encoding="utf-8")))
 
     es_dict = isinstance(crudo, dict)
-    entradas = crudo.get("proyectos") if es_dict else crudo
-    raiz_informes = crudo.get("raiz_informes") if es_dict else None
+    entradas = crudo.get("projects") if es_dict else crudo
+    raiz_informes = crudo.get("reports_root") if es_dict else None
     if not isinstance(raiz_informes, str) or not raiz_informes.strip():
         raiz_informes = raiz_informes_por_defecto()
 
-    declarada = crudo.get("ruta_log") if es_dict else None
+    declarada = crudo.get("log_path") if es_dict else None
     ruta_log = ruta_de_log(declarada, raiz_informes)
 
     roots = [
@@ -209,20 +270,20 @@ def cargar_estricto(ruta: str | os.PathLike[str] | None = None) -> Configuracion
     for entrada in entradas:
         if not isinstance(entrada, dict):
             continue
-        raiz = entrada.get("cwd") or entrada.get("raiz")
+        raiz = entrada.get("path")
         if not isinstance(raiz, str) or not raiz.strip():
             continue
-        umbral = entrada.get("umbral_lineas", UMBRAL_POR_DEFECTO)
+        umbral = entrada.get("line_threshold", UMBRAL_POR_DEFECTO)
         if not isinstance(umbral, int) or isinstance(umbral, bool) or umbral < 0:
             umbral = UMBRAL_POR_DEFECTO
-        propia = entrada.get("raiz_informes")
+        propia = entrada.get("reports_root")
         if not isinstance(propia, str) or not propia.strip():
             propia = raiz_informes
         proyectos.append(
             Proyecto(
                 nombre=_nombre_de(entrada, raiz),
                 raiz=str(Path(raiz)),
-                activo=bool(entrada.get("activo", True)),
+                activo=bool(entrada.get("active", True)),
                 umbral_lineas=umbral,
                 raiz_informes=Path(propia),
             )
