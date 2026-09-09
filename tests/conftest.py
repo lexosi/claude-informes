@@ -84,11 +84,15 @@ def log(tmp_path, monkeypatch):
 def escribir_config(tmp_path):
     """Returns a function that writes a config file and gives its path."""
 
-    def _escribir(entradas, raiz_informes=None):
+    def _escribir(entradas, raiz_informes=None, *, roots=None, exclusions=None):
         ruta = tmp_path / "proyectos.json"
         contenido = {"proyectos": entradas}
         if raiz_informes is not None:
             contenido["raiz_informes"] = str(raiz_informes)
+        if roots is not None:
+            contenido["roots"] = [str(r) for r in roots]
+        if exclusions is not None:
+            contenido["exclusions"] = list(exclusions)
         for entrada in entradas:
             if isinstance(entrada, dict) and isinstance(entrada.get("raiz_informes"), pathlib.Path):
                 entrada["raiz_informes"] = str(entrada["raiz_informes"])

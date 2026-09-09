@@ -81,6 +81,16 @@ class Configuracion:
     """The hook's log. Just one, for all projects."""
 
     proyectos: list[Proyecto] = field(default_factory=list)
+    """Explicit project roots: a `path` that is one project, optionally carrying
+    overrides (line_threshold, reports_root, name). An entry that only tweaks a
+    threshold and an entry that names a standalone project subtree are the same
+    thing; which one it is depends only on where the watched roots fall."""
+
+    roots: list[str] = field(default_factory=list)
+    """Watched containers: each immediate child directory is a project."""
+
+    exclusions: list[str] = field(default_factory=list)
+    """Glob patterns; a resolved project matching one is not archived."""
 
 
 def normalizar(ruta: str | os.PathLike[str]) -> str:
@@ -167,16 +177,33 @@ def cargar_estricto(ruta: str | os.PathLike[str] | None = None) -> Configuracion
         raise FileNotFoundError("no claude-informes configuration")
     crudo = json.loads(destino.read_text(encoding="utf-8"))
 
-    entradas = crudo.get("proyectos") if isinstance(crudo, dict) else crudo
-    raiz_informes = crudo.get("raiz_informes") if isinstance(crudo, dict) else None
+    es_dict = isinstance(crudo, dict)
+    entradas = crudo.get("proyectos") if es_dict else crudo
+    raiz_informes = crudo.get("raiz_informes") if es_dict else None
     if not isinstance(raiz_informes, str) or not raiz_informes.strip():
         raiz_informes = raiz_informes_por_defecto()
 
-    declarada = crudo.get("ruta_log") if isinstance(crudo, dict) else None
+    declarada = crudo.get("ruta_log") if es_dict else None
     ruta_log = ruta_de_log(declarada, raiz_informes)
 
+    roots = [
+        r
+        for r in ((crudo.get("roots") if es_dict else None) or [])
+        if isinstance(r, str) and r.strip()
+    ]
+    exclusions = [
+        g
+        for g in ((crudo.get("exclusions") if es_dict else None) or [])
+        if isinstance(g, str) and g.strip()
+    ]
+
     if not isinstance(entradas, list):
-        return Configuracion(raiz_informes=Path(raiz_informes), ruta_log=ruta_log)
+        return Configuracion(
+            raiz_informes=Path(raiz_informes),
+            ruta_log=ruta_log,
+            roots=roots,
+            exclusions=exclusions,
+        )
 
     proyectos = []
     for entrada in entradas:
@@ -204,6 +231,8 @@ def cargar_estricto(ruta: str | os.PathLike[str] | None = None) -> Configuracion
         raiz_informes=Path(raiz_informes),
         ruta_log=ruta_log,
         proyectos=proyectos,
+        roots=roots,
+        exclusions=exclusions,
     )
 
 
