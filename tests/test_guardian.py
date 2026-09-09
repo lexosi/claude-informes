@@ -389,6 +389,38 @@ def test_an_unknown_folder_under_the_root_is_denied_without_a_project(archivo, l
     assert reg.leer(log)[0].proyecto == reg.SIN_PROYECTO
 
 
+def test_a_discovered_project_is_covered_by_the_global_zone(escribir_config, tmp_path):
+    """The case the watched-roots model makes common: most projects are no longer
+    declared, they are discovered under a root and archived under the GLOBAL root.
+    A hand write into one must be denied via the global zone, with no per-project
+    entry in the config at all."""
+    comun = tmp_path / "informes-claude"
+    ruta_config = escribir_config([], raiz_informes=comun, roots=["C:\\proyectos"])
+    destino = comun / "un-proyecto-descubierto" / "2026-09-09" / "99-x.json"
+
+    codigo, salida = ejecutar(payload(destino), ruta_config)
+
+    assert codigo == 0 and deniega(salida)
+
+
+def test_an_override_root_outside_the_global_one_is_also_protected(
+    escribir_config, tmp_path, log
+):
+    """An override whose reports_root is NOT under the global root must still be a
+    protected zone, or that override would write an archive with no guardian."""
+    comun = tmp_path / "informes-global"
+    fuera = tmp_path / "otra-rama" / "informes-sensible"  # not under comun
+    ruta_config = escribir_config(
+        [{"nombre": "sensible", "cwd": "C:\\proyectos\\sensible", "raiz_informes": fuera}],
+        raiz_informes=comun,
+    )
+
+    codigo, salida = ejecutar(payload(fuera / "sensible" / "2026-09-09" / "01-x.json"), ruta_config)
+
+    assert codigo == 0 and deniega(salida)
+    assert "sensible" in razon(salida)
+
+
 # --- the guardian's boundaries, crossed by bytes ---
 
 

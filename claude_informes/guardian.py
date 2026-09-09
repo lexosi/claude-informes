@@ -142,7 +142,12 @@ def resolver(ruta: str, cwd: str | None) -> str:
 def zonas_protegidas(configuracion: cfg.Configuracion) -> list[tuple[str, str, str]]:
     """(normalized path, type, project) of everything that is not touched by hand.
 
-    They come from the config: the global root, each project's, and the log.
+    They come from the config: the global root, the log, and each explicit
+    project's own root. A DISCOVERED project --one found under a watched root,
+    not declared in `projects`-- is archived under the GLOBAL root, so it needs
+    no zone of its own: it already falls inside the global one by prefix. Only a
+    `projects` entry that declares its OWN `reports_root` adds a zone, because
+    that one may live outside the global root and would otherwise have no guard.
     """
     zonas = [
         (os.path.normcase(os.path.realpath(configuracion.raiz_informes)), "carpeta", ""),
